@@ -16,15 +16,17 @@ void throw(const char *fmt, ...)
 }
 
 typedef struct Value {
-    bool tag;
     union {
         struct Value *ptr;
         uint64_t ival;
     };
 } Value;
 
-#define VAL_INT(v) ((uint64_t) v)
-#define VAL_PTR(v) ((Cell *) v)
+#define VAL_IS_INT(v) (v.ival & 1U)
+#define VAL_IS_PTR(v) (!VAL_IS_INT(v.ival))
+
+#define VAL_INT(v) (v.ival >> 1U)
+#define VAL_PTR(v) (v.ptr)
 
 typedef struct {
     Value car, cdr;
