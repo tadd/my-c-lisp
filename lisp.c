@@ -56,13 +56,11 @@ static Cell *cell_alloc(void)
 {
     if (cells->capacity == cells->length) {
         cells->capacity *= 2;
-        CellChunk *c = realloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
-        if (c == NULL)
+        cells = realloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
+        if (cells == NULL)
             throw("chunk realloc failed");
-        cells = c;
     }
-    cells->length++;
-    return &cells->chunk[cells->length-1];
+    return &cells->chunk[cells->length++];
 }
 
 typedef enum {
