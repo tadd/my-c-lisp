@@ -56,7 +56,7 @@ static Cell *cell_alloc(void)
 {
     if (cells->capacity == cells->length) {
         cells->capacity *= 2;
-        CellChunk *c = realloc(cells, cells->capacity);
+        CellChunk *c = realloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
         if (c == NULL)
             throw("chunk realloc failed");
         cells = c;
