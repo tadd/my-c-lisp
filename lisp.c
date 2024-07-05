@@ -115,7 +115,13 @@ static const char *token_stringify(Token t)
         return "(";
     case TOK_RPAREN:
         return ")";
-    default:
+    case TOK_INT:
+        return "<int>";
+    case TOK_SYMBOL:
+        return "<sym>";
+    case TOK_EOF:
+        return "\\0";
+    case TOK_INVALID:
         break;
     }
     return "invalid";
