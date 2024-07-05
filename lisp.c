@@ -97,6 +97,8 @@ static Token peek_token(Parser *p)
         return TOK_LPAREN;
     case ')':
         return TOK_RPAREN;
+    default:
+        break;
     }
     return TOK_INVALID;
 }
@@ -108,6 +110,8 @@ static const char *token_stringify(Token t)
         return "(";
     case TOK_RPAREN:
         return ")";
+    default:
+        break;
     }
     return "invalid";
 }
