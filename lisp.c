@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ATTR_UNUSED __attribute__((unused))
+
 __attribute__((noreturn))
 __attribute__((format(printf, 1, 2)))
 void throw(const char *fmt, ...)
@@ -39,6 +41,11 @@ static inline bool value_is_int(Value v)
 static inline bool value_is_cell(Value v)
 {
     return !value_is_int(v);
+}
+
+static inline bool value_is_eof(Value v)
+{
+    return v.ival == VALUE_EOF.ival;
 }
 
 static inline int64_t value_to_int(Value v)
@@ -87,7 +94,7 @@ static void cell_init(void)
     cells->length = 0;
 }
 
-__attribute__((unused))
+ATTR_UNUSED
 static Cell *cell_alloc(void)
 {
     if (cells->capacity == cells->length) {
@@ -140,7 +147,7 @@ static Token get_token(Parser *p, Value *v)
     }
 }
 
-static Value parse_list(Parser *p __attribute__((unused)))
+static Value parse_list(Parser *p ATTR_UNUSED)
 {
     return (Value){ .ival = 0 };
 }
@@ -162,7 +169,7 @@ static Value parse_expr(Parser *p)
     case TOK_INVALID:
         break;
     }
-    throw("expected expression but got invalid string before '%s'", p->p);
+    throw("expected expression but got invalid string before '%s'", &p->p[-1]);
 }
 
 static Parser *parser_new(void)
@@ -172,6 +179,16 @@ static Parser *parser_new(void)
     return p;
 }
 
+static Value eval(Value v)
+{
+    return v;
+}
+
+static void print(Value v ATTR_UNUSED)
+{
+    // void here for now
+}
+
 static Value parse(FILE *in)
 {
     Parser *p = parser_new();
@@ -179,9 +196,14 @@ static Value parse(FILE *in)
     if (ret == NULL)
         throw("source too large");
     cell_init();
-    Value e = parse_expr(p);
+    Value v;
+    for (;;) {
+        v = parse_expr(p);
+        if (value_is_eof(v))
+            break;
+    }
     free(p);
-    return e;
+    return v;
 }
 
 int main(int argc, char **argv)
@@ -192,7 +214,7 @@ int main(int argc, char **argv)
         if (in == NULL)
             throw("file %s not found", argv[1]);
     }
-    __attribute__((unused))
-    volatile Value v = parse(in);
+    ATTR_UNUSED Value v = parse(in);
+    print(eval(v));
     return 0;
 }
