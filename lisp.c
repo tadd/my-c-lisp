@@ -25,7 +25,7 @@ typedef struct Value {
 #define VAL_IS_INT(v) (v.ival & 1U)
 #define VAL_IS_PTR(v) (!VAL_IS_INT(v.ival))
 
-#define VAL_INT(v) (v.ival >> 1U)
+#define VAL_INT(v) ((int64_t)(v.ival >> 1U))
 #define VAL_PTR(v) (v.ptr)
 
 typedef struct {
