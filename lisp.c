@@ -85,6 +85,7 @@ static void cell_init(void)
     cells->length = 0;
 }
 
+__attribute__((unused))
 static Cell *cell_alloc(void)
 {
     if (cells->capacity == cells->length) {
