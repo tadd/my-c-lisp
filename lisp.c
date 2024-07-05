@@ -28,11 +28,25 @@ struct Cell {
     Value car, cdr;
 };
 
-#define VAL_IS_INT(v) (v.ival & 1U)
-#define VAL_IS_CELL(v) (!VAL_IS_INT(v.ival))
+static inline bool value_is_int(Value v)
+{
+    return v.ival & 1U;
+}
 
-#define VAL2INT(v) ((int64_t)(v.ival >> 1U))
-#define INT2VAL(i) (((uint64_t)i)<<1U|1U)
+static inline bool value_is_cell(Value v)
+{
+    return !value_is_int(v);
+}
+
+static inline int64_t value_to_int(Value v)
+{
+    return (int64_t)(v.ival >> 1U);
+}
+
+static inline uint64_t int_to_value_ival(int64_t i)
+{
+    return (((uint64_t) i) << 1U) | 1U;
+}
 
 typedef struct {
     uint64_t capacity, length;
