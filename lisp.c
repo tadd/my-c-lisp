@@ -182,7 +182,7 @@ static Value parse_expr(Parser *p)
 
 static Parser *parser_new(void)
 {
-    Parser *p = malloc(sizeof(Parser));
+    Parser *p = xmalloc(sizeof(Parser));
     p->p = p->buf;
     return p;
 }
