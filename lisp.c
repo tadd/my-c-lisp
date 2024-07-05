@@ -15,22 +15,24 @@ void throw(const char *fmt, ...)
     exit(2);
 }
 
-typedef struct Value {
+typedef struct Cell Cell;
+
+typedef struct {
     union {
-        struct Value *ptr;
+        Cell *cell;
         uint64_t ival;
     };
 } Value;
 
-#define VAL_IS_INT(v) (v.ival & 1U)
-#define VAL_IS_PTR(v) (!VAL_IS_INT(v.ival))
-
-#define VAL_INT(v) ((int64_t)(v.ival >> 1U))
-#define VAL_PTR(v) (v.ptr)
-
-typedef struct {
+struct Cell {
     Value car, cdr;
-} Cell;
+};
+
+#define VAL_IS_INT(v) (v.ival & 1U)
+#define VAL_IS_CELL(v) (!VAL_IS_INT(v.ival))
+
+#define VAL2INT(v) ((int64_t)(v.ival >> 1U))
+#define INT2VAL(i) (((uint64_t)i)<<1U|1U)
 
 typedef struct {
     uint64_t capacity, length;
