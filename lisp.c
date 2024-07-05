@@ -154,7 +154,9 @@ static Cell *parse(FILE *in)
     if (ret == NULL)
         throw("source too large");
     cell_init();
-    return parse_expr(p);
+    Cell *expr = parse_expr(p);
+    free(p);
+    return expr;
 }
 
 int main(int argc, char **argv)
