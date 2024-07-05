@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -107,7 +108,19 @@ typedef struct {
     const char *p;
 } Parser;
 
-static Token get_token(Parser *p)
+static Token get_token_int(Parser *p, Value *v)
+{
+    const char *beg = p->p;
+    while (isdigit(*p->p))
+        p->p++;
+    if (beg == p->p)
+        return TOK_INVALID;
+    int64_t i = strtoll(beg, NULL, 10);
+    v->ival = int_to_value_ival(i);
+    return TOK_INT;
+}
+
+static Token get_token(Parser *p, Value *v)
 {
     switch (*p->p) {
     case '(':
@@ -120,7 +133,7 @@ static Token get_token(Parser *p)
     case '\0':
         return TOK_EOF;
     default:
-        return TOK_INVALID;
+        return get_token_int(p, v);
     }
 }
 
@@ -145,7 +158,7 @@ static const char *token_stringify(Token t)
 
 static Token get_token_of(Parser *p, Token expected)
 {
-    Token t = get_token(p);
+    Token t = get_token(p, NULL);
     if (t != expected) {
         throw("expected %s but got %s",
               token_stringify(expected), token_stringify(t));
