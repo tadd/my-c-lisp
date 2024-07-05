@@ -194,6 +194,20 @@ static void print(Value v ATTR_UNUSED)
     // void here for now
 }
 
+static void dprint(Value v)
+{
+    if (value_is_int(v)) {
+        printf("%ld", value_to_int(v));
+        return;
+    }
+    Cell *c = v.cell;
+    printf("(");
+    dprint(c->car);
+    printf(" . ");
+    dprint(c->cdr);
+    printf(")");
+}
+
 static Value parse(FILE *in)
 {
     Parser *p = parser_new();
@@ -206,6 +220,7 @@ static Value parse(FILE *in)
         v = parse_expr(p);
         if (value_is_eof(v))
             break;
+        dprint(v);
     }
     free(p);
     return v;
