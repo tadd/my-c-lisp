@@ -25,6 +25,8 @@ typedef struct {
     };
 } Value;
 
+static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
+
 struct Cell {
     Value car, cdr;
 };
@@ -138,35 +140,6 @@ static Token get_token(Parser *p, Value *v)
     }
 }
 
-static const char *token_stringify(Token t)
-{
-    switch (t) {
-    case TOK_LPAREN:
-        return "(";
-    case TOK_RPAREN:
-        return ")";
-    case TOK_INT:
-        return "<int>";
-    case TOK_SYMBOL:
-        return "<sym>";
-    case TOK_EOF:
-        return "\\0";
-    case TOK_INVALID:
-        break;
-    }
-    return "invalid";
-}
-
-static Token get_token_of(Parser *p, Token expected)
-{
-    Token t = get_token(p, NULL);
-    if (t != expected) {
-        throw("expected %s but got %s",
-              token_stringify(expected), token_stringify(t));
-    }
-    return t;
-}
-
 static Value parse_list(Parser *p __attribute__((unused)))
 {
     return (Value){ .ival = 0 };
@@ -174,10 +147,22 @@ static Value parse_list(Parser *p __attribute__((unused)))
 
 static Value parse_expr(Parser *p)
 {
-    get_token_of(p, TOK_LPAREN);
-    Value l = parse_list(p);
-    get_token_of(p, TOK_RPAREN);
-    return l;
+    Value v;
+    Token t = get_token(p, &v);
+    switch (t) {
+    case TOK_LPAREN:
+        return parse_list(p);
+    case TOK_RPAREN:
+        throw("expected expression but got ')'");
+    case TOK_INT:
+    case TOK_SYMBOL:
+        return v;
+    case TOK_EOF:
+        return VALUE_EOF;
+    case TOK_INVALID:
+        break;
+    }
+    throw("expected expression but got invalid string before '%s'", p->p);
 }
 
 static Parser *parser_new(void)
