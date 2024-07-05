@@ -82,25 +82,30 @@ typedef enum {
     TOK_RPAREN,
     TOK_INT,
     TOK_SYMBOL,
+    TOK_EOF,
     TOK_INVALID
 } Token;
 
 typedef struct {
     char buf[1024*1024]; // aho ;)
-    const char *p, *end;
+    const char *p;
 } Parser;
 
-static Token peek_token(Parser *p)
+static Token get_token(Parser *p)
 {
-    switch (p->buf[0]) {
+    switch (*p->p) {
     case '(':
+        p->p++;
         return TOK_LPAREN;
-    case ')':
-        return TOK_RPAREN;
-    default:
         break;
+    case ')':
+        p->p++;
+        return TOK_RPAREN;
+    case '\0':
+        return TOK_EOF;
+    default:
+        return TOK_INVALID;
     }
-    return TOK_INVALID;
 }
 
 static const char *token_stringify(Token t)
@@ -116,9 +121,9 @@ static const char *token_stringify(Token t)
     return "invalid";
 }
 
-static Token next_token(Parser *p, Token expected)
+static Token get_token_of(Parser *p, Token expected)
 {
-    Token t = peek_token(p);
+    Token t = get_token(p);
     if (t != expected) {
         throw("expected %s but got %s",
               token_stringify(expected), token_stringify(t));
@@ -133,9 +138,9 @@ static Cell *parse_list(Parser *p)
 
 static Cell *parse_expr(Parser *p)
 {
-    next_token(p, TOK_LPAREN);
+    get_token_of(p, TOK_LPAREN);
     Cell *l = parse_list(p);
-    next_token(p, TOK_RPAREN);
+    get_token_of(p, TOK_RPAREN);
     return l;
 }
 
@@ -143,7 +148,6 @@ static Parser *parser_new(void)
 {
     Parser *p = malloc(sizeof(Parser));
     p->p = p->buf;
-    p->end = p->buf + sizeof(p->buf) - 1;
     return p;
 }
 
