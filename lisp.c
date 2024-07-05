@@ -64,8 +64,8 @@ static Cell *cell_alloc(void)
 }
 
 typedef enum {
-    TOK_OPAREN,
-    TOK_CPAREN,
+    TOK_LPAREN,
+    TOK_RPAREN,
     TOK_INT,
     TOK_SYMBOL,
     TOK_INVALID
@@ -75,21 +75,21 @@ static Token next_token(const char *buf)
 {
     switch (buf[0]) {
     case '(':
-        return TOK_OPAREN;
+        return TOK_LPAREN;
     case ')':
-        return TOK_CPAREN;
+        return TOK_RPAREN;
     }
     return TOK_INVALID;
 }
 
 static Cell *parse_oparen(const char *buf)
 {
-    return (void *)(uintptr_t)(next_token(buf) == TOK_OPAREN);
+    return (void *)(uintptr_t)(next_token(buf) == TOK_LPAREN);
 }
 
 static Cell *parse_cparen(const char *buf)
 {
-    return (void *)(uintptr_t)(next_token(buf) == TOK_CPAREN);
+    return (void *)(uintptr_t)(next_token(buf) == TOK_RPAREN);
 }
 
 static Cell *parse_list(const char *buf)
