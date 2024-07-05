@@ -43,11 +43,27 @@ enum {
 
 static CellChunk *cells;
 
+__attribute__((malloc(free)))
+static void *xmalloc(size_t size)
+{
+    void *p = malloc(size);
+    if (p == NULL)
+        throw("malloc %zu bytes failed", size);
+    return p;
+}
+
+__attribute__((malloc(free)))
+static void *xrealloc(void *p, size_t size)
+{
+    p = realloc(p, size);
+    if (p == NULL)
+        throw("realloc to %zu bytes failed", size);
+    return p;
+}
+
 static void cell_init(void)
 {
-    cells = malloc(sizeof(CellChunk) + sizeof(Value) * CELL_INIT);
-    if (cells == NULL)
-        throw("chunk malloc failed");
+    cells = xmalloc(sizeof(CellChunk) + sizeof(Value) * CELL_INIT);
     cells->capacity = CELL_INIT;
     cells->length = 0;
 }
@@ -56,9 +72,7 @@ static Cell *cell_alloc(void)
 {
     if (cells->capacity == cells->length) {
         cells->capacity *= 2;
-        cells = realloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
-        if (cells == NULL)
-            throw("chunk realloc failed");
+        cells = xrealloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
     }
     return &cells->chunk[cells->length++];
 }
