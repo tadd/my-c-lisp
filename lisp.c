@@ -166,15 +166,15 @@ static Token get_token_of(Parser *p, Token expected)
     return t;
 }
 
-static Cell *parse_list(Parser *p)
+static Value parse_list(Parser *p __attribute__((unused)))
 {
-    return NULL;
+    return (Value){ .ival = 0 };
 }
 
-static Cell *parse_expr(Parser *p)
+static Value parse_expr(Parser *p)
 {
     get_token_of(p, TOK_LPAREN);
-    Cell *l = parse_list(p);
+    Value l = parse_list(p);
     get_token_of(p, TOK_RPAREN);
     return l;
 }
@@ -186,16 +186,16 @@ static Parser *parser_new(void)
     return p;
 }
 
-static Cell *parse(FILE *in)
+static Value parse(FILE *in)
 {
     Parser *p = parser_new();
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         throw("source too large");
     cell_init();
-    Cell *expr = parse_expr(p);
+    Value e = parse_expr(p);
     free(p);
-    return expr;
+    return e;
 }
 
 int main(int argc, char **argv)
@@ -206,6 +206,7 @@ int main(int argc, char **argv)
         if (in == NULL)
             throw("file %s not found", argv[1]);
     }
-    void *p = parse(in);
-    return !p;
+    __attribute__((unused))
+    volatile Value v = parse(in);
+    return 0;
 }
