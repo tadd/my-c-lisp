@@ -85,9 +85,14 @@ typedef enum {
     TOK_INVALID
 } Token;
 
-static Token next_token(const char *buf)
+typedef struct {
+    char buf[1024*1024]; // aho ;)
+    const char *p, *end;
+} Parser;
+
+static Token peek_token(Parser *p)
 {
-    switch (buf[0]) {
+    switch (p->buf[0]) {
     case '(':
         return TOK_LPAREN;
     case ')':
@@ -96,40 +101,56 @@ static Token next_token(const char *buf)
     return TOK_INVALID;
 }
 
-static Cell *parse_oparen(const char *buf)
+static const char *token_stringify(Token t)
 {
-    return (void *)(uintptr_t)(next_token(buf) == TOK_LPAREN);
+    switch (t) {
+    case TOK_LPAREN:
+        return "(";
+    case TOK_RPAREN:
+        return ")";
+    }
+    return "invalid";
 }
 
-static Cell *parse_cparen(const char *buf)
+static Token next_token(Parser *p, Token expected)
 {
-    return (void *)(uintptr_t)(next_token(buf) == TOK_RPAREN);
+    Token t = peek_token(p);
+    if (t != expected) {
+        throw("expected %s but got %s",
+              token_stringify(expected), token_stringify(t));
+    }
+    return t;
 }
 
-static Cell *parse_list(const char *buf)
+static Cell *parse_list(Parser *p)
 {
-    volatile const void *p = buf;
     return NULL;
 }
 
-static Cell *parse_expr(const char *buf)
+static Cell *parse_expr(Parser *p)
 {
-    if (!parse_oparen(buf))
-        throw("missing '('");
-    Cell *l = parse_list(buf);
-    if (parse_cparen(buf))
-        throw("missing ')'");
+    next_token(p, TOK_LPAREN);
+    Cell *l = parse_list(p);
+    next_token(p, TOK_RPAREN);
     return l;
+}
+
+static Parser *parser_new(void)
+{
+    Parser *p = malloc(sizeof(Parser));
+    p->p = p->buf;
+    p->end = p->buf + sizeof(p->buf) - 1;
+    return p;
 }
 
 static Cell *parse(FILE *in)
 {
-    static char buf[1024*1024]; // aho ;)
-    char *ret = fgets(buf, sizeof(buf), in);
+    Parser *p = parser_new();
+    char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         throw("source too large");
     cell_init();
-    return parse_expr(buf);
+    return parse_expr(p);
 }
 
 int main(int argc, char **argv)
