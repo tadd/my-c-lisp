@@ -125,13 +125,18 @@ static Token get_token_int(Parser *p, Value *v)
         p->p++;
     if (beg == p->p)
         return TOK_INVALID;
-    int64_t i = strtoll(beg, NULL, 10);
+    char *endp;
+    int64_t i = strtoll(beg, &endp, 10);
     v->ival = int_to_value_ival(i);
+    p->p = endp;
     return TOK_INT;
 }
 
 static Token get_token(Parser *p, Value *v)
 {
+    while (isspace(*p->p))
+        p->p++;
+
     switch (*p->p) {
     case '(':
         p->p++;
