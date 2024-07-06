@@ -38,11 +38,6 @@ static inline bool value_is_nil(Value v)
     return value_is_cell(v) && v.cell == NULL;
 }
 
-static inline bool value_is_eof(Value v)
-{
-    return v.ival == VALUE_EOF.ival;
-}
-
 static inline int64_t value_to_int(Value v)
 {
     return (int64_t)(v.ival >> 1U);
@@ -176,6 +171,11 @@ static Token peek_token(Parser *p)
     }
 }
 
+static inline bool got_eof(Parser *p)
+{
+    return p->p[0] == '\0';
+}
+
 static Value parse_list(Parser *p ATTR_UNUSED)
 {
     return (Value){ .ival = 0 }; // dummy here
@@ -192,7 +192,7 @@ static Value parse_expr(Parser *p)
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
-        return VALUE_EOF;
+        return VALUE_EOF; // dummy
     case TTYPE_INVALID:
         break;
     }
@@ -239,7 +239,7 @@ static Value parse(FILE *in)
     Value v;
     for (;;) {
         v = parse_expr(p);
-        if (value_is_eof(v))
+        if (got_eof(p))
             break;
         print(v);
         printf("\n");
