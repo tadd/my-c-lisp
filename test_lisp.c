@@ -11,13 +11,13 @@ Test(darray, new) {
     darray_free(a);
 }
 
-Test(darray, put_and_ref) {
+Test(darray, push_and_ref) {
     DArray *a = darray_new(sizeof(int));
     cr_assert(a != NULL);
     int x = 1, y = 21, z = 42;
-    darray_put(a, &x);
-    darray_put(a, &y);
-    darray_put(a, &z);
+    darray_push(a, &x);
+    darray_push(a, &y);
+    darray_push(a, &z);
     
     cr_assert(darray_size(a) == 3);
 
