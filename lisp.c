@@ -111,36 +111,36 @@ static const Token
 
 typedef struct {
     char buf[1024*1024]; // aho ;)
-    const char *p;
+    const char *s;
 } Parser;
 
 static Token get_token_int(Parser *p)
 {
-    const char *beg = p->p;
-    while (isdigit(*p->p))
-        p->p++;
-    if (beg == p->p)
+    const char *beg = p->s;
+    while (isdigit(*p->s))
+        p->s++;
+    if (beg == p->s)
         throw("expected integer but got nothing in '%s'", beg);
     char *endp;
     int64_t i = strtoll(beg, &endp, 10);
-    p->p = endp;
+    p->s = endp;
     return TOK_INT(i);
 }
 
 static Token get_token(Parser *p)
 {
-    while (isspace(*p->p))
-        p->p++;
+    while (isspace(*p->s))
+        p->s++;
 
-    switch (*p->p) {
+    switch (*p->s) {
     case '(':
-        p->p++;
+        p->s++;
         return TOK_LPAREN;
     case ')':
-        p->p++;
+        p->s++;
         return TOK_RPAREN;
     case '.':
-        p->p++;
+        p->s++;
         return TOK_DOT;
     case '\0':
         return TOK_EOF;
@@ -151,13 +151,13 @@ static Token get_token(Parser *p)
 
 static Token peek_token(Parser *p)
 {
-    Parser tmp = { .p = p->p };
+    Parser tmp = { .s = p->s };
     return get_token(&tmp);
 }
 
 static inline bool got_eof(Parser *p)
 {
-    return p->p[0] == '\0';
+    return p->s[0] == '\0';
 }
 
 static Value cons(Value car, Value cdr)
@@ -237,7 +237,7 @@ static Value parse_expr(Parser *p)
 static Parser *parser_new(void)
 {
     Parser *p = xmalloc(sizeof(Parser));
-    p->p = p->buf;
+    p->s = p->buf;
     return p;
 }
 
