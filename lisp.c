@@ -18,8 +18,7 @@ typedef struct {
     };
 } Value;
 
-// singletons
-static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
+// singleton
 static const Value VALUE_NIL = (Value){ .pair = NULL };
 
 struct Pair {
@@ -245,7 +244,7 @@ static Value parse_expr(Parser *p)
     case TTYPE_EOF:
         break;
     }
-    return VALUE_EOF; // dummy
+    return VALUE_NIL; // dummy
 }
 
 static Parser *parser_new(void)
