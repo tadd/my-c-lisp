@@ -16,6 +16,7 @@ typedef struct {
     };
 } Value;
 
+// signleton
 static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
 
 struct Cell {
@@ -76,20 +77,34 @@ static Cell *cell_alloc(void)
 }
 
 typedef enum {
-    TOK_LPAREN,
-    TOK_RPAREN,
-    TOK_INT,
-//  TOK_SYMBOL,
-    TOK_EOF,
-    TOK_INVALID
+    TTYPE_LPAREN,
+    TTYPE_RPAREN,
+    TTYPE_INT,
+//  TTYPE_SYMBOL,
+    TTYPE_EOF,
+    TTYPE_INVALID
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    Value value;
 } Token;
+
+
+// singletons
+static const Token
+    TOK_LPAREN = { .type = TTYPE_LPAREN },
+    TOK_RPAREN = { .type = TTYPE_RPAREN },
+    TOK_EOF = { .type = TTYPE_EOF },
+    TOK_INVALID = { .type = TTYPE_INVALID };
+#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .ival = int_to_value_ival(i) }})
 
 typedef struct {
     char buf[1024*1024]; // aho ;)
     const char *p;
 } Parser;
 
-static Token get_token_int(Parser *p, Value *v)
+static Token get_token_int(Parser *p)
 {
     const char *beg = p->p;
     while (isdigit(*p->p))
@@ -98,12 +113,11 @@ static Token get_token_int(Parser *p, Value *v)
         return TOK_INVALID;
     char *endp;
     int64_t i = strtoll(beg, &endp, 10);
-    v->ival = int_to_value_ival(i);
     p->p = endp;
-    return TOK_INT;
+    return TOK_INT(i);
 }
 
-static Token get_token(Parser *p, Value *v)
+static Token get_token(Parser *p)
 {
     while (isspace(*p->p))
         p->p++;
@@ -118,7 +132,7 @@ static Token get_token(Parser *p, Value *v)
     case '\0':
         return TOK_EOF;
     default:
-        return get_token_int(p, v);
+        return get_token_int(p);
     }
 }
 
@@ -129,18 +143,17 @@ static Value parse_list(Parser *p ATTR_UNUSED)
 
 static Value parse_expr(Parser *p)
 {
-    Value v;
-    Token t = get_token(p, &v);
-    switch (t) {
-    case TOK_LPAREN:
+    Token t = get_token(p);
+    switch (t.type) {
+    case TTYPE_LPAREN:
         return parse_list(p);
-    case TOK_RPAREN:
+    case TTYPE_RPAREN:
         throw("expected expression but got ')'");
-    case TOK_INT:
-        return v;
-    case TOK_EOF:
+    case TTYPE_INT:
+        return t.value;
+    case TTYPE_EOF:
         return VALUE_EOF;
-    case TOK_INVALID:
+    case TTYPE_INVALID:
         break;
     }
     throw("expected expression but got invalid string before '%s'", &p->p[-1]);
