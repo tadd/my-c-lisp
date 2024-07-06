@@ -18,8 +18,9 @@ typedef struct {
     };
 } Value;
 
-// signleton
+// signletons
 static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
+static const Value VALUE_NIL = (Value){ .cell = NULL };
 
 struct Cell {
     Value car, cdr;
@@ -68,14 +69,17 @@ static void cell_init(void)
     cells->length = 0;
 }
 
-ATTR_UNUSED
 static Cell *cell_alloc(void)
 {
+#if 0
     if (cells->capacity == cells->length) {
         cells->capacity *= 2;
         cells = xrealloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
     }
     return &cells->chunk[cells->length++];
+#else
+    return xmalloc(sizeof(Cell));
+#endif
 }
 
 typedef enum {
@@ -176,9 +180,47 @@ static inline bool got_eof(Parser *p)
     return p->p[0] == '\0';
 }
 
-static Value parse_list(Parser *p ATTR_UNUSED)
+static Value cons(Value car, Value cdr)
 {
-    return (Value){ .ival = 0 }; // dummy here
+    Cell *c = cell_alloc();
+    c->car = car;
+    c->cdr = cdr;
+    return (Value) { .cell = c };
+}
+
+static Value parse_expr(Parser *p);
+
+static Value parse_list_inner(Parser *p)
+{
+    Token t = peek_token(p);
+    switch (t.type) {
+    case TTYPE_RPAREN:
+        return VALUE_NIL;
+    case TTYPE_LPAREN:
+    case TTYPE_INT:
+        Value car = parse_expr(p);
+        Value cdr = parse_list_inner(p);
+        return cons(car, cdr);
+    case TTYPE_EOF:
+        break;
+    }
+    throw("expected expression list but got EOF");
+
+}
+
+static const char *token_stringify(Token t)
+{
+    switch (t.type) {
+    case TTYPE_LPAREN:
+        return "(";
+    case TTYPE_RPAREN:
+        return ")";
+    case TTYPE_INT:
+        return "integer";
+    case TTYPE_EOF:
+        break;
+    }
+    return "EOF";
 }
 
 static Value parse_expr(Parser *p)
@@ -186,7 +228,11 @@ static Value parse_expr(Parser *p)
     Token t = get_token(p);
     switch (t.type) {
     case TTYPE_LPAREN:
-        return parse_list(p);
+        Value inner = parse_list_inner(p);
+        t = get_token(p);
+        if (t.type != TTYPE_RPAREN)
+            throw("expected ')' but got '%s'", token_stringify(t));
+        return inner;
     case TTYPE_RPAREN:
         throw("expected expression but got ')'");
     case TTYPE_INT:
@@ -209,22 +255,30 @@ static Value eval(Value v)
     return v; // dummy
 }
 
+static void print(Value v);
+
+static void print_cell(Value v)
+{
+    Cell *c = v.cell;
+    print(c->car);
+    if (value_is_int(c->cdr))
+        print(c->cdr);
+    else if (!value_is_nil(c->cdr)) {
+        printf(" ");
+        print_cell(c->cdr);
+    }
+}
+
 static void print(Value v)
 {
     if (value_is_int(v)) {
         printf("%ld", value_to_int(v));
-        return;
+    } else {
+        printf("(");
+        if (!value_is_nil(v))
+            print_cell(v);
+        printf(")");
     }
-    printf("(");
-    if (!value_is_nil(v)) {
-        Cell *c = v.cell;
-        print(c->car);
-        if (!value_is_nil(c->cdr)) {
-            printf(" . ");
-            print(c->cdr);
-        }
-    }
-    printf(")");
 }
 
 static Value parse(FILE *in)
