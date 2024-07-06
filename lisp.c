@@ -90,6 +90,7 @@ typedef enum {
     TTYPE_LPAREN,
     TTYPE_RPAREN,
     TTYPE_INT,
+    TTYPE_DOT,
 //  TTYPE_SYMBOL,
     TTYPE_EOF
 } TokenType;
@@ -104,6 +105,7 @@ typedef struct {
 static const Token
     TOK_LPAREN = { .type = TTYPE_LPAREN },
     TOK_RPAREN = { .type = TTYPE_RPAREN },
+    TOK_DOT = { .type = TTYPE_DOT },
     TOK_EOF = { .type = TTYPE_EOF };
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .ival = int_to_value_ival(i) }})
 
@@ -137,6 +139,9 @@ static Token get_token(Parser *p)
     case ')':
         p->p++;
         return TOK_RPAREN;
+    case '.':
+        p->p++;
+        return TOK_DOT;
     case '\0':
         return TOK_EOF;
     default:
@@ -171,6 +176,9 @@ static Token peek_token(Parser *p)
     case ')':
         peek++;
         return TOK_RPAREN;
+    case '.':
+        peek++;
+        return TOK_DOT;
     case '\0':
         return TOK_EOF;
     default:
@@ -201,14 +209,21 @@ static Value parse_list_inner(Parser *p)
         return VALUE_NIL;
     case TTYPE_LPAREN:
     case TTYPE_INT:
-        Value car = parse_expr(p);
-        Value cdr = parse_list_inner(p);
-        return cons(car, cdr);
-    case TTYPE_EOF:
+    case TTYPE_DOT:
         break;
+    case TTYPE_EOF:
+        throw("expected expression list but got EOF");
     }
-    throw("expected expression list but got EOF");
-
+    Value car = parse_expr(p);
+    Token t2 = peek_token(p);
+    Value cdr;
+    if (t2.type == TTYPE_DOT) {
+        get_token(p);
+        cdr = parse_expr(p);
+    } else {
+        cdr = parse_list_inner(p);
+    }
+    return cons(car, cdr);
 }
 
 static const char *token_stringify(Token t)
@@ -218,6 +233,8 @@ static const char *token_stringify(Token t)
         return "(";
     case TTYPE_RPAREN:
         return ")";
+    case TTYPE_DOT:
+        return ".";
     case TTYPE_INT:
         return "integer";
     case TTYPE_EOF:
@@ -238,6 +255,8 @@ static Value parse_expr(Parser *p)
         return inner;
     case TTYPE_RPAREN:
         throw("expected expression but got ')'");
+    case TTYPE_DOT:
+        throw("expected expression but got '.'");
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
@@ -269,9 +288,10 @@ static void print_list(Value v)
 {
     Pair *c = v.pair;
     print(c->car);
-    if (value_is_atom(c->cdr))
+    if (value_is_atom(c->cdr)) {
+        printf(" . ");
         print_atom(c->cdr);
-    else if (!value_is_nil(c->cdr)) {
+    } else if (!value_is_nil(c->cdr)) {
         printf(" ");
         print_list(c->cdr);
     }
