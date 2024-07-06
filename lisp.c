@@ -112,7 +112,6 @@ static Token get_token(Parser *p, Value *v)
     case '(':
         p->p++;
         return TOK_LPAREN;
-        break;
     case ')':
         p->p++;
         return TOK_RPAREN;
