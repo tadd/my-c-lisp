@@ -33,6 +33,11 @@ static inline bool value_is_cell(Value v)
     return !value_is_int(v);
 }
 
+static inline bool value_is_nil(Value v)
+{
+    return value_is_cell(v) && v.cell == NULL;
+}
+
 static inline bool value_is_eof(Value v)
 {
     return v.ival == VALUE_EOF.ival;
@@ -212,9 +217,9 @@ static void print(Value v)
         printf("%ld", value_to_int(v));
         return;
     }
-    Cell *c = v.cell;
     printf("(");
-    if (c != NULL) {
+    if (!value_is_nil(v)) {
+        Cell *c = v.cell;
         print(c->car);
         printf(" . ");
         print(c->cdr);
