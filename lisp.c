@@ -64,22 +64,18 @@ static CellChunk *cells;
 
 static void cell_init(void)
 {
-    cells = xmalloc(sizeof(CellChunk) + sizeof(Value) * CELL_INIT);
+    cells = xmalloc(sizeof(CellChunk) + sizeof(Cell) * CELL_INIT);
     cells->capacity = CELL_INIT;
     cells->length = 0;
 }
 
 static Cell *cell_alloc(void)
 {
-#if 0
     if (cells->capacity == cells->length) {
         cells->capacity *= 2;
-        cells = xrealloc(cells, sizeof(CellChunk) + sizeof(Value) * cells->capacity);
+        cells = xrealloc(cells, sizeof(CellChunk) + sizeof(Cell) * cells->capacity);
     }
     return &cells->chunk[cells->length++];
-#else
-    return xmalloc(sizeof(Cell));
-#endif
 }
 
 typedef enum {
