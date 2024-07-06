@@ -136,6 +136,41 @@ static Token get_token(Parser *p)
     }
 }
 
+static Token peek_token_int(const char *peek)
+{
+    const char *beg = peek;
+    while (isdigit(*peek))
+        peek++;
+    if (beg == peek)
+        return TOK_INVALID;
+    char *endp;
+    int64_t i = strtoll(beg, &endp, 10);
+    peek = endp;
+    return TOK_INT(i);
+}
+
+ATTR_UNUSED
+static Token peek_token(Parser *p)
+{
+    const char *peek = p->p;
+
+    while (isspace(*peek))
+        peek++;
+
+    switch (*peek) {
+    case '(':
+        peek++;
+        return TOK_LPAREN;
+    case ')':
+        peek++;
+        return TOK_RPAREN;
+    case '\0':
+        return TOK_EOF;
+    default:
+        return peek_token_int(peek);
+    }
+}
+
 static Value parse_list(Parser *p ATTR_UNUSED)
 {
     return (Value){ .ival = 0 }; // dummy here
