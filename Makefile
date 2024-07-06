@@ -1,6 +1,6 @@
 SRC=lisp.c utils.c
 OBJ=$(SRC:.c=.o)
-CFLAGS=-std=gnu2x -Og -ggdb3 -Wall -Wextra
+CFLAGS=-std=gnu2x -O0 -ggdb3 -Wall -Wextra
 
 all: lisp
 
