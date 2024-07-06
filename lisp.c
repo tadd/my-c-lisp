@@ -81,8 +81,7 @@ typedef enum {
     TTYPE_RPAREN,
     TTYPE_INT,
 //  TTYPE_SYMBOL,
-    TTYPE_EOF,
-    TTYPE_INVALID
+    TTYPE_EOF
 } TokenType;
 
 typedef struct {
@@ -95,8 +94,7 @@ typedef struct {
 static const Token
     TOK_LPAREN = { .type = TTYPE_LPAREN },
     TOK_RPAREN = { .type = TTYPE_RPAREN },
-    TOK_EOF = { .type = TTYPE_EOF },
-    TOK_INVALID = { .type = TTYPE_INVALID };
+    TOK_EOF = { .type = TTYPE_EOF };
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .ival = int_to_value_ival(i) }})
 
 typedef struct {
@@ -110,7 +108,7 @@ static Token get_token_int(Parser *p)
     while (isdigit(*p->p))
         p->p++;
     if (beg == p->p)
-        return TOK_INVALID;
+        throw("expected integer but got nothing in '%s'", beg);
     char *endp;
     int64_t i = strtoll(beg, &endp, 10);
     p->p = endp;
@@ -142,7 +140,7 @@ static Token peek_token_int(const char *peek)
     while (isdigit(*peek))
         peek++;
     if (beg == peek)
-        return TOK_INVALID;
+        throw("expected integer but got nothing in '%s'", beg);
     char *endp;
     int64_t i = strtoll(beg, &endp, 10);
     peek = endp;
@@ -192,11 +190,9 @@ static Value parse_expr(Parser *p)
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
-        return VALUE_EOF; // dummy
-    case TTYPE_INVALID:
         break;
     }
-    throw("expected expression but got invalid string before '%s'", &p->p[-1]);
+    return VALUE_EOF; // dummy
 }
 
 static Parser *parser_new(void)
