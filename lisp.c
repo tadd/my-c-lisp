@@ -149,41 +149,10 @@ static Token get_token(Parser *p)
     }
 }
 
-static Token peek_token_int(const char *peek)
-{
-    const char *beg = peek;
-    while (isdigit(*peek))
-        peek++;
-    if (beg == peek)
-        throw("expected integer but got nothing in '%s'", beg);
-    char *endp;
-    int64_t i = strtoll(beg, &endp, 10);
-    peek = endp;
-    return TOK_INT(i);
-}
-
 static Token peek_token(Parser *p)
 {
-    const char *peek = p->p;
-
-    while (isspace(*peek))
-        peek++;
-
-    switch (*peek) {
-    case '(':
-        peek++;
-        return TOK_LPAREN;
-    case ')':
-        peek++;
-        return TOK_RPAREN;
-    case '.':
-        peek++;
-        return TOK_DOT;
-    case '\0':
-        return TOK_EOF;
-    default:
-        return peek_token_int(peek);
-    }
+    Parser tmp = { .p = p->p };
+    return get_token(&tmp);
 }
 
 static inline bool got_eof(Parser *p)
