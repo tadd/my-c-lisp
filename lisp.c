@@ -178,7 +178,7 @@ static Value parse(FILE *in)
     Parser *p = parser_new();
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
-        throw("source too large");
+        throw("source invalid or too large");
     cell_init();
     Value v;
     for (;;) {
