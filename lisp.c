@@ -166,9 +166,11 @@ static void print(Value v)
     }
     Cell *c = v.cell;
     printf("(");
-    print(c->car);
-    printf(" . ");
-    print(c->cdr);
+    if (c != NULL) {
+        print(c->car);
+        printf(" . ");
+        print(c->cdr);
+    }
     printf(")");
 }
 
