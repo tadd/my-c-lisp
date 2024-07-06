@@ -28,6 +28,6 @@ Table *table_new(void); // string->id(uint) table
 void table_free(Table *t);
 void table_put(Table *t, const char *key);
 uint64_t table_get(Table *t, const char *key);
-size_t darray_size(const Table *t);
+size_t table_size(const Table *t);
 
 #endif
