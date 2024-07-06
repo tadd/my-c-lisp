@@ -14,7 +14,7 @@ typedef struct Pair Pair;
 
 typedef union {
     Pair *pair;
-    uint64_t ival;
+    uint64_t raw;
 } Value;
 
 // singleton
@@ -26,7 +26,7 @@ struct Pair {
 
 static inline bool value_is_int(Value v)
 {
-    return (v.ival & 1U) != 0;
+    return (v.raw & 1U) != 0;
 }
 
 static inline bool value_is_symbol(Value v ATTR_UNUSED)
@@ -51,10 +51,10 @@ static inline bool value_is_nil(Value v)
 
 static inline int64_t value_to_int(Value v)
 {
-    return (int64_t)(v.ival >> 1U);
+    return (int64_t)(v.raw >> 1U);
 }
 
-static inline uint64_t int_to_value_ival(int64_t i)
+static inline uint64_t int_to_value_raw(int64_t i)
 {
     return (((uint64_t) i) << 1U) | 1U;
 }
@@ -107,7 +107,7 @@ static const Token
     TOK_RPAREN = { .type = TTYPE_RPAREN },
     TOK_DOT = { .type = TTYPE_DOT },
     TOK_EOF = { .type = TTYPE_EOF };
-#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .ival = int_to_value_ival(i) }})
+#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .raw = int_to_value_raw(i) } })
 
 typedef struct {
     char buf[1024*1024]; // aho ;)
