@@ -28,12 +28,22 @@ struct Pair {
 
 static inline bool value_is_int(Value v)
 {
-    return v.ival & 1U;
+    return (v.ival & 1U) != 0;
+}
+
+static inline bool value_is_symbol(Value v ATTR_UNUSED)
+{
+    return false;
+}
+
+static inline bool value_is_atom(Value v)
+{
+    return value_is_int(v) || value_is_symbol(v);
 }
 
 static inline bool value_is_pair(Value v)
 {
-    return !value_is_int(v);
+    return !value_is_atom(v);
 }
 
 static inline bool value_is_nil(Value v)
@@ -149,7 +159,6 @@ static Token peek_token_int(const char *peek)
     return TOK_INT(i);
 }
 
-ATTR_UNUSED
 static Token peek_token(Parser *p)
 {
     const char *peek = p->p;
@@ -257,7 +266,7 @@ static void print_pair(Value v)
 {
     Pair *c = v.pair;
     print(c->car);
-    if (value_is_int(c->cdr))
+    if (value_is_atom(c->cdr))
         print(c->cdr);
     else if (!value_is_nil(c->cdr)) {
         printf(" ");
@@ -265,11 +274,16 @@ static void print_pair(Value v)
     }
 }
 
+static void print_atom(Value v)
+{
+    printf("%ld", value_to_int(v));
+}
+
 static void print(Value v)
 {
-    if (value_is_int(v)) {
-        printf("%ld", value_to_int(v));
-    } else {
+    if (value_is_atom(v))
+        print_atom(v);
+    else {
         printf("(");
         if (!value_is_nil(v))
             print_pair(v);
