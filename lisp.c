@@ -9,20 +9,20 @@
 
 #define throw(fmt, ...) throw("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
-typedef struct Cell Cell;
+typedef struct Pair Pair;
 
 typedef struct {
     union {
-        Cell *cell;
+        Pair *pair;
         uint64_t ival;
     };
 } Value;
 
 // signletons
 static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
-static const Value VALUE_NIL = (Value){ .cell = NULL };
+static const Value VALUE_NIL = (Value){ .pair = NULL };
 
-struct Cell {
+struct Pair {
     Value car, cdr;
 };
 
@@ -31,14 +31,14 @@ static inline bool value_is_int(Value v)
     return v.ival & 1U;
 }
 
-static inline bool value_is_cell(Value v)
+static inline bool value_is_pair(Value v)
 {
     return !value_is_int(v);
 }
 
 static inline bool value_is_nil(Value v)
 {
-    return value_is_cell(v) && v.cell == NULL;
+    return value_is_pair(v) && v.pair == NULL;
 }
 
 static inline int64_t value_to_int(Value v)
@@ -53,29 +53,29 @@ static inline uint64_t int_to_value_ival(int64_t i)
 
 typedef struct {
     uint64_t capacity, length;
-    Cell chunk[];
-} CellChunk;
+    Pair chunk[];
+} PairChunk;
 
 enum {
-    CELL_INIT = 1,
+    PAIR_INIT = 1,
 };
 
-static CellChunk *cells;
+static PairChunk *pairs;
 
-static void cell_init(void)
+static void pair_init(void)
 {
-    cells = xmalloc(sizeof(CellChunk) + sizeof(Cell) * CELL_INIT);
-    cells->capacity = CELL_INIT;
-    cells->length = 0;
+    pairs = xmalloc(sizeof(PairChunk) + sizeof(Pair) * PAIR_INIT);
+    pairs->capacity = PAIR_INIT;
+    pairs->length = 0;
 }
 
-static Cell *cell_alloc(void)
+static Pair *pair_alloc(void)
 {
-    if (cells->capacity == cells->length) {
-        cells->capacity *= 2;
-        cells = xrealloc(cells, sizeof(CellChunk) + sizeof(Cell) * cells->capacity);
+    if (pairs->capacity == pairs->length) {
+        pairs->capacity *= 2;
+        pairs = xrealloc(pairs, sizeof(PairChunk) + sizeof(Pair) * pairs->capacity);
     }
-    return &cells->chunk[cells->length++];
+    return &pairs->chunk[pairs->length++];
 }
 
 typedef enum {
@@ -178,10 +178,10 @@ static inline bool got_eof(Parser *p)
 
 static Value cons(Value car, Value cdr)
 {
-    Cell *c = cell_alloc();
+    Pair *c = pair_alloc();
     c->car = car;
     c->cdr = cdr;
-    return (Value) { .cell = c };
+    return (Value) { .pair = c };
 }
 
 static Value parse_expr(Parser *p);
@@ -253,15 +253,15 @@ static Value eval(Value v)
 
 static void print(Value v);
 
-static void print_cell(Value v)
+static void print_pair(Value v)
 {
-    Cell *c = v.cell;
+    Pair *c = v.pair;
     print(c->car);
     if (value_is_int(c->cdr))
         print(c->cdr);
     else if (!value_is_nil(c->cdr)) {
         printf(" ");
-        print_cell(c->cdr);
+        print_pair(c->cdr);
     }
 }
 
@@ -272,7 +272,7 @@ static void print(Value v)
     } else {
         printf("(");
         if (!value_is_nil(v))
-            print_cell(v);
+            print_pair(v);
         printf(")");
     }
 }
@@ -283,7 +283,7 @@ static Value parse(FILE *in)
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         throw("source invalid or too large");
-    cell_init();
+    pair_init();
     Value v;
     for (;;) {
         v = parse_expr(p);
