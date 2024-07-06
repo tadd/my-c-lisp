@@ -116,13 +116,10 @@ typedef struct {
 
 static Token get_token_int(Parser *p)
 {
-    const char *beg = p->s;
-    while (isdigit(*p->s))
-        p->s++;
-    if (beg == p->s)
-        throw("expected integer but got nothing in '%s'", beg);
     char *endp;
-    int64_t i = strtoll(beg, &endp, 10);
+    int64_t i = strtoll(p->s, &endp, 10);
+    if (p->s == endp)
+        throw("expected integer but got nothing in '%s'", p->s);
     p->s = endp;
     return TOK_INT(i);
 }
