@@ -1,6 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #define ATTR(x) __attribute__((x))
@@ -19,5 +20,12 @@ void darray_free(DArray *ary);
 void darray_push(DArray *ary, void *e);
 size_t darray_size(const DArray *ary);
 void *darray_space(const DArray *ary);
+
+typedef struct DArray Table; // !!
+Table *table_new(void); // string->id(uint) table
+void table_free(Table *t);
+void table_put(Table *t, const char *key);
+uint64_t table_get(Table *t, const char *key);
+size_t table_size(const Table *t);
 
 #endif

@@ -243,3 +243,17 @@ Test(darray, push_and_ref) {
 
     darray_free(a);
 }
+
+Test(table, put_and_ref) {
+    Table *t = table_new();
+    cr_assert(t != NULL);
+
+    table_put(t, "foo");
+    table_put(t, "bar");
+    table_put(t, "buzz");
+
+    cr_assert(eq(table_get(t, "foo"), 1));
+    cr_expect(eq(table_get(t, "bar"), 2));
+    cr_expect(eq(table_get(t, "buzz"), 3));
+    table_free(t);
+}
