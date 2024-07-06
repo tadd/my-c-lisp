@@ -200,7 +200,7 @@ int main(int argc, char **argv)
         if (in == NULL)
             throw("file %s not found", argv[1]);
     }
-    ATTR_UNUSED Value v = parse(in);
+    Value v = parse(in);
     eval(v);
     return 0;
 }
