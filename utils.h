@@ -15,11 +15,11 @@ ATTR_XMALLOC void *xrealloc(void *p, size_t size);
 ATTR_XMALLOC char *xstrdup(const char *s);
 
 typedef struct DArray DArray;
-DArray *darray_new(size_t size);
-void darray_free(DArray *ary);
-void darray_push(DArray *ary, void *e);
-size_t darray_size(const DArray *ary);
-void *darray_space(const DArray *ary);
+void *darray_new(size_t size);
+void darray_free(void *ary);
+void darray_push(void *ary, void *e);
+size_t darray_size(const void *ary);
+void *darray_space(const void *ary);
 
 typedef struct DArray Table; // !!
 Table *table_new(void); // string->id(uint) table

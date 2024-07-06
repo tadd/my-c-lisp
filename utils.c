@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,55 +43,70 @@ char *xstrdup(const char *s)
 }
 
 struct DArray {
-    void *space;
     uint64_t capacity, size, elem_size;
+    uint8_t space[];
 };
 
 enum {
+    DARRAY_DISTANCE = offsetof(DArray, space),
     DARRAY_INIT = 1,
 };
 
-DArray *darray_new(size_t elem_size)
+static inline void *darray_opaque(DArray *a)
 {
-    DArray *ary = xmalloc(sizeof(DArray));
-    ary->capacity = elem_size * DARRAY_INIT;
-    ary->size = 0;
-    ary->elem_size = elem_size;
-    ary->space = xmalloc(elem_size);
-    return ary;
+    return a->space;
 }
 
-void darray_free(DArray *ary)
+static inline DArray *darray_unopaque(void *p)
 {
-    free(ary->space);
+    uint8_t *bp = p;
+    return (DArray *) (bp - DARRAY_DISTANCE);
+}
+
+
+void *darray_new(size_t elem_size)
+{
+    uint64_t cap = elem_size * DARRAY_INIT;
+    DArray *ary = xmalloc(sizeof(DArray) + cap);
+    ary->capacity = cap;
+    ary->size = 0;
+    ary->elem_size = elem_size;
+    return darray_opaque(ary);
+}
+
+void darray_free(void *p)
+{
+    DArray *ary = darray_unopaque(p);
     free(ary);
 }
 
-static void darray_maybe_resize(DArray *ary)
+static void darray_maybe_resize(DArray **pary)
 {
+    DArray *ary = *pary;
     if (ary->capacity > ary->size)
         return;
     ary->capacity *= 2;
-    ary->space = xrealloc(ary->space, ary->elem_size * ary->capacity);
+    *pary = xrealloc(ary, ary->elem_size * ary->capacity);
 }
 
-void darray_push(DArray *ary, void *e)
+void darray_push(void *p, void *e)
 {
-    darray_maybe_resize(ary);
-    uint8_t *sp = ary->space;
-    size_t last = ary->elem_size * ary->size;
-    memcpy(sp + last, e, ary->elem_size);
+    DArray *ary = darray_unopaque(p);
+    darray_maybe_resize(&ary);
+    uint8_t *sp = ary->space + ary->elem_size * ary->size;
+    memcpy(sp, e, ary->elem_size);
     ary->size++;
 }
 
-size_t darray_size(const DArray *ary)
+size_t darray_size(const void *p)
 {
+    const DArray *ary = darray_unopaque((void *)p);
     return ary->size;
 }
 
-void *darray_space(const DArray *ary)
+void *darray_space(const void *p)
 {
-    return ary->space;
+    return (void *)p;
 }
 
 Table *table_new(void)
@@ -103,9 +119,8 @@ void table_free(Table *t)
     DArray *a = (DArray *) t;
     const size_t size = darray_size(a);
     char **space = darray_space(a);
-    for (size_t i = 0; i < size; i++) {
-        xfree(space[i]);
-    }
+    for (size_t i = 0; i < size; i++)
+        free(space[i]);
     darray_free(t);
 }
 
@@ -113,7 +128,7 @@ void table_put(Table *t, const char *key)
 {
     DArray *a = (DArray *) t;
     char *dup = xstrdup(key);
-    darray_put(a, &dup);
+    darray_push(a, &dup);
 }
 
 uint64_t table_get(Table *t, const char *key)
