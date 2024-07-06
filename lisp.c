@@ -260,35 +260,39 @@ static Value eval(Value v)
     return v; // dummy
 }
 
+static void print_atom(Value v)
+{
+    printf("%ld", value_to_int(v));
+}
+
 static void print(Value v);
 
-static void print_pair(Value v)
+static void print_list(Value v)
 {
     Pair *c = v.pair;
     print(c->car);
     if (value_is_atom(c->cdr))
-        print(c->cdr);
+        print_atom(c->cdr);
     else if (!value_is_nil(c->cdr)) {
         printf(" ");
-        print_pair(c->cdr);
+        print_list(c->cdr);
     }
 }
 
-static void print_atom(Value v)
+static void print_pair(Value v)
 {
-    printf("%ld", value_to_int(v));
+    printf("(");
+    if (!value_is_nil(v))
+        print_list(v);
+    printf(")");
 }
 
 static void print(Value v)
 {
     if (value_is_atom(v))
         print_atom(v);
-    else {
-        printf("(");
-        if (!value_is_nil(v))
-            print_pair(v);
-        printf(")");
-    }
+    else
+        print_pair(v);
 }
 
 static Value parse(FILE *in)
