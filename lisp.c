@@ -59,31 +59,12 @@ static inline uint64_t int_to_value_raw(int64_t i)
     return (((uint64_t) i) << 1U) | 1U;
 }
 
-typedef struct {
-    uint64_t capacity, length;
-    Pair chunk[];
-} PairChunk;
-
-enum {
-    PAIR_INIT = 1,
-};
-
-static PairChunk *pairs;
-
-static void pair_init(void)
+static Pair *pair_new(Value car, Value cdr)
 {
-    pairs = xmalloc(sizeof(PairChunk) + sizeof(Pair) * PAIR_INIT);
-    pairs->capacity = PAIR_INIT;
-    pairs->length = 0;
-}
-
-static Pair *pair_alloc(void)
-{
-    if (pairs->capacity == pairs->length) {
-        pairs->capacity *= 2;
-        pairs = xrealloc(pairs, sizeof(PairChunk) + sizeof(Pair) * pairs->capacity);
-    }
-    return &pairs->chunk[pairs->length++];
+    Pair *p = xmalloc(sizeof(Pair));
+    p->car = car;
+    p->cdr = cdr;
+    return p;
 }
 
 typedef enum {
@@ -159,9 +140,7 @@ static inline bool got_eof(Parser *p)
 
 static Value cons(Value car, Value cdr)
 {
-    Pair *c = pair_alloc();
-    c->car = car;
-    c->cdr = cdr;
+    Pair *c = pair_new(car, cdr);
     return (Value) { .pair = c };
 }
 
@@ -285,7 +264,7 @@ static Value parse(FILE *in)
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         throw("source invalid or too large");
-    pair_init();
+
     Value v;
     for (;;) {
         v = parse_expr(p);
