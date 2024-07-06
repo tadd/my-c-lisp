@@ -18,7 +18,7 @@ typedef struct {
     };
 } Value;
 
-// signletons
+// singletons
 static const Value VALUE_EOF = (Value){ .ival = INT64_MIN };
 static const Value VALUE_NIL = (Value){ .pair = NULL };
 
