@@ -1,13 +1,13 @@
-SRC=lisp.c
+SRC=lisp.c utils.c
 OBJ=$(SRC:.c=.o)
 CFLAGS=-std=gnu2x -Og -ggdb3 -Wall -Wextra
 
 all: lisp
 
 lisp: $(OBJ)
-	gcc $(CFLAGS) -o $@ $<
+	gcc $(CFLAGS) -o $@ $^
 
-%.o: %.c
+%.o: %.c utils.h
 	gcc $(CFLAGS) -c $<
 
 clean:

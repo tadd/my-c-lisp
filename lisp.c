@@ -5,18 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ATTR_UNUSED __attribute__((unused))
-
-__attribute__((noreturn))
-__attribute__((format(printf, 1, 2)))
-void throw(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    exit(2);
-}
+#include "utils.h"
 
 typedef struct Cell Cell;
 
@@ -68,24 +57,6 @@ enum {
 };
 
 static CellChunk *cells;
-
-__attribute__((malloc(free)))
-static void *xmalloc(size_t size)
-{
-    void *p = malloc(size);
-    if (p == NULL)
-        throw("malloc %zu bytes failed", size);
-    return p;
-}
-
-__attribute__((malloc(free)))
-static void *xrealloc(void *p, size_t size)
-{
-    p = realloc(p, size);
-    if (p == NULL)
-        throw("realloc to %zu bytes failed", size);
-    return p;
-}
 
 static void cell_init(void)
 {
@@ -154,7 +125,7 @@ static Token get_token(Parser *p, Value *v)
 
 static Value parse_list(Parser *p ATTR_UNUSED)
 {
-    return (Value){ .ival = 0 };
+    return (Value){ .ival = 0 }; // dummy here
 }
 
 static Value parse_expr(Parser *p)
