@@ -72,7 +72,7 @@ typedef enum {
     TTYPE_RPAREN,
     TTYPE_INT,
     TTYPE_DOT,
-//  TTYPE_SYMBOL,
+    TTYPE_IDENTIFIER,
     TTYPE_EOF
 } TokenType;
 
@@ -87,6 +87,7 @@ static const Token
     TOK_LPAREN = { .type = TTYPE_LPAREN },
     TOK_RPAREN = { .type = TTYPE_RPAREN },
     TOK_DOT = { .type = TTYPE_DOT },
+    TOK_IDENTIFIER = { .type = TTYPE_IDENTIFIER },
     TOK_EOF = { .type = TTYPE_EOF };
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .raw = int_to_value_raw(i) } })
 
@@ -155,6 +156,7 @@ static Value parse_list_inner(Parser *p)
     case TTYPE_LPAREN:
     case TTYPE_INT:
     case TTYPE_DOT:
+    case TTYPE_IDENTIFIER:
         break;
     case TTYPE_EOF:
         throw("expected expression list but got EOF");
@@ -182,6 +184,8 @@ static const char *token_stringify(Token t)
         return ".";
     case TTYPE_INT:
         return "integer";
+    case TTYPE_IDENTIFIER:
+        return "(identifier)"
     case TTYPE_EOF:
         break;
     }
@@ -202,6 +206,7 @@ static Value parse_expr(Parser *p)
         throw("expected expression but got ')'");
     case TTYPE_DOT:
         throw("expected expression but got '.'");
+    case TTYPE_IDENTIFIER:
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
