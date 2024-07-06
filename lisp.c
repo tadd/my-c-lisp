@@ -13,12 +13,74 @@
 typedef struct Pair Pair;
 
 typedef union {
-    Pair *pair;
-    uint64_t raw;
+    Pair *pair;   // 0b..000
+    uint64_t raw; // 0b....1 integer
+                  // 0b...10 symbol
 } Value;
 
 // singleton
 static const Value VALUE_NIL = (Value){ .pair = NULL };
+
+
+enum {
+    PAIR_INIT = 1,
+    SYMBOL_INIT = 1,
+    TABLE_LENGTH = 8,
+};
+
+typedef struct TableEntry {
+    uint64_t id;
+    const char *name;
+    struct TableEntry *next;
+} TableEntry;
+
+typedef TableEntry *TableEntryList[TABLE_LENGTH]; // fixed size array of pointers
+
+typedef struct {
+    uint64_t size; // size == id
+    uint64_t entry_capacity, entry_size;
+    TableEntryList entries[];
+} SymbolTable;
+
+static SymbolTable *table;
+
+static void symbol_init() {
+    SymbolTable *t = xmalloc(sizeof(SymbolTable) + sizeof(TableEntryList) * SYMBOL_INIT);
+    t->entry_capacity = SYMBOL_INIT;
+    t->entry_size = 0;
+    t->size = 0;
+    t->entries[0] = NULL;
+    table = t;
+}
+
+static void symbol_table_maybe_resize(void)
+{
+    SymbolTable *t = table;
+    if (t->capacity > t->size)
+        return;
+    t->capacity *= 2;
+    t = xrealloc(t, sizeof(SymbolTable) + sizeof(TableEntry *) * t->capacity);
+    table = t;
+}
+
+static uint64_t strhash(const char *s);
+
+static const char *symbol_put(const char *s)
+{
+    symbol_table_maybe_resize();
+    uint64_t h = strhash(s);
+    
+    table->body[h table->size]
+}
+
+
+static const char *symbol_get(uint64_t sym)
+{
+}
+
+static const char *symbol_put(uint64_t sym)
+{
+}
 
 struct Pair {
     Value car, cdr;
@@ -26,12 +88,12 @@ struct Pair {
 
 static inline bool value_is_int(Value v)
 {
-    return (v.raw & 1U) != 0;
+    return (v.raw & 1U) == 1U;
 }
 
 static inline bool value_is_symbol(Value v ATTR_UNUSED)
 {
-    return false;
+    return (v.raw & 0b11U) == 0b10U;
 }
 
 static inline bool value_is_atom(Value v)
@@ -54,6 +116,11 @@ static inline int64_t value_to_int(Value v)
     return (int64_t)(v.raw >> 1U);
 }
 
+static inline int64_t value_unintern(Value v)
+{
+    return symbol_get(v.raw >> 2U);
+}
+
 static inline uint64_t int_to_value_raw(int64_t i)
 {
     return (((uint64_t) i) << 1U) | 1U;
@@ -63,10 +130,6 @@ typedef struct {
     uint64_t capacity, length;
     Pair chunk[];
 } PairChunk;
-
-enum {
-    PAIR_INIT = 1,
-};
 
 static PairChunk *pairs;
 
@@ -248,7 +311,10 @@ static Value eval(Value v)
 
 static void print_atom(Value v)
 {
-    printf("%ld", value_to_int(v));
+    if (value_is_int(v))
+        printf("%ld", value_to_int(v));
+    else // symbol
+        printf("%s", value_unintern(v));
 }
 
 static void print(Value v);
