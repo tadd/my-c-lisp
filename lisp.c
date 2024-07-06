@@ -208,7 +208,7 @@ static Parser *parser_new(void)
 
 static Value eval(Value v)
 {
-    return v;
+    return v; // dummy
 }
 
 static void print(Value v)
