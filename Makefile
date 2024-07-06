@@ -11,6 +11,12 @@ lisp: $(OBJ)
 	gcc $(CFLAGS) -c $<
 
 clean:
-	rm -f *.o lisp
+	rm -f *.o lisp test_lisp
 
-.PHONY: all clean
+test_lisp: utils.o test_lisp.o
+	gcc $(CFLAGS) -o $@ $^ -lcriterion
+
+test: test_lisp
+	./$<
+
+.PHONY: all clean test
