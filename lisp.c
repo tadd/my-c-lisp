@@ -12,11 +12,9 @@
 
 typedef struct Pair Pair;
 
-typedef struct {
-    union {
-        Pair *pair;
-        uint64_t ival;
-    };
+typedef union {
+    Pair *pair;
+    uint64_t ival;
 } Value;
 
 // singleton
