@@ -161,7 +161,7 @@ static Value eval(Value v)
 static void print(Value v)
 {
     if (value_is_int(v)) {
-        printf("%ld", value_to_int(v));
+        printf("%ld\n", value_to_int(v));
         return;
     }
     Cell *c = v.cell;
@@ -171,7 +171,7 @@ static void print(Value v)
         printf(" . ");
         print(c->cdr);
     }
-    printf(")");
+    printf(")\n");
 }
 
 static Value parse(FILE *in)
