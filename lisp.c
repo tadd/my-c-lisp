@@ -221,8 +221,10 @@ static void print(Value v)
     if (!value_is_nil(v)) {
         Cell *c = v.cell;
         print(c->car);
-        printf(" . ");
-        print(c->cdr);
+        if (!value_is_nil(c->cdr)) {
+            printf(" . ");
+            print(c->cdr);
+        }
     }
     printf(")");
 }
