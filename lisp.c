@@ -209,7 +209,7 @@ static Value eval(Value v)
 static void print(Value v)
 {
     if (value_is_int(v)) {
-        printf("%ld\n", value_to_int(v));
+        printf("%ld", value_to_int(v));
         return;
     }
     Cell *c = v.cell;
@@ -219,7 +219,7 @@ static void print(Value v)
         printf(" . ");
         print(c->cdr);
     }
-    printf(")\n");
+    printf(")");
 }
 
 static Value parse(FILE *in)
@@ -235,6 +235,7 @@ static Value parse(FILE *in)
         if (value_is_eof(v))
             break;
         print(v);
+        printf("\n");
     }
     free(p);
     return v;
