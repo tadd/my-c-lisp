@@ -7,11 +7,12 @@
 
 #define ATTR_UNUSED ATTR(unused)
 #define ATTR_NORETURN ATTR(noreturn)
-#define ATTR_MALLOC ATTR(malloc(free))
+#define ATTR_XMALLOC ATTR(malloc(xfree))
 #define ATTR_FORMAT(f, beg, end) ATTR(format(f, beg, end))
 
 ATTR_NORETURN ATTR_FORMAT(printf, 1, 2) void throw(const char *fmt, ...);
-ATTR_MALLOC void *xmalloc(size_t size);
-ATTR_MALLOC void *xrealloc(void *p, size_t size);
+void xfree(void *p); // for GC
+ATTR_XMALLOC void *xmalloc(size_t size);
+ATTR_XMALLOC void *xrealloc(void *p, size_t size);
 
 #endif

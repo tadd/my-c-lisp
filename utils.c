@@ -29,3 +29,8 @@ void *xrealloc(void *p, size_t size)
         throw("realloc to %zu bytes failed", size);
     return p;
 }
+
+void xfree(void *p)
+{
+    free(p);
+}

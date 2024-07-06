@@ -294,7 +294,7 @@ static Value parse(FILE *in)
         print(v);
         printf("\n");
     }
-    free(p);
+    xfree(p);
     return v;
 }
 
