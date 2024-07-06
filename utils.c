@@ -37,6 +37,13 @@ void xfree(void *p)
     free(p);
 }
 
+char *xstrdup(const char *s)
+{
+    char *dup = xmalloc(strlen(s) + 1);
+    strcpy(dup, s);
+    return dup;
+}
+
 struct DArray {
     void *space;
     uint64_t capacity, size, elem_size;
@@ -87,4 +94,45 @@ size_t darray_size(const DArray *ary)
 void *darray_space(const DArray *ary)
 {
     return ary->space;
+}
+
+Table *table_new(void)
+{
+    return darray_new(sizeof(char *));
+}
+
+void table_free(Table *t)
+{
+    DArray *a = (DArray *) t;
+    const size_t size = darray_size(a);
+    char **space = darray_space(a);
+    for (size_t i = 0; i < size; i++) {
+        xfree(space[i]);
+    }
+    darray_free(t);
+}
+
+void table_put(Table *t, const char *key)
+{
+    DArray *a = (DArray *) t;
+    char *dup = xstrdup(key);
+    darray_put(a, &dup);
+}
+
+uint64_t table_get(Table *t, const char *key)
+{
+    DArray *a = (DArray *) t;
+    char **space = darray_space(a);
+    const size_t size = darray_size(a);
+    for (uint64_t i = 0; i < size; i++) {
+        if (strcmp(space[i], key) == 0)
+            return i+1; // never be zero
+    }
+    return 0;
+}
+
+size_t table_size(const Table *t)
+{
+    DArray *a = (DArray *) t;
+    return darray_size(a);
 }
