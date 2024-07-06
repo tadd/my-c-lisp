@@ -79,7 +79,7 @@ typedef enum {
     TOK_LPAREN,
     TOK_RPAREN,
     TOK_INT,
-    TOK_SYMBOL,
+//  TOK_SYMBOL,
     TOK_EOF,
     TOK_INVALID
 } Token;
@@ -138,7 +138,6 @@ static Value parse_expr(Parser *p)
     case TOK_RPAREN:
         throw("expected expression but got ')'");
     case TOK_INT:
-    case TOK_SYMBOL:
         return v;
     case TOK_EOF:
         return VALUE_EOF;
