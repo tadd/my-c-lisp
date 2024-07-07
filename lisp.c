@@ -14,7 +14,7 @@ typedef struct Pair Pair;
 
 typedef union {
     Pair *pair;
-    uint64_t raw;
+    uintptr_t raw;
 } Value;
 
 // singleton
@@ -54,13 +54,13 @@ static inline int64_t value_to_int(Value v)
     return (int64_t)(v.raw >> 1U);
 }
 
-static inline uint64_t int_to_value_raw(int64_t i)
+static inline uintptr_t int_to_value_raw(int64_t i)
 {
-    return (((uint64_t) i) << 1U) | 1U;
+    return (((uintptr_t) i) << 1U) | 1U;
 }
 
 typedef struct {
-    uint64_t capacity, length;
+    uintptr_t capacity, length;
     Pair chunk[];
 } PairChunk;
 
