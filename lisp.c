@@ -5,17 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "lisp.h"
 #include "utils.h"
 
 #define throw(fmt, ...) \
     throw("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
-
-typedef struct Pair Pair;
-
-typedef union {
-    Pair *pair;
-    uintptr_t raw;
-} Value;
 
 // singleton
 static const Value VALUE_NIL = (Value){ .pair = NULL };
@@ -24,37 +18,37 @@ struct Pair {
     Value car, cdr;
 };
 
-static inline bool value_is_int(Value v)
+inline bool value_is_int(Value v)
 {
     return (v.raw & 1U) != 0;
 }
 
-static inline bool value_is_symbol(Value v ATTR_UNUSED)
+inline bool value_is_symbol(Value v ATTR_UNUSED)
 {
     return false;
 }
 
-static inline bool value_is_atom(Value v)
+inline bool value_is_atom(Value v)
 {
     return value_is_int(v) || value_is_symbol(v);
 }
 
-static inline bool value_is_pair(Value v)
+inline bool value_is_pair(Value v)
 {
     return !value_is_atom(v);
 }
 
-static inline bool value_is_nil(Value v)
+inline bool value_is_nil(Value v)
 {
     return value_is_pair(v) && v.pair == NULL;
 }
 
-static inline int64_t value_to_int(Value v)
+inline int64_t value_to_int(Value v)
 {
     return (int64_t)(v.raw >> 1U);
 }
 
-static inline Value value_of_int(int64_t i)
+inline Value value_of_int(int64_t i)
 {
     uintptr_t r = (((uintptr_t) i) << 1U) | 1U;
     return (Value) { .raw = r };
@@ -209,7 +203,7 @@ static Parser *parser_new(void)
     return p;
 }
 
-static Value eval(Value v)
+Value eval(Value v)
 {
     return v; // dummy
 }
@@ -218,8 +212,6 @@ static void print_atom(Value v)
 {
     printf("%ld", value_to_int(v));
 }
-
-static void print(Value v);
 
 static void print_list(Value v)
 {
@@ -246,7 +238,7 @@ static void print_pair(Value v)
     printf(")");
 }
 
-static void print(Value v)
+void print(Value v)
 {
     if (value_is_atom(v))
         print_atom(v);
@@ -254,7 +246,7 @@ static void print(Value v)
         print_pair(v);
 }
 
-static Value parse(FILE *in)
+Value parse(FILE *in)
 {
     Parser *p = parser_new();
     char *ret = fgets(p->buf, sizeof(p->buf), in);
@@ -270,17 +262,4 @@ static Value parse(FILE *in)
     }
     free(p);
     return v;
-}
-
-int main(int argc, char **argv)
-{
-    FILE *in = stdin;
-    if (argc > 1) {
-        in = fopen(argv[1], "r");
-        if (in == NULL)
-            error("file %s not found", argv[1]);
-    }
-    Value v = parse(in);
-    eval(v);
-    return 0;
 }
