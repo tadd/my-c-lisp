@@ -112,6 +112,7 @@ static const Token
 typedef struct {
     char buf[1024*1024]; // aho ;)
     const char *s;
+    Token prev_token;
 } Parser;
 
 static Token get_token_int(Parser *p)
@@ -126,6 +127,11 @@ static Token get_token_int(Parser *p)
 
 static Token get_token(Parser *p)
 {
+    if (p->prev_token.type != TTYPE_EOF)  {
+        Token t = p->prev_token;
+        p->prev_token = TOK_EOF;
+        return t;
+    }
     while (isspace(*p->s))
         p->s++;
 
@@ -146,10 +152,9 @@ static Token get_token(Parser *p)
     }
 }
 
-static Token peek_token(Parser *p)
+static void unget_token(Parser *p, Token t)
 {
-    Parser tmp = { .s = p->s };
-    return get_token(&tmp);
+    p->prev_token = t;
 }
 
 static inline bool got_eof(Parser *p)
@@ -169,24 +174,27 @@ static Value parse_expr(Parser *p);
 
 static Value parse_list_inner(Parser *p)
 {
-    Token t = peek_token(p);
+    Token t = get_token(p);
     switch (t.type) {
     case TTYPE_RPAREN:
+        unget_token(p, t);
         return VALUE_NIL;
     case TTYPE_LPAREN:
     case TTYPE_INT:
-    case TTYPE_DOT:
+        unget_token(p, t);
         break;
+    case TTYPE_DOT:
+        error("expected expression list but got '.'");
     case TTYPE_EOF:
         error("expected expression list but got EOF");
     }
     Value car = parse_expr(p);
-    Token t2 = peek_token(p);
+    Token t2 = get_token(p);
     Value cdr;
     if (t2.type == TTYPE_DOT) {
-        get_token(p);
         cdr = parse_expr(p);
     } else {
+        unget_token(p, t2);
         cdr = parse_list_inner(p);
     }
     return cons(car, cdr);
@@ -235,6 +243,7 @@ static Parser *parser_new(void)
 {
     Parser *p = xmalloc(sizeof(Parser));
     p->s = p->buf;
+    p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
     return p;
 }
 
