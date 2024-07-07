@@ -172,34 +172,6 @@ static Value cons(Value car, Value cdr)
 
 static Value parse_expr(Parser *p);
 
-static Value parse_list_inner(Parser *p)
-{
-    Token t = get_token(p);
-    switch (t.type) {
-    case TTYPE_RPAREN:
-        unget_token(p, t);
-        return VALUE_NIL;
-    case TTYPE_LPAREN:
-    case TTYPE_INT:
-        unget_token(p, t);
-        break;
-    case TTYPE_DOT:
-        error("expected expression list but got '.'");
-    case TTYPE_EOF:
-        error("expected expression list but got EOF");
-    }
-    Value car = parse_expr(p);
-    Token t2 = get_token(p);
-    Value cdr;
-    if (t2.type == TTYPE_DOT) {
-        cdr = parse_expr(p);
-    } else {
-        unget_token(p, t2);
-        cdr = parse_list_inner(p);
-    }
-    return cons(car, cdr);
-}
-
 static const char *token_stringify(Token t)
 {
     switch (t.type) {
@@ -217,16 +189,32 @@ static const char *token_stringify(Token t)
     return "EOF";
 }
 
+static Value parse_list_inner(Parser *p)
+{
+    Token t = get_token(p);
+    if (t.type == TTYPE_RPAREN)
+        return VALUE_NIL;
+    unget_token(p, t);
+    Value car = parse_expr(p), cdr;
+    t = get_token(p);
+    if (t.type == TTYPE_DOT) {
+        cdr = parse_expr(p);
+        t = get_token(p);
+        if (t.type != TTYPE_RPAREN)
+            error("expected ')' but got '%s'", token_stringify(t));
+    } else {
+        unget_token(p, t);
+        cdr = parse_list_inner(p);
+    }
+    return cons(car, cdr);
+}
+
 static Value parse_expr(Parser *p)
 {
     Token t = get_token(p);
     switch (t.type) {
     case TTYPE_LPAREN:
-        Value inner = parse_list_inner(p);
-        t = get_token(p);
-        if (t.type != TTYPE_RPAREN)
-            error("expected ')' but got '%s'", token_stringify(t));
-        return inner;
+        return parse_list_inner(p); // parse til ')'
     case TTYPE_RPAREN:
         error("expected expression but got ')'");
     case TTYPE_DOT:
