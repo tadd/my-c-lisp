@@ -119,7 +119,7 @@ static Token get_token_int(Parser *p)
     char *endp;
     int64_t i = strtoll(p->s, &endp, 10);
     if (p->s == endp)
-        throw("expected integer but got nothing in '%s'", p->s);
+        error("expected integer but got nothing in '%s'", p->s);
     p->s = endp;
     return TOK_INT(i);
 }
@@ -178,7 +178,7 @@ static Value parse_list_inner(Parser *p)
     case TTYPE_DOT:
         break;
     case TTYPE_EOF:
-        throw("expected expression list but got EOF");
+        error("expected expression list but got EOF");
     }
     Value car = parse_expr(p);
     Token t2 = peek_token(p);
@@ -217,12 +217,12 @@ static Value parse_expr(Parser *p)
         Value inner = parse_list_inner(p);
         t = get_token(p);
         if (t.type != TTYPE_RPAREN)
-            throw("expected ')' but got '%s'", token_stringify(t));
+            error("expected ')' but got '%s'", token_stringify(t));
         return inner;
     case TTYPE_RPAREN:
-        throw("expected expression but got ')'");
+        error("expected expression but got ')'");
     case TTYPE_DOT:
-        throw("expected expression but got '.'");
+        error("expected expression but got '.'");
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
@@ -284,7 +284,7 @@ static Value parse(FILE *in)
     Parser *p = parser_new();
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
-        throw("source invalid or too large");
+        error("source invalid or too large");
     pair_init();
     Value v;
     for (;;) {
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
     if (argc > 1) {
         in = fopen(argv[1], "r");
         if (in == NULL)
-            throw("file %s not found", argv[1]);
+            error("file %s not found", argv[1]);
     }
     Value v = parse(in);
     eval(v);

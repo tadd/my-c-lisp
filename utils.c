@@ -4,7 +4,7 @@
 
 #include "utils.h"
 
-void throw(const char *fmt, ...)
+void error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -18,7 +18,7 @@ void *xmalloc(size_t size)
 {
     void *p = malloc(size);
     if (p == NULL)
-        throw("malloc %zu bytes failed", size);
+        error("malloc %zu bytes failed", size);
     return p;
 }
 
@@ -26,6 +26,6 @@ void *xrealloc(void *p, size_t size)
 {
     p = realloc(p, size);
     if (p == NULL)
-        throw("realloc to %zu bytes failed", size);
+        error("realloc to %zu bytes failed", size);
     return p;
 }
