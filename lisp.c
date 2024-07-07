@@ -189,7 +189,7 @@ static const char *token_stringify(Token t)
     return "EOF";
 }
 
-static Value parse_list_inner(Parser *p)
+static Value parse_list(Parser *p)
 {
     Token t = get_token(p);
     if (t.type == TTYPE_RPAREN)
@@ -204,7 +204,7 @@ static Value parse_list_inner(Parser *p)
             error("expected ')' but got '%s'", token_stringify(t));
     } else {
         unget_token(p, t);
-        cdr = parse_list_inner(p);
+        cdr = parse_list(p);
     }
     return cons(car, cdr);
 }
@@ -214,7 +214,7 @@ static Value parse_expr(Parser *p)
     Token t = get_token(p);
     switch (t.type) {
     case TTYPE_LPAREN:
-        return parse_list_inner(p); // parse til ')'
+        return parse_list(p); // parse til ')'
     case TTYPE_RPAREN:
         error("expected expression but got ')'");
     case TTYPE_DOT:
