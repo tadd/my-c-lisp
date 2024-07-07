@@ -60,33 +60,6 @@ static inline Value value_of_int(int64_t i)
     return (Value) { .raw = r };
 }
 
-typedef struct {
-    uintptr_t capacity, length;
-    Pair chunk[];
-} PairChunk;
-
-enum {
-    PAIR_INIT = 1,
-};
-
-static PairChunk *pairs;
-
-static void pair_init(void)
-{
-    pairs = xmalloc(sizeof(PairChunk) + sizeof(Pair) * PAIR_INIT);
-    pairs->capacity = PAIR_INIT;
-    pairs->length = 0;
-}
-
-static Pair *pair_alloc(void)
-{
-    if (pairs->capacity == pairs->length) {
-        pairs->capacity *= 2;
-        pairs = xrealloc(pairs, sizeof(PairChunk) + sizeof(Pair) * pairs->capacity);
-    }
-    return &pairs->chunk[pairs->length++];
-}
-
 typedef enum {
     TTYPE_LPAREN,
     TTYPE_RPAREN,
@@ -165,7 +138,7 @@ static inline bool got_eof(Parser *p)
 
 static Value cons(Value car, Value cdr)
 {
-    Pair *c = pair_alloc();
+    Pair *c = xmalloc(sizeof(Pair));
     c->car = car;
     c->cdr = cdr;
     return (Value) { .pair = c };
@@ -287,7 +260,6 @@ static Value parse(FILE *in)
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         error("source invalid or too large");
-    pair_init();
     Value v;
     for (;;) {
         v = parse_expr(p);
