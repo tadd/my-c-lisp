@@ -54,9 +54,10 @@ static inline int64_t value_to_int(Value v)
     return (int64_t)(v.raw >> 1U);
 }
 
-static inline uintptr_t int_to_value_raw(int64_t i)
+static inline Value value_of_int(int64_t i)
 {
-    return (((uintptr_t) i) << 1U) | 1U;
+    uintptr_t r = (((uintptr_t) i) << 1U) | 1U;
+    return (Value) { .raw = r };
 }
 
 typedef struct {
@@ -107,7 +108,7 @@ static const Token
     TOK_RPAREN = { .type = TTYPE_RPAREN },
     TOK_DOT = { .type = TTYPE_DOT },
     TOK_EOF = { .type = TTYPE_EOF };
-#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = { .raw = int_to_value_raw(i) } })
+#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = value_of_int(i) })
 
 typedef struct {
     char buf[1024*1024]; // aho ;)
