@@ -12,6 +12,7 @@ int main(int argc, char **argv)
             error("file %s not found", argv[1]);
     }
     Value v = parse(in);
-    eval(v);
+    print(v);
+    printf("\n");
     return 0;
 }

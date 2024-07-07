@@ -24,5 +24,6 @@ Value value_of_int(int64_t i);
 void print(Value v);
 Value parse(FILE *in);
 Value eval(Value v);
+ATTR_MALLOC char *stringify(Value v);
 
 #endif

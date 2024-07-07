@@ -253,20 +253,51 @@ void print(Value v)
     fprint(stdout, v);
 }
 
+char *stringify(Value v)
+{
+    char *s;
+    size_t size;
+    FILE *stream = open_memstream(&s, &size);
+    if (stream == NULL)
+        return NULL;
+    fprint(stream, v);
+    fclose(stream);
+    return s;
+}
+
+static Value reverse(Value v)
+{
+    if (value_is_nil(v))
+        return v;
+    Value next = v.pair->cdr;
+    if (value_is_nil(next))
+        return v;
+
+    Value prev = VALUE_NIL;
+    for (;;) {
+        next = v.pair->cdr;
+        v.pair->cdr = prev;
+        if (value_is_nil(next))
+            break;
+        prev = v;
+        v = next;
+    }
+    return v;
+}
+
 Value parse(FILE *in)
 {
     Parser *p = parser_new();
     char *ret = fgets(p->buf, sizeof(p->buf), in);
     if (ret == NULL)
         error("source invalid or too large");
-    Value v;
+    Value v = VALUE_NIL;
     for (;;) {
-        v = parse_expr(p);
+        Value expr = parse_expr(p);
         if (got_eof(p))
             break;
-        print(v);
-        printf("\n");
+        v = cons(expr, v);
     }
     free(p);
-    return v;
+    return reverse(v);
 }
