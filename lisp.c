@@ -252,14 +252,18 @@ static void print(Value v);
 
 static void print_list(Value v)
 {
-    Pair *c = v.pair;
-    print(c->car);
-    if (value_is_atom(c->cdr)) {
-        printf(" . ");
-        print_atom(c->cdr);
-    } else if (!value_is_nil(c->cdr)) {
+    for (;;) {
+        Pair *p = v.pair;
+        print(p->car);
+        v = p->cdr;
+        if (value_is_nil(v))
+            break;
         printf(" ");
-        print_list(c->cdr);
+        if (value_is_atom(v)) {
+            printf(". ");
+            print_atom(v);
+            break;
+        }
     }
 }
 
