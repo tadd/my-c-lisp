@@ -208,42 +208,49 @@ Value eval(Value v)
     return v; // dummy
 }
 
-static void print_atom(Value v)
+static void print_atom(FILE *f, Value v)
 {
-    printf("%ld", value_to_int(v));
+    fprintf(f, "%ld", value_to_int(v));
 }
 
-static void print_list(Value v)
+static void fprint(FILE* f, Value v);
+
+static void print_list(FILE *f, Value v)
 {
     for (;;) {
         Pair *p = v.pair;
-        print(p->car);
+        fprint(f, p->car);
         v = p->cdr;
         if (value_is_nil(v))
             break;
-        printf(" ");
+        fprintf(f, " ");
         if (value_is_atom(v)) {
-            printf(". ");
-            print_atom(v);
+            fprintf(f, ". ");
+            print_atom(f, v);
             break;
         }
     }
 }
 
-static void print_pair(Value v)
+static void print_pair(FILE *f, Value v)
 {
-    printf("(");
+    fprintf(f, "(");
     if (!value_is_nil(v))
-        print_list(v);
-    printf(")");
+        print_list(f, v);
+    fprintf(f, ")");
+}
+
+static void fprint(FILE* f, Value v)
+{
+    if (value_is_atom(v))
+        print_atom(f, v);
+    else
+        print_pair(f, v);
 }
 
 void print(Value v)
 {
-    if (value_is_atom(v))
-        print_atom(v);
-    else
-        print_pair(v);
+    fprint(stdout, v);
 }
 
 Value parse(FILE *in)
