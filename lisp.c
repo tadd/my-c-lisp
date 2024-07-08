@@ -12,7 +12,7 @@
     throw("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
 // singleton
-static const Value VALUE_NIL = (Value){ .pair = NULL };
+const Value VALUE_NIL = (Value){ .pair = NULL };
 
 struct Pair {
     Value car, cdr;

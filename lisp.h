@@ -13,6 +13,8 @@ typedef union {
     uintptr_t raw;
 } Value;
 
+extern const Value VALUE_NIL;
+
 bool value_is_int(Value v);
 bool value_is_symbol(Value v ATTR_UNUSED);
 bool value_is_atom(Value v);
