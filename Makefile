@@ -7,10 +7,16 @@ all: lisp
 lisp: $(OBJ)
 	gcc $(CFLAGS) -o $@ $^
 
+test_lisp: lisp.o utils.o test_lisp.o
+	gcc $(CFLAGS) -o $@ $^ -lcriterion
+
 %.o: %.c lisp.h utils.h
 	gcc $(CFLAGS) -c $<
 
-clean:
-	rm -f *.o lisp
+test: test_lisp
+	./$<
 
-.PHONY: all clean
+clean:
+	rm -f *.o lisp test_lisp
+
+.PHONY: all clean test
