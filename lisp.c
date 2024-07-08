@@ -305,9 +305,9 @@ Value parse(FILE *in)
     Value v = VALUE_NIL;
     for (;;) {
         Value expr = parse_expr(p);
+        v = cons(expr, v);
         if (got_eof(p))
             break;
-        v = cons(expr, v);
     }
     free(p);
     return reverse(v);
