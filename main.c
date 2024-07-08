@@ -12,7 +12,10 @@ int main(int argc, char **argv)
             error("file %s not found", argv[1]);
     }
     Value v = parse(in);
-    print(v);
-    printf("\n");
+    do {
+        print(car(v));
+        printf("\n");
+        v = cdr(v);
+    } while (!value_is_nil(v));
     return 0;
 }
