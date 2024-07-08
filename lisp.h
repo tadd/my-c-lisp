@@ -21,6 +21,10 @@ bool value_is_nil(Value v);
 int64_t value_to_int(Value v);
 Value value_of_int(int64_t i);
 
+Value cons(Value car, Value cdr);
+Value car(Value v);
+Value cdr(Value v);
+
 void print(Value v);
 Value parse(FILE *in);
 Value eval(Value v);

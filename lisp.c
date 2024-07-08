@@ -130,12 +130,22 @@ static inline bool got_eof(Parser *p)
     return p->s[0] == '\0';
 }
 
-static Value cons(Value car, Value cdr)
+Value cons(Value car, Value cdr)
 {
     Pair *c = xmalloc(sizeof(Pair));
     c->car = car;
     c->cdr = cdr;
     return (Value) { .pair = c };
+}
+
+Value car(Value v)
+{
+    return v.pair->car;
+}
+
+Value cdr(Value v)
+{
+    return v.pair->cdr;
 }
 
 static Value parse_expr(Parser *p);
