@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "lisp.h"
 #include "utils.h"
@@ -310,4 +311,13 @@ Value parse(FILE *in)
     }
     free(p);
     return reverse(v);
+}
+
+Value parse_expr_from_string(const char *in)
+{
+    Parser *p = parser_new();
+    strncpy(p->buf, in, sizeof(p->buf));
+    Value v = parse_expr(p);
+    free(p);
+    return v;
 }
