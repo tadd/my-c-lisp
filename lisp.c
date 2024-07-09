@@ -81,18 +81,16 @@ static const Token
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = value_of_int(i) })
 
 typedef struct {
-    char buf[1024*1024]; // aho ;)
-    const char *s;
+    FILE *in;
     Token prev_token;
 } Parser;
 
 static Token get_token_int(Parser *p)
 {
-    char *endp;
-    int64_t i = strtoll(p->s, &endp, 10);
-    if (p->s == endp)
-        error("expected integer but got nothing in '%s'", p->s);
-    p->s = endp;
+    int64_t i;
+    int n = fscanf(p->in, "%ld", &i);
+    if (n != 1)
+        error("expected integer but got nothing");
     return TOK_INT(i);
 }
 
@@ -103,28 +101,31 @@ static Token get_token(Parser *p)
         p->prev_token = TOK_EOF;
         return t;
     }
-    while (isspace(*p->s))
-        p->s++;
 
-    switch (*p->s) {
+    int c;
+    do {
+        c = fgetc(p->in);
+    } while (isspace(c));
+
+    switch (c) {
     case '(':
-        p->s++;
         return TOK_LPAREN;
     case ')':
-        p->s++;
         return TOK_RPAREN;
     case '.':
-        p->s++;
         return TOK_DOT;
-    case '\0':
+    case EOF:
         return TOK_EOF;
     default:
         break;
     }
-    if (isdigit(*p->s)) {
+    if (isdigit(c)) {
+        c = ungetc(c, p->in);
+        if (c == EOF)
+            error("ungetc");
         return get_token_int(p);
     }
-    error("got unexpected char '%c'", *p->s);
+    error("got unexpected char '%c'", c);
 }
 
 static void unget_token(Parser *p, Token t)
@@ -134,7 +135,7 @@ static void unget_token(Parser *p, Token t)
 
 static inline bool got_eof(Parser *p)
 {
-    return p->s[0] == '\0';
+    return feof(p->in);
 }
 
 Value cons(Value car, Value cdr)
@@ -212,10 +213,10 @@ static Value parse_expr(Parser *p)
     return VALUE_NIL; // dummy
 }
 
-static Parser *parser_new(void)
+static Parser *parser_new(FILE *in)
 {
     Parser *p = xmalloc(sizeof(Parser));
-    p->s = p->buf;
+    p->in = in;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
     return p;
 }
@@ -304,16 +305,13 @@ static Value reverse(Value v)
 
 Value parse(FILE *in)
 {
-    Parser *p = parser_new();
-    char *ret = fgets(p->buf, sizeof(p->buf), in);
-    if (ret == NULL)
-        error("source invalid or too large");
+    Parser *p = parser_new(in);
     Value v = VALUE_NIL;
     for (;;) {
         Value expr = parse_expr(p);
-        v = cons(expr, v);
-        if (got_eof(p))
+        if (value_is_nil(expr) && got_eof(p))
             break;
+        v = cons(expr, v);
     }
     free(p);
     return reverse(v);
@@ -321,9 +319,10 @@ Value parse(FILE *in)
 
 Value parse_expr_from_string(const char *in)
 {
-    Parser *p = parser_new();
-    strncpy(p->buf, in, sizeof(p->buf));
+    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    Parser *p = parser_new(f);
     Value v = parse_expr(p);
     free(p);
+    fclose(f);
     return v;
 }
