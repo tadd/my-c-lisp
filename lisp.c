@@ -175,6 +175,15 @@ static const char *token_stringify(Token t)
     return "EOF";
 }
 
+static Value parse_dotted_pair(Parser *p)
+{
+    Value e = parse_expr(p);
+    Token t = get_token(p);
+    if (t.type != TTYPE_RPAREN)
+        error("expected ')' but got '%s'", token_stringify(t));
+    return e;
+}
+
 static Value parse_list(Parser *p)
 {
     Token t = get_token(p);
@@ -186,10 +195,7 @@ static Value parse_list(Parser *p)
     if (t.type == TTYPE_EOF)
         error("expected ')' but got '%s'", token_stringify(t));
     if (t.type == TTYPE_DOT) {
-        cdr = parse_expr(p);
-        t = get_token(p);
-        if (t.type != TTYPE_RPAREN)
-            error("expected ')' but got '%s'", token_stringify(t));
+        cdr = parse_dotted_pair(p);
     } else {
         unget_token(p, t);
         cdr = parse_list(p);
