@@ -13,7 +13,7 @@
     throw("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
 // singleton
-const Value VALUE_NIL = (Value){ .pair = NULL };
+const Value Qnil = (Value){ .pair = NULL };
 
 struct Pair {
     Value car, cdr;
@@ -179,7 +179,7 @@ static Value parse_list(Parser *p)
 {
     Token t = get_token(p);
     if (t.type == TTYPE_RPAREN)
-        return VALUE_NIL;
+        return Qnil;
     unget_token(p, t);
     Value car = parse_expr(p), cdr;
     t = get_token(p);
@@ -210,7 +210,7 @@ static Value parse_expr(Parser *p)
     case TTYPE_EOF:
         break;
     }
-    return VALUE_NIL; // dummy
+    return Qnil; // dummy
 }
 
 static Parser *parser_new(FILE *in)
@@ -291,7 +291,7 @@ static Value reverse(Value v)
     if (value_is_nil(next))
         return v;
 
-    Value prev = VALUE_NIL;
+    Value prev = Qnil;
     for (;;) {
         next = v.pair->cdr;
         v.pair->cdr = prev;
@@ -306,7 +306,7 @@ static Value reverse(Value v)
 Value parse(FILE *in)
 {
     Parser *p = parser_new(in);
-    Value v = VALUE_NIL;
+    Value v = Qnil;
     for (;;) {
         Value expr = parse_expr(p);
         if (value_is_nil(expr) && got_eof(p))

@@ -7,7 +7,7 @@
 #include "lisp.h"
 
 Test(lisp, nil) {
-    Value a = VALUE_NIL;
+    Value a = Qnil;
     cr_assert(value_is_nil(a));
 }
 
