@@ -63,3 +63,9 @@ Test(lisp, cxr) {
     cr_assert(value_is_int(i));
     cr_assert(eq(42, value_to_int(i)));
 }
+
+Test(lisp, parse_ident) {
+    Value v = parse_expr_from_string("a");
+    cr_assert(value_is_symbol(v));
+    cr_assert(streq("a", value_to_string(v)));
+}

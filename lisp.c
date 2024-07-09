@@ -50,9 +50,9 @@ inline bool value_is_string(Value v)
     return !is_immediate(v) && VALUE_TAG(v) == TAG_STR;
 }
 
-inline bool value_is_symbol(Value v ATTR_UNUSED)
+inline bool value_is_symbol(Value v)
 {
-    return false;
+    return (v & 0b11U) == 0b10U;
 }
 
 inline bool value_is_pair(Value v)
@@ -88,9 +88,35 @@ inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
+inline Symbol value_to_symbol(Value v)
+{
+    return (Symbol) (v >> 2U);
+}
+
+static Symbol intern(const char *s)
+{
+    return *s; // dummy
+}
+
+static const char *unintern(Value v)
+{
+    Symbol sym = value_to_symbol(v);
+    static char buf[BUFSIZ];
+    snprintf(buf, sizeof(buf), "%c", (int) sym);
+    return buf;
+}
+
 inline const char *value_to_string(Value v)
 {
+    if (value_is_symbol(v))
+        return unintern(v);
     return STRING(v)->body;
+}
+
+inline Value value_of_symbol(const char *s)
+{
+    Symbol sym = intern(s);
+    return (Value) (sym << 2U | 0b10U);
 }
 
 typedef enum {
@@ -99,6 +125,7 @@ typedef enum {
     TTYPE_INT,
     TTYPE_DOT,
     TTYPE_STR,
+    TTYPE_IDENT,
     TTYPE_EOF
 } TokenType;
 
@@ -118,6 +145,7 @@ static const Token
 // and ctor
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT, .value = value_of_int(i) })
 #define TOK_STR(s) ((Token){ .type = TTYPE_STR, .value = value_of_string(s) })
+#define TOK_IDENT(s) ((Token){ .type = TTYPE_IDENT, .value = value_of_symbol(s) })
 
 typedef struct {
     FILE *in;
@@ -153,6 +181,92 @@ static Token get_token_string(Parser *p)
     return TOK_STR(buf);
 }
 
+static inline bool is_peculiar_single(int c)
+{
+    return c == '+' || c == '-';
+}
+
+static Token get_token_ident_dots(Parser *p)
+{
+    int c2 = fgetc(p->in);
+    int c3 = fgetc(p->in);
+    if (!(c2 == '.' && c3 == '.'))
+        error("expected '...' but got '.%c%c'", c2, c3);
+    return TOK_IDENT("...");
+}
+
+static inline bool is_special_initial(int c)
+{
+    switch (c) {
+    case '!':
+    case '$':
+    case '%':
+    case '&':
+    case '*':
+    case '/':
+    case ':':
+    case '<':
+    case '=':
+    case '|':
+    case '>':
+    case '?':
+    case '^':
+    case '_':
+    case '~':
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
+static inline bool is_initial(int c)
+{
+    return isalpha(c) || is_special_initial(c);
+}
+
+static inline bool is_special_subsequent(int c)
+{
+    switch (c) {
+    case '+':
+    case '-':
+    case '.':
+    case '@':
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
+static inline bool is_subsequent(int c)
+{
+    return is_initial(c) || isdigit(c) || is_special_subsequent(c);
+}
+
+static Token get_token_ident(Parser *p)
+{
+    int c = fgetc(p->in);
+    if (c == '.')
+        return get_token_ident_dots(p);
+
+    char buf[BUFSIZ], *s = buf, *end = s + sizeof(buf);
+    if (!is_initial(c))
+        error("expected identifier but got '%c' as initial", c);
+    *s++ = c;
+    for (;;) {
+        c = fgetc(p->in);
+        if (!is_subsequent(c))
+            break;
+        *s++ = c;
+        if (s == end)
+            error("expected identifier but was too long");
+    }
+    ungetc(c, p->in);
+    *s = '\0';
+    return TOK_IDENT(buf);
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TTYPE_EOF)  {
@@ -181,10 +295,16 @@ static Token get_token(Parser *p)
         break;
     }
     if (isdigit(c)) {
-        c = ungetc(c, p->in);
-        if (c == EOF)
-            error("ungetc");
+        ungetc(c, p->in);
         return get_token_int(p);
+    }
+    if (is_peculiar_single(c)) {
+        char ident[] = { c, '\0' };
+        return TOK_IDENT(ident);
+    }
+    if (isalpha(c) || is_special_initial(c) || c == '.') {
+        ungetc(c, p->in);
+        return get_token_ident(p);
     }
     error("got unexpected char '%c'", c);
 }
@@ -268,6 +388,8 @@ static const char *token_stringify(Token t)
     case TTYPE_INT:
         snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
         break;
+    case TTYPE_IDENT:
+        return value_to_string(t.value);
     case TTYPE_STR:
         snprintf(buf, sizeof(buf), "\"%s\"", STRING(t.value)->body);
         break;
@@ -317,6 +439,7 @@ static Value parse_expr(Parser *p)
         error("expected expression but got '.'");
     case TTYPE_STR:
     case TTYPE_INT:
+    case TTYPE_IDENT:
         return t.value;
     case TTYPE_EOF:
         break;
@@ -343,6 +466,8 @@ static void print_atom(FILE *f, Value v)
         fprintf(f, "%ld", value_to_int(v));
     else if (value_is_string(v))
         fprintf(f, "\"%s\"", value_to_string(v));
+    else if (value_is_symbol(v))
+        fprintf(f, "'%s", value_to_string(v));
 }
 
 static void fprint(FILE* f, Value v);

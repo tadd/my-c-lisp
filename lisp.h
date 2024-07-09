@@ -8,12 +8,16 @@
 #include "utils.h"
 
 typedef struct Pair Pair;
+// 0b..000 pointer
+// 0b....1 integer
+// 0b...10 id
 typedef uintptr_t Value;
+typedef uintptr_t Symbol;
 
 extern const Value Qnil;
 
 bool value_is_int(Value v);
-bool value_is_symbol(Value v ATTR_UNUSED);
+bool value_is_symbol(Value v);
 bool value_is_atom(Value v);
 bool value_is_string(Value v);
 bool value_is_pair(Value v);
@@ -21,9 +25,11 @@ bool value_is_nil(Value v);
 
 Value value_of_int(int64_t i);
 Value value_of_string(const char *s);
+Value value_of_symbol(const char *s);
 
 int64_t value_to_int(Value v);
 const char *value_to_string(Value v);
+Symbol value_to_symbol(Value v);
 
 Value cons(Value car, Value cdr);
 Value car(Value v);
