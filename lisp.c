@@ -41,7 +41,7 @@ inline bool value_is_pair(Value v)
 
 inline bool value_is_nil(Value v)
 {
-    return value_is_pair(v) && v.pair == NULL;
+    return v.pair == NULL;
 }
 
 inline int64_t value_to_int(Value v)
