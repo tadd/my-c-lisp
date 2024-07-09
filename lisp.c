@@ -119,8 +119,12 @@ static Token get_token(Parser *p)
     case '\0':
         return TOK_EOF;
     default:
+        break;
+    }
+    if (isdigit(*p->s)) {
         return get_token_int(p);
     }
+    error("got unexpected char '%c'", *p->s);
 }
 
 static void unget_token(Parser *p, Token t)
