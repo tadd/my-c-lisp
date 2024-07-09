@@ -183,6 +183,8 @@ static Value parse_list(Parser *p)
     unget_token(p, t);
     Value car = parse_expr(p), cdr;
     t = get_token(p);
+    if (t.type == TTYPE_EOF)
+        error("expected ')' but got '%s'", token_stringify(t));
     if (t.type == TTYPE_DOT) {
         cdr = parse_expr(p);
         t = get_token(p);
