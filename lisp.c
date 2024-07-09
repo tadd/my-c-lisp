@@ -160,6 +160,8 @@ static Value parse_expr(Parser *p);
 
 static const char *token_stringify(Token t)
 {
+    static char buf[BUFSIZ];
+
     switch (t.type) {
     case TTYPE_LPAREN:
         return "(";
@@ -168,7 +170,8 @@ static const char *token_stringify(Token t)
     case TTYPE_DOT:
         return ".";
     case TTYPE_INT:
-        return "integer";
+        snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
+        return buf;
     case TTYPE_EOF:
         break;
     }
