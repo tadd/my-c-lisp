@@ -93,18 +93,8 @@ inline Symbol value_to_symbol(Value v)
     return (Symbol) (v >> 2U);
 }
 
-static Symbol intern(const char *s)
-{
-    return *s; // dummy
-}
-
-static const char *unintern(Value v)
-{
-    Symbol sym = value_to_symbol(v);
-    static char buf[BUFSIZ];
-    snprintf(buf, sizeof(buf), "%c", (int) sym);
-    return buf;
-}
+static Symbol intern(const char *s);
+static const char *unintern(Value sym);
 
 inline const char *value_to_string(Value v)
 {
@@ -179,6 +169,19 @@ static Token get_token_string(Parser *p)
     }
     *pbuf = '\0';
     return TOK_STR(buf);
+}
+
+static Symbol intern(const char *s)
+{
+    return *s; // dummy
+}
+
+static const char *unintern(Value vsym)
+{
+    static char buf[BUFSIZ];
+    Symbol sym = value_to_symbol(vsym);
+    snprintf(buf, sizeof(buf), "%c", (int) sym);
+    return buf;
 }
 
 static inline bool is_peculiar_single(int c)
