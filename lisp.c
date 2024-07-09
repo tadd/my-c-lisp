@@ -70,12 +70,14 @@ typedef struct {
 } Token;
 
 
+#define TOKEN(t) { .type = TTYPE_ ## t }
 // singletons
 static const Token
-    TOK_LPAREN = { .type = TTYPE_LPAREN },
-    TOK_RPAREN = { .type = TTYPE_RPAREN },
-    TOK_DOT = { .type = TTYPE_DOT },
-    TOK_EOF = { .type = TTYPE_EOF };
+    TOK_LPAREN = TOKEN(LPAREN),
+    TOK_RPAREN = TOKEN(RPAREN),
+    TOK_DOT = TOKEN(DOT),
+    TOK_EOF = TOKEN(EOF);
+// and ctor
 #define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = value_of_int(i) })
 
 typedef struct {
