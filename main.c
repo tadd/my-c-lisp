@@ -12,7 +12,7 @@ int main(int argc, char **argv)
         if (strcmp(argv[1], "-e") != 0)
             break;
         char *src = argv[2];
-        in = fmemopen(src, sizeof(src), "r");
+        in = fmemopen(src, strlen(src), "r");
         break;
     case 2:
         in = fopen(argv[1], "r");
