@@ -9,8 +9,8 @@
 #include "lisp.h"
 #include "utils.h"
 
-#define throw(fmt, ...) \
-    throw("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
+#define error(fmt, ...) \
+    error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
 // singleton
 const Value Qnil = (Value){ .pair = NULL };
