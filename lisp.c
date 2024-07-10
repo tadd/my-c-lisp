@@ -213,6 +213,23 @@ Value cdr(Value v)
     return PAIR(v)->cdr;
 }
 
+#define DEF_CXXR(x, y) \
+    Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
+#define DEF_CXXXR(x, y, z) DEF_CXXR(x, y##z)
+
+DEF_CXXR(a, d)
+DEF_CXXR(a, a)
+DEF_CXXR(d, a)
+DEF_CXXR(d, d)
+DEF_CXXXR(a, a, a)
+DEF_CXXXR(a, a, d)
+DEF_CXXXR(a, d, a)
+DEF_CXXXR(a, d, d)
+DEF_CXXXR(d, a, a)
+DEF_CXXXR(d, a, d)
+DEF_CXXXR(d, d, a)
+DEF_CXXXR(d, d, d)
+
 static Value parse_expr(Parser *p);
 
 static const char *token_stringify(Token t)

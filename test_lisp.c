@@ -25,8 +25,8 @@ Test(lisp, parse_nil) {
 Test(lisp, parse_list) {
     Value v = parse_expr_from_string("(1 2)");
     cr_assert(eq(1, value_to_int(car(v))));
-    cr_assert(eq(2, value_to_int(car(cdr(v)))));
-    cr_assert(value_is_nil(cdr(cdr(v))));
+    cr_assert(eq(2, value_to_int(cadr(v))));
+    cr_assert(value_is_nil(cddr(v)));
 }
 
 Test(lisp, parse_string) {

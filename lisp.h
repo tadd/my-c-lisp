@@ -28,6 +28,19 @@ const char *value_to_string(Value v);
 Value cons(Value car, Value cdr);
 Value car(Value v);
 Value cdr(Value v);
+Value caar(Value v);
+Value cadr(Value v);
+Value cdar(Value v);
+Value cddr(Value v);
+Value caaar(Value v);
+Value caadr(Value v);
+Value cadar(Value v);
+Value caddr(Value v);
+Value cdaar(Value v);
+Value cdadr(Value v);
+Value cddar(Value v);
+Value cdddr(Value v);
+
 
 void print(Value v);
 Value parse(FILE *in);
