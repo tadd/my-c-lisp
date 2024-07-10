@@ -12,12 +12,18 @@
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
-// singleton
-const Value Qnil = (uintptr_t) NULL;
+typedef enum {
+    TAG_PAIR,
+} ValueTag;
 
 struct Pair {
+    ValueTag tag; // common
     Value car, cdr;
 };
+
+// singletons
+static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
+const Value Qnil = (uintptr_t) &PAIR_NIL;
 
 inline bool value_is_int(Value v)
 {
@@ -43,7 +49,7 @@ inline bool value_is_pair(Value v)
 
 inline bool value_is_nil(Value v)
 {
-    return value_is_pair(v) && PAIR(v) == NULL;
+    return v == Qnil;
 }
 
 inline int64_t value_to_int(Value v)
@@ -142,6 +148,7 @@ static inline bool got_eof(Parser *p)
 Value cons(Value car, Value cdr)
 {
     Pair *c = xmalloc(sizeof(Pair));
+    c->tag = TAG_PAIR;
     c->car = car;
     c->cdr = cdr;
     return (Value) c;
