@@ -17,8 +17,10 @@ bool value_is_symbol(Value v ATTR_UNUSED);
 bool value_is_atom(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);
-int64_t value_to_int(Value v);
+
 Value value_of_int(int64_t i);
+
+int64_t value_to_int(Value v);
 
 Value cons(Value car, Value cdr);
 Value car(Value v);
