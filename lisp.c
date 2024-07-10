@@ -37,12 +37,17 @@ const Value Qnil = (uintptr_t) &PAIR_NIL;
 
 inline bool value_is_int(Value v)
 {
-    return (v & 1U) != 0;
+    return !!(v & 1U);
+}
+
+static inline bool is_immediate(Value v)
+{
+    return !!(v & 0b111U); // expects 0b...000 for pointers
 }
 
 inline bool value_is_string(Value v)
 {
-    return !value_is_int(v) && VALUE_TAG(v) == TAG_STR;
+    return !is_immediate(v) && VALUE_TAG(v) == TAG_STR;
 }
 
 inline bool value_is_symbol(Value v ATTR_UNUSED)
@@ -52,12 +57,12 @@ inline bool value_is_symbol(Value v ATTR_UNUSED)
 
 inline bool value_is_atom(Value v)
 {
-    return value_is_int(v) || VALUE_TAG(v) != TAG_PAIR;
+    return is_immediate(v) || VALUE_TAG(v) != TAG_PAIR;
 }
 
 inline bool value_is_pair(Value v)
 {
-    return !value_is_int(v) && VALUE_TAG(v) == TAG_PAIR;
+    return !is_immediate(v) && VALUE_TAG(v) == TAG_PAIR;
 }
 
 inline bool value_is_nil(Value v)
