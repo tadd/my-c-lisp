@@ -133,9 +133,10 @@ static const Token
     TOK_DOT = TOKEN(DOT),
     TOK_EOF = TOKEN(EOF);
 // and ctor
-#define TOK_INT(i) ((Token){ .type = TTYPE_INT, .value = value_of_int(i) })
-#define TOK_STR(s) ((Token){ .type = TTYPE_STR, .value = value_of_string(s) })
-#define TOK_IDENT(s) ((Token){ .type = TTYPE_IDENT, .value = value_of_symbol(s) })
+#define TOK_V(t, v) ((Token) { .type = TTYPE_ ## t, .value = v })
+#define TOK_INT(i) TOK_V(INT, value_of_int(i))
+#define TOK_STR(s) TOK_V(STR, value_of_string(s))
+#define TOK_IDENT(s) TOK_V(IDENT, value_of_symbol(s))
 
 typedef struct {
     FILE *in;
