@@ -28,10 +28,12 @@ const char *value_to_string(Value v);
 Value cons(Value car, Value cdr);
 Value car(Value v);
 Value cdr(Value v);
+// 2
 Value caar(Value v);
 Value cadr(Value v);
 Value cdar(Value v);
 Value cddr(Value v);
+// 3
 Value caaar(Value v);
 Value caadr(Value v);
 Value cadar(Value v);
@@ -40,7 +42,23 @@ Value cdaar(Value v);
 Value cdadr(Value v);
 Value cddar(Value v);
 Value cdddr(Value v);
-
+// 4
+Value caaaar(Value v);
+Value caaadr(Value v);
+Value caadar(Value v);
+Value caaddr(Value v);
+Value cadaar(Value v);
+Value cadadr(Value v);
+Value caddar(Value v);
+Value cadddr(Value v);
+Value cdaaar(Value v);
+Value cdaadr(Value v);
+Value cdadar(Value v);
+Value cdaddr(Value v);
+Value cddaar(Value v);
+Value cddadr(Value v);
+Value cdddar(Value v);
+Value cddddr(Value v);
 
 void print(Value v);
 Value parse(FILE *in);

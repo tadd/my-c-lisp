@@ -56,3 +56,10 @@ Test(lisp, parse_string_list) {
     cr_assert(value_is_string(t));
     cr_assert(streq("def", value_to_string(t)));
 }
+
+Test(lisp, cxr) {
+    Value v = parse_expr_from_string("((((42))))");
+    Value i = caaaar(v);
+    cr_assert(value_is_int(i));
+    cr_assert(eq(42, value_to_int(i)));
+}
