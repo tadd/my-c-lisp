@@ -269,21 +269,9 @@ static Token get_token_ident_dots(Parser *p)
 static inline bool is_special_initial(int c)
 {
     switch (c) {
-    case '!':
-    case '$':
-    case '%':
-    case '&':
-    case '*':
-    case '/':
-    case ':':
-    case '<':
-    case '=':
-    case '|':
-    case '>':
-    case '?':
-    case '^':
-    case '_':
-    case '~':
+    case '!': case '$': case '%': case '&': case '*':
+    case '/': case ':': case '<': case '=': case '|':
+    case '>': case '?': case '^': case '_': case '~':
         return true;
     default:
         break;
@@ -299,10 +287,7 @@ static inline bool is_initial(int c)
 static inline bool is_special_subsequent(int c)
 {
     switch (c) {
-    case '+':
-    case '-':
-    case '.':
-    case '@':
+    case '+': case '-': case '.': case '@':
         return true;
     default:
         break;
