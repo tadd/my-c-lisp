@@ -26,6 +26,25 @@ static void opt_error(const char *fmt, ...)
     usage(stderr);
 }
 
+static const char *const OPTION_EXISTS = (void *)1U;
+typedef struct {
+    const char *tbl[127]; // non-extended ASCII
+    int index;
+} GetOption;
+
+static GetOption getoption(int argc, char *const *argv, const char *optstr)
+{
+    GetOption o;
+    int opt;
+    while ((opt = getopt(argc, argv, optstr)) != -1) {
+        o.tbl[opt] = optarg ? optarg : OPTION_EXISTS;
+    }
+    if (o.tbl['?'])
+        exit(2);
+    o.index = optind;
+    return o;
+}
+
 typedef struct {
     FILE *in;
     bool print;
@@ -35,25 +54,20 @@ typedef struct {
 static Option parse_opt(int argc, char *const *argv)
 {
     Option o = { .in = NULL, .print = false, .parse_only = false };
-    int opt;
-    while ((opt = getopt(argc, argv, "e:hPp")) != -1) {
-        switch (opt) {
-        case 'e':
-            o.in = fmemopen(optarg, strlen(optarg), "r");
-            break;
-        case 'h':
-            usage(stdout);
-        case 'P':
-            o.parse_only = o.print = true;
-            break;
-        case 'p':
-            o.print = true;
-            break;
-        case '?':
-            usage(stderr);
-        }
+    GetOption opt = getoption(argc, argv, "e:hPp");
+    if (opt.tbl['e']) {
+        const char *s = opt.tbl['e'];
+        o.in = fmemopen((char *) s, strlen(s), "r");
     }
-    const char *f = argv[optind];
+    if (opt.tbl['h'])
+        usage(stdout);
+    if (opt.tbl['P'])
+        o.parse_only = o.print = true;
+    if (opt.tbl['p'])
+        o.print = true;
+    if (opt.tbl['?'])
+        usage(stderr);
+    const char *f = argv[opt.index];
     if (f == NULL && o.in == NULL)
         opt_error("no program provided");
     if (f != NULL && o.in != NULL)
