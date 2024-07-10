@@ -37,12 +37,14 @@ inline bool value_is_symbol(Value v ATTR_UNUSED)
 
 inline bool value_is_atom(Value v)
 {
-    return value_is_int(v) || value_is_symbol(v);
+    return value_is_int(v) || !value_is_pair(v);
 }
+
+#define VALUE_TAG(v) (*(ValueTag*)(v))
 
 inline bool value_is_pair(Value v)
 {
-    return !value_is_atom(v);
+    return VALUE_TAG(v) == TAG_PAIR;
 }
 
 #define PAIR(v) ((Pair *) v)
