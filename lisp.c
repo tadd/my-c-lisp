@@ -94,12 +94,12 @@ inline Symbol value_to_symbol(Value v)
 }
 
 static Symbol intern(const char *s);
-static const char *unintern(Value sym);
+static const char *unintern(Symbol sym);
 
 inline const char *value_to_string(Value v)
 {
     if (value_is_symbol(v))
-        return unintern(v);
+        return unintern(value_to_symbol(v));
     return STRING(v)->body;
 }
 
@@ -176,10 +176,9 @@ static Symbol intern(const char *s)
     return *s; // dummy
 }
 
-static const char *unintern(Value vsym)
+static const char *unintern(Symbol sym)
 {
     static char buf[BUFSIZ];
-    Symbol sym = value_to_symbol(vsym);
     snprintf(buf, sizeof(buf), "%c", (int) sym);
     return buf;
 }
