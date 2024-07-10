@@ -1,11 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "lisp.h"
 #include "utils.h"
 
-int main(int argc, char **argv)
+static FILE *parse_opt(int argc, char *const *argv)
 {
     FILE *in = stdin;
     int opt;
@@ -15,7 +16,7 @@ int main(int argc, char **argv)
             in = fmemopen(optarg, strlen(optarg), "r");
             break;
         case '?':
-            return 2;
+            exit(2);
         }
     }
     if (argv[optind]) {
@@ -23,16 +24,18 @@ int main(int argc, char **argv)
         if (in == NULL)
             error("file %s not found", argv[1]);
     }
+    return in;
+}
+
+int main(int argc, char **argv)
+{
+    FILE *in = parse_opt(argc, argv);
     Value v = parse(in);
-    if (value_is_nil(v)) {
-        return 0;
-    }
-    do {
+    while (!value_is_nil(v)) {
         print(car(v));
         printf("\n");
         v = cdr(v);
-    } while (!value_is_nil(v));
-
+    }
     fclose(in);
     return 0;
 }
