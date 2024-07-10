@@ -267,12 +267,14 @@ static const char *token_stringify(Token t)
         return ".";
     case TTYPE_INT:
         snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
-        return buf;
-    case TTYPE_STR:
-    case TTYPE_EOF:
         break;
+    case TTYPE_STR:
+        snprintf(buf, sizeof(buf), "\"%s\"", STRING(t.value)->body);
+        break;
+    case TTYPE_EOF:
+        return "EOF";
     }
-    return "EOF";
+    return buf;
 }
 
 static Value parse_dotted_pair(Parser *p)
