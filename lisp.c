@@ -55,14 +55,14 @@ inline bool value_is_symbol(Value v ATTR_UNUSED)
     return false;
 }
 
-inline bool value_is_atom(Value v)
-{
-    return is_immediate(v) || VALUE_TAG(v) != TAG_PAIR;
-}
-
 inline bool value_is_pair(Value v)
 {
     return !is_immediate(v) && VALUE_TAG(v) == TAG_PAIR;
+}
+
+inline bool value_is_atom(Value v)
+{
+    return !value_is_pair(v);
 }
 
 inline bool value_is_nil(Value v)
