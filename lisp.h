@@ -8,10 +8,7 @@
 #include "utils.h"
 
 typedef struct Pair Pair;
-typedef union {
-    Pair *pair;
-    uintptr_t raw;
-} Value;
+typedef uintptr_t Value;
 
 extern const Value Qnil;
 

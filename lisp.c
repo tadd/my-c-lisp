@@ -13,7 +13,7 @@
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
 // singleton
-const Value Qnil = (Value){ .pair = NULL };
+const Value Qnil = (uintptr_t) NULL;
 
 struct Pair {
     Value car, cdr;
@@ -21,7 +21,7 @@ struct Pair {
 
 inline bool value_is_int(Value v)
 {
-    return (v.raw & 1U) != 0;
+    return (v & 1U) != 0;
 }
 
 inline bool value_is_symbol(Value v ATTR_UNUSED)
@@ -39,20 +39,21 @@ inline bool value_is_pair(Value v)
     return !value_is_atom(v);
 }
 
+#define PAIR(v) ((Pair *) v)
+
 inline bool value_is_nil(Value v)
 {
-    return v.pair == NULL;
+    return value_is_pair(v) && PAIR(v) == NULL;
 }
 
 inline int64_t value_to_int(Value v)
 {
-    return (int64_t)(v.raw >> 1U);
+    return (int64_t)(v >> 1U);
 }
 
 inline Value value_of_int(int64_t i)
 {
-    uintptr_t r = (((uintptr_t) i) << 1U) | 1U;
-    return (Value) { .raw = r };
+    return (((uintptr_t) i) << 1U) | 1U;
 }
 
 typedef enum {
@@ -143,17 +144,17 @@ Value cons(Value car, Value cdr)
     Pair *c = xmalloc(sizeof(Pair));
     c->car = car;
     c->cdr = cdr;
-    return (Value) { .pair = c };
+    return (Value) c;
 }
 
 Value car(Value v)
 {
-    return v.pair->car;
+    return PAIR(v)->car;
 }
 
 Value cdr(Value v)
 {
-    return v.pair->cdr;
+    return PAIR(v)->cdr;
 }
 
 static Value parse_expr(Parser *p);
@@ -247,7 +248,7 @@ static void fprint(FILE* f, Value v);
 static void print_list(FILE *f, Value v)
 {
     for (;;) {
-        Pair *p = v.pair;
+        Pair *p = PAIR(v);
         fprint(f, p->car);
         v = p->cdr;
         if (value_is_nil(v))
@@ -298,14 +299,14 @@ static Value reverse(Value v)
 {
     if (value_is_nil(v))
         return v;
-    Value next = v.pair->cdr;
+    Value next = PAIR(v)->cdr;
     if (value_is_nil(next))
         return v;
 
     Value prev = Qnil;
     for (;;) {
-        next = v.pair->cdr;
-        v.pair->cdr = prev;
+        next = PAIR(v)->cdr;
+        PAIR(v)->cdr = prev;
         if (value_is_nil(next))
             break;
         prev = v;
