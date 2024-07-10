@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "lisp.h"
 #include "utils.h"
@@ -7,20 +8,20 @@
 int main(int argc, char **argv)
 {
     FILE *in = stdin;
-    switch (argc) {
-    case 3:
-        if (strcmp(argv[1], "-e") != 0)
+    int opt;
+    while ((opt = getopt(argc, argv, "e:")) != -1) {
+        switch (opt) {
+        case 'e':
+            in = fmemopen(optarg, strlen(optarg), "r");
             break;
-        char *src = argv[2];
-        in = fmemopen(src, strlen(src), "r");
-        break;
-    case 2:
+        case '?':
+            return 2;
+        }
+    }
+    if (argv[optind]) {
         in = fopen(argv[1], "r");
         if (in == NULL)
             error("file %s not found", argv[1]);
-        break;
-    default:
-        break;
     }
     Value v = parse(in);
     if (value_is_nil(v)) {
