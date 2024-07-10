@@ -3,6 +3,7 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#define streq(x, y) eq(str, (char *)x, (char *)y)
 
 #include "lisp.h"
 
@@ -26,4 +27,32 @@ Test(lisp, parse_list) {
     cr_assert(eq(1, value_to_int(car(v))));
     cr_assert(eq(2, value_to_int(car(cdr(v)))));
     cr_assert(value_is_nil(cdr(cdr(v))));
+}
+
+Test(lisp, parse_string) {
+    Value v = parse_expr_from_string("\"abc\"");
+    cr_assert(value_is_string(v));
+    cr_assert(streq("abc", value_to_string(v)));
+
+    v = parse_expr_from_string("\"a\\\\b\"");
+    cr_assert(value_is_string(v));
+    cr_assert(streq("a\\b", value_to_string(v)));
+
+    v = parse_expr_from_string("\"a\\\"b\"");
+    cr_assert(value_is_string(v));
+    cr_assert(streq("a\"b", value_to_string(v)));
+}
+
+Test(lisp, parse_string_list) {
+    Value v = parse_expr_from_string("(\"abc\" \"def\")");
+    cr_assert(value_is_pair(v));
+    cr_assert(not(value_is_nil(v)));
+
+    Value s = car(v);
+    cr_assert(value_is_string(s));
+    cr_assert(streq("abc", value_to_string(s)));
+
+    Value t = car(cdr(v));
+    cr_assert(value_is_string(t));
+    cr_assert(streq("def", value_to_string(t)));
 }

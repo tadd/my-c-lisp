@@ -15,12 +15,15 @@ extern const Value Qnil;
 bool value_is_int(Value v);
 bool value_is_symbol(Value v ATTR_UNUSED);
 bool value_is_atom(Value v);
+bool value_is_string(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);
 
 Value value_of_int(int64_t i);
+Value value_of_string(const char *s);
 
 int64_t value_to_int(Value v);
+const char *value_to_string(Value v);
 
 Value cons(Value car, Value cdr);
 Value car(Value v);

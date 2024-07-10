@@ -14,12 +14,22 @@
 
 typedef enum {
     TAG_PAIR,
+    TAG_STR,
 } ValueTag;
 
 struct Pair {
     ValueTag tag; // common
     Value car, cdr;
 };
+
+typedef struct {
+    ValueTag tag;
+    const char *body;
+} String;
+
+#define VALUE_TAG(v) (*(ValueTag*)(v))
+#define PAIR(v) ((Pair *) v)
+#define STRING(v) ((String *) v)
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
@@ -30,6 +40,11 @@ inline bool value_is_int(Value v)
     return (v & 1U) != 0;
 }
 
+inline bool value_is_string(Value v)
+{
+    return !value_is_int(v) && VALUE_TAG(v) == TAG_STR;
+}
+
 inline bool value_is_symbol(Value v ATTR_UNUSED)
 {
     return false;
@@ -37,17 +52,13 @@ inline bool value_is_symbol(Value v ATTR_UNUSED)
 
 inline bool value_is_atom(Value v)
 {
-    return value_is_int(v) || !value_is_pair(v);
+    return value_is_int(v) || VALUE_TAG(v) != TAG_PAIR;
 }
-
-#define VALUE_TAG(v) (*(ValueTag*)(v))
 
 inline bool value_is_pair(Value v)
 {
-    return VALUE_TAG(v) == TAG_PAIR;
+    return !value_is_int(v) && VALUE_TAG(v) == TAG_PAIR;
 }
-
-#define PAIR(v) ((Pair *) v)
 
 inline bool value_is_nil(Value v)
 {
@@ -64,12 +75,25 @@ inline Value value_of_int(int64_t i)
     return (((uintptr_t) i) << 1U) | 1U;
 }
 
+inline Value value_of_string(const char *s)
+{
+    String *str = xmalloc(sizeof(String));
+    str->tag = TAG_STR;
+    str->body = xstrdup(s);
+    return (Value) str;
+}
+
+inline const char *value_to_string(Value v)
+{
+    return STRING(v)->body;
+}
+
 typedef enum {
     TTYPE_LPAREN,
     TTYPE_RPAREN,
     TTYPE_INT,
     TTYPE_DOT,
-//  TTYPE_SYMBOL,
+    TTYPE_STR,
     TTYPE_EOF
 } TokenType;
 
@@ -87,7 +111,8 @@ static const Token
     TOK_DOT = TOKEN(DOT),
     TOK_EOF = TOKEN(EOF);
 // and ctor
-#define TOK_INT(i) ((Token){ .type = TTYPE_INT,  .value = value_of_int(i) })
+#define TOK_INT(i) ((Token){ .type = TTYPE_INT, .value = value_of_int(i) })
+#define TOK_STR(s) ((Token){ .type = TTYPE_STR, .value = value_of_string(s) })
 
 typedef struct {
     FILE *in;
@@ -101,6 +126,26 @@ static Token get_token_int(Parser *p)
     if (n != 1)
         error("expected integer but got nothing");
     return TOK_INT(i);
+}
+
+static Token get_token_string(Parser *p)
+{
+    char buf[BUFSIZ], *pbuf = buf, *end = pbuf + sizeof(buf) - 2;
+    for (;;) {
+        int c = fgetc(p->in);
+        if (c == '"')
+            break;
+        if (c == '\\') {
+            c = fgetc(p->in);
+            if (c != '\\' && c != '"')
+                error("expected '\\' or '\"' in string literal but got '%c'", c);
+        }
+        if (pbuf == end)
+            error("expected string literal but too long: \"%s...\"", pbuf);
+        *pbuf++ = c;
+    }
+    *pbuf = '\0';
+    return TOK_STR(buf);
 }
 
 static Token get_token(Parser *p)
@@ -123,6 +168,8 @@ static Token get_token(Parser *p)
         return TOK_RPAREN;
     case '.':
         return TOK_DOT;
+    case '"':
+        return get_token_string(p);
     case EOF:
         return TOK_EOF;
     default:
@@ -182,6 +229,7 @@ static const char *token_stringify(Token t)
     case TTYPE_INT:
         snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
         return buf;
+    case TTYPE_STR:
     case TTYPE_EOF:
         break;
     }
@@ -226,6 +274,7 @@ static Value parse_expr(Parser *p)
         error("expected expression but got ')'");
     case TTYPE_DOT:
         error("expected expression but got '.'");
+    case TTYPE_STR:
     case TTYPE_INT:
         return t.value;
     case TTYPE_EOF:
@@ -249,7 +298,10 @@ Value eval(Value v)
 
 static void print_atom(FILE *f, Value v)
 {
-    fprintf(f, "%ld", value_to_int(v));
+    if (value_is_int(v))
+        fprintf(f, "%ld", value_to_int(v));
+    else if (value_is_string(v))
+        fprintf(f, "\"%s\"", value_to_string(v));
 }
 
 static void fprint(FILE* f, Value v);
