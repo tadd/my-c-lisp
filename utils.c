@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "utils.h"
 
@@ -28,4 +29,12 @@ void *xrealloc(void *p, size_t size)
     if (p == NULL)
         error("realloc to %zu bytes failed", size);
     return p;
+}
+
+char *xstrdup(const char *s)
+{
+    char *dup = strdup(s);
+    if (dup == NULL)
+        error("strdup of '%s' failed", s);
+    return dup;
 }

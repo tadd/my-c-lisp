@@ -13,5 +13,6 @@
 ATTR_NORETURN ATTR_FORMAT(printf, 1, 2) void error(const char *fmt, ...);
 ATTR_MALLOC void *xmalloc(size_t size);
 ATTR_MALLOC void *xrealloc(void *p, size_t size);
+ATTR_MALLOC char *xstrdup(const char *s);
 
 #endif
