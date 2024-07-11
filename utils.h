@@ -3,16 +3,15 @@
 
 #include <stdlib.h>
 
-#define ATTR(x) __attribute__((x))
-
-#define ATTR_UNUSED ATTR(unused)
-#define ATTR_NORETURN ATTR(noreturn)
-#define ATTR_MALLOC ATTR(malloc(free))
-#define ATTR_FORMAT(f, beg, end) ATTR(format(f, beg, end))
+#define ATTR_UNUSED [[unused]]
+#define ATTR_NORETURN [[gnu::noreturn]]
+#define ATTR_MALLOC [[gnu::malloc]] [[gnu::used]]
+#define ATTR_XMALLOC ATTR_MALLOC [[gnu::nonnull]]
+#define ATTR_FORMAT(f, beg, end) [[gnu::format(f, beg, end)]]
 
 ATTR_NORETURN ATTR_FORMAT(printf, 1, 2) void error(const char *fmt, ...);
-ATTR_MALLOC void *xmalloc(size_t size);
-ATTR_MALLOC void *xrealloc(void *p, size_t size);
-ATTR_MALLOC char *xstrdup(const char *s);
+ATTR_XMALLOC void *xmalloc(size_t size);
+ATTR_XMALLOC void *xrealloc(void *p, size_t size);
+ATTR_XMALLOC char *xstrdup(const char *s);
 
 #endif
