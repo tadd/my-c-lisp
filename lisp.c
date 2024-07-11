@@ -11,6 +11,8 @@
 
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
+#define error_expect(exp, act, ...) \
+    error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
 typedef enum {
     TAG_PAIR,
@@ -148,7 +150,7 @@ static Token get_token_int(Parser *p)
     int64_t i;
     int n = fscanf(p->in, "%ld", &i);
     if (n != 1)
-        error("expected integer but got nothing");
+        error_expect("integer", "invalid string");
     return TOK_INT(i);
 }
 
@@ -162,10 +164,10 @@ static Token get_token_string(Parser *p)
         if (c == '\\') {
             c = fgetc(p->in);
             if (c != '\\' && c != '"')
-                error("expected '\\' or '\"' in string literal but got '%c'", c);
+                error_expect("'\\' or '\"' in string literal", "'%c'", c);
         }
         if (pbuf == end)
-            error("expected string literal but too long: \"%s...\"", pbuf);
+            error_expect("string literal", "too long: \"%s...\"", pbuf);
         *pbuf++ = c;
     }
     *pbuf = '\0';
@@ -262,7 +264,7 @@ static Token get_token_ident_dots(Parser *p)
     int c2 = fgetc(p->in);
     int c3 = fgetc(p->in);
     if (!(c2 == '.' && c3 == '.'))
-        error("expected '...' but got '.%c%c'", c2, c3);
+        error_expect("'...'", "'.%c%c'", c2, c3);
     return TOK_IDENT("...");
 }
 
@@ -308,7 +310,7 @@ static Token get_token_ident(Parser *p)
 
     char buf[BUFSIZ], *s = buf, *end = s + sizeof(buf);
     if (!is_initial(c))
-        error("expected identifier but got '%c' as initial", c);
+        error_expect("identifier", "'%c' as initial", c);
     *s++ = c;
     for (;;) {
         c = fgetc(p->in);
@@ -316,7 +318,7 @@ static Token get_token_ident(Parser *p)
             break;
         *s++ = c;
         if (s == end)
-            error("expected identifier but was too long");
+            error_expect("identifier", "too long");
     }
     ungetc(c, p->in);
     *s = '\0';
@@ -460,7 +462,7 @@ static Value parse_dotted_pair(Parser *p)
     Value e = parse_expr(p);
     Token t = get_token(p);
     if (t.type != TTYPE_RPAREN)
-        error("expected ')' but got '%s'", token_stringify(t));
+        error_expect("')'", "'%s'", token_stringify(t));
     return e;
 }
 
@@ -473,7 +475,7 @@ static Value parse_list(Parser *p)
     Value car = parse_expr(p), cdr;
     t = get_token(p);
     if (t.type == TTYPE_EOF)
-        error("expected ')' but got '%s'", token_stringify(t));
+        error_expect("')'", "'%s'", token_stringify(t));
     if (t.type == TTYPE_DOT) {
         cdr = parse_dotted_pair(p);
     } else {
@@ -490,9 +492,9 @@ static Value parse_expr(Parser *p)
     case TTYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TTYPE_RPAREN:
-        error("expected expression but got ')'");
+        error_expect("expression", "')'");
     case TTYPE_DOT:
-        error("expected expression but got '.'");
+        error_expect("expression", "'.'");
     case TTYPE_STR:
     case TTYPE_INT:
     case TTYPE_IDENT:
