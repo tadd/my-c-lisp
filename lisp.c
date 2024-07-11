@@ -35,7 +35,7 @@ typedef struct {
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
-const Value Qnil = (uintptr_t) &PAIR_NIL;
+const Value Qnil = (Value) &PAIR_NIL;
 
 inline bool value_is_int(Value v)
 {
