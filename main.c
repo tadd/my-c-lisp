@@ -20,9 +20,12 @@ static FILE *parse_opt(int argc, char *const *argv)
         }
     }
     if (argv[optind]) {
-        in = fopen(argv[1], "r");
+        const char *f = argv[optind];
+        if (in != stdin)
+            error("filename %s given while option '-e' passed", f);
+        in = fopen(f, "r");
         if (in == NULL)
-            error("file %s not found", argv[1]);
+            error("file %s not found", f);
     }
     return in;
 }
