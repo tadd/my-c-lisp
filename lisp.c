@@ -248,9 +248,8 @@ static inline bool is_special_initial(int c)
     case '>': case '?': case '^': case '_': case '~':
         return true;
     default:
-        break;
+        return false;
     }
-    return false;
 }
 
 static inline bool is_initial(int c)
@@ -264,9 +263,8 @@ static inline bool is_special_subsequent(int c)
     case '+': case '-': case '.': case '@':
         return true;
     default:
-        break;
+        return false;
     }
-    return false;
 }
 
 static inline bool is_subsequent(int c)
