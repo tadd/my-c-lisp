@@ -13,38 +13,38 @@ Test(lisp, nil) {
 }
 
 Test(lisp, parse_int) {
-    Value v = parse_expr_from_string("42");
+    Value v = parse_expr_string("42");
     cr_assert(eq(42, value_to_int(v)));
 }
 
 Test(lisp, parse_nil) {
-    Value v = parse_expr_from_string("()");
+    Value v = parse_expr_string("()");
     cr_assert(value_is_nil(v));
 }
 
 Test(lisp, parse_list) {
-    Value v = parse_expr_from_string("(1 2)");
+    Value v = parse_expr_string("(1 2)");
     cr_assert(eq(1, value_to_int(car(v))));
     cr_assert(eq(2, value_to_int(cadr(v))));
     cr_assert(value_is_nil(cddr(v)));
 }
 
 Test(lisp, parse_string) {
-    Value v = parse_expr_from_string("\"abc\"");
+    Value v = parse_expr_string("\"abc\"");
     cr_assert(value_is_string(v));
     cr_assert(streq("abc", value_to_string(v)));
 
-    v = parse_expr_from_string("\"a\\\\b\"");
+    v = parse_expr_string("\"a\\\\b\"");
     cr_assert(value_is_string(v));
     cr_assert(streq("a\\b", value_to_string(v)));
 
-    v = parse_expr_from_string("\"a\\\"b\"");
+    v = parse_expr_string("\"a\\\"b\"");
     cr_assert(value_is_string(v));
     cr_assert(streq("a\"b", value_to_string(v)));
 }
 
 Test(lisp, parse_string_list) {
-    Value v = parse_expr_from_string("(\"abc\" \"def\")");
+    Value v = parse_expr_string("(\"abc\" \"def\")");
     cr_assert(value_is_pair(v));
     cr_assert(not(value_is_nil(v)));
 
@@ -58,24 +58,24 @@ Test(lisp, parse_string_list) {
 }
 
 Test(lisp, cxr) {
-    Value v = parse_expr_from_string("((((42))))");
+    Value v = parse_expr_string("((((42))))");
     Value i = caaaar(v);
     cr_assert(value_is_int(i));
     cr_assert(eq(42, value_to_int(i)));
 }
 
 Test(lisp, parse_ident) {
-    Value v = parse_expr_from_string("a");
+    Value v = parse_expr_string("a");
     cr_assert(value_is_symbol(v));
     cr_assert(streq("a", value_to_string(v)));
 }
 
 Test(lisp, parse_dotty) {
-    Value v = parse_expr_from_string("...");
+    Value v = parse_expr_string("...");
     cr_assert(value_is_symbol(v));
     cr_assert(streq("...", value_to_string(v)));
 
-    Value v2 = parse_expr_from_string("(1 . 2)");
+    Value v2 = parse_expr_string("(1 . 2)");
     cr_assert(value_is_pair(v2));
     cr_assert(eq(int, 1, value_to_int(car(v2))));
     cr_assert(eq(int, 2, value_to_int(cdr(v2))));

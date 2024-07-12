@@ -197,7 +197,7 @@ static Symbol symbol_find(const char *name)
     return (Symbol) symbol_names_length - index; // symbol == reverse index + 1
 }
 
-static Symbol symbol_add(const char *s)
+static Symbol symbol_put(const char *s)
 {
     symbol_names = cons(value_of_string(s), symbol_names);
     return ++symbol_names_length;
@@ -208,7 +208,7 @@ static Symbol intern(const char *s)
     Symbol sym = symbol_find(s);
     if (sym > 0)
         return sym;
-    return symbol_add(s);
+    return symbol_put(s);
 }
 
 static const char *name_nth(Value list, long n)
@@ -592,7 +592,7 @@ Value parse(FILE *in)
     return reverse(v);
 }
 
-Value parse_expr_from_string(const char *in)
+Value parse_expr_string(const char *in)
 {
     FILE *f = fmemopen((char *)in, strlen(in), "r");
     Parser *p = parser_new(f);
