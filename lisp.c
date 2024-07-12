@@ -224,7 +224,7 @@ static const char *name_nth(Value list, long n)
 
 static const char *symbol_get_name(Symbol sym)
 {
-    const char *name = name_nth(symbol_names, (long) sym-1);
+    const char *name = name_nth(symbol_names, (long) symbol_names_length - sym);
     if (name == NULL)
         error("symbol %lu not found", sym);
     return name;
