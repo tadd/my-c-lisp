@@ -175,18 +175,11 @@ static Token get_token_string(Parser *p)
 }
 
 static Value symbol_names = Qnil;
-
-static void symbol_init(void)
-{
-    if (symbol_names == Qnil)  {
-        // car: length
-        symbol_names = cons(value_of_int(0), Qnil);
-    }
-}
+static uintptr_t symbol_names_length = 0;
 
 static int name_index(Value list, const char *name)
 {
-    for (int i = 0; list != Qnil; list = cdr(list), i++) {
+    for (long i = 0; list != Qnil; list = cdr(list), i++) {
         Value v = car(list);
         if (strcmp(STRING(v)->body, name) == 0)
             return i;
@@ -196,29 +189,18 @@ static int name_index(Value list, const char *name)
 
 static Symbol symbol_find(const char *name)
 {
-    Value vlen = car(symbol_names);
-    int len = value_to_int(vlen);
-    if (len == 0)
+    if (symbol_names_length == 0)
         return 0;
-    Value list = cdr(symbol_names);
-    int index = name_index(list, name);
+    int index = name_index(symbol_names, name);
     if (index < 0)
         return (Symbol) 0;
-    return (Symbol) len - index; // symbol == reverse index + 1
+    return (Symbol) symbol_names_length - index; // symbol == reverse index + 1
 }
 
 static Symbol symbol_add(const char *s)
 {
-    Pair *raw = PAIR(symbol_names);
-    Value vlen = raw->car;
-    int len = value_to_int(vlen);
-    Value list = raw->cdr;
-
-    raw->car = value_of_int(++len);
-    raw->cdr = cons(value_of_string(s), list);
-    symbol_names = (Value) raw;
-
-    return len;
+    symbol_names = cons(value_of_string(s), symbol_names);
+    return ++symbol_names_length;
 }
 
 static Symbol intern(const char *s)
@@ -231,7 +213,7 @@ static Symbol intern(const char *s)
 
 static const char *name_nth(Value list, long n)
 {
-    for (int i = 0; i < n; i++) {
+    for (long i = 0; i < n; i++) {
         list = cdr(list);
         if (list == Qnil)
             return NULL;
@@ -242,8 +224,7 @@ static const char *name_nth(Value list, long n)
 
 static const char *symbol_get_name(Symbol sym)
 {
-    Value list = cdr(symbol_names);
-    const char *name = name_nth(list, (long) sym-1);
+    const char *name = name_nth(symbol_names, (long) sym-1);
     if (name == NULL)
         error("symbol %lu not found", sym);
     return name;
@@ -510,7 +491,6 @@ static Parser *parser_new(FILE *in)
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
-    symbol_init();
     return p;
 }
 
