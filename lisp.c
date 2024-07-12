@@ -240,15 +240,6 @@ static inline bool is_peculiar_single(int c)
     return c == '+' || c == '-';
 }
 
-static Token get_token_ident_dots(Parser *p)
-{
-    int c2 = fgetc(p->in);
-    int c3 = fgetc(p->in);
-    if (!(c2 == '.' && c3 == '.'))
-        error_expect("'...'", "'.%c%c'", c2, c3);
-    return TOK_IDENT("...");
-}
-
 static inline bool is_special_initial(int c)
 {
     switch (c) {
@@ -283,13 +274,21 @@ static inline bool is_subsequent(int c)
     return is_initial(c) || isdigit(c) || is_special_subsequent(c);
 }
 
-static Token get_token_ident(Parser *p)
+static Token get_token_dotty(Parser *p)
 {
     int c = fgetc(p->in);
-    if (c == '.')
-        return get_token_ident_dots(p);
+    if (c == '.' && (c = fgetc(p->in)) == '.') {
+        return TOK_IDENT("...");
+    }
+    ungetc(c, p->in);
+    return TOK_DOT;
+}
 
+static Token get_token_ident(Parser *p)
+{
     char buf[BUFSIZ], *s = buf, *end = s + sizeof(buf);
+    int c = fgetc(p->in);
+
     if (!is_initial(c))
         error_expect("identifier", "'%c' as initial", c);
     *s++ = c;
@@ -325,7 +324,7 @@ static Token get_token(Parser *p)
     case ')':
         return TOK_RPAREN;
     case '.':
-        return TOK_DOT;
+        return get_token_dotty(p);
     case '"':
         return get_token_string(p);
     case EOF:
@@ -341,7 +340,7 @@ static Token get_token(Parser *p)
         char ident[] = { c, '\0' };
         return TOK_IDENT(ident);
     }
-    if (isalpha(c) || is_special_initial(c) || c == '.') {
+    if (isalpha(c) || is_special_initial(c)) {
         ungetc(c, p->in);
         return get_token_ident(p);
     }
