@@ -84,3 +84,11 @@ Test(lisp, parse_dotty) {
     cr_assert(eq(int, 1, value_to_int(car(v2))));
     cr_assert(eq(int, 2, value_to_int(cdr(v2))));
 }
+
+Test(lisp, parse_peculiar) {
+    Value v = parse_expr_string("+42");
+    cr_assert(value_is_int(v));
+
+    v = parse_expr_string("+");
+    cr_assert(value_is_symbol(v));
+}

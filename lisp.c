@@ -145,13 +145,13 @@ typedef struct {
     Token prev_token;
 } Parser;
 
-static Token get_token_int(Parser *p)
+static Token get_token_int(Parser *p, int sign)
 {
     int64_t i;
     int n = fscanf(p->in, "%ld", &i);
     if (n != 1)
         error_expect("integer", "invalid string");
-    return TOK_INT(i);
+    return TOK_INT(sign * i);
 }
 
 static Token get_token_string(Parser *p)
@@ -235,11 +235,6 @@ static const char *unintern(Symbol sym)
     return symbol_get_name(sym);
 }
 
-static inline bool is_peculiar_single(int c)
-{
-    return c == '+' || c == '-';
-}
-
 static inline bool is_special_initial(int c)
 {
     switch (c) {
@@ -303,6 +298,19 @@ static Token get_token_ident(Parser *p)
     return TOK_IDENT(buf);
 }
 
+static Token get_token_after_sign(Parser *p, int csign)
+{
+    int c = fgetc(p->in);
+    int dig = isdigit(c);
+    ungetc(c, p->in);
+    if (dig) {
+        int sign = csign == '-' ? -1 : 1;
+        return get_token_int(p, sign);
+    }
+    char ident[] = { csign, '\0' };
+    return TOK_IDENT(ident);
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TTYPE_EOF)  {
@@ -330,13 +338,11 @@ static Token get_token(Parser *p)
     default:
         break;
     }
-    if (c == '-' || c == '+' || isdigit(c)) {
+    if (c == '-' || c == '+')
+        return get_token_after_sign(p, c);
+    if (isdigit(c)) {
         ungetc(c, p->in);
-        return get_token_int(p);
-    }
-    if (is_peculiar_single(c)) {
-        char ident[] = { c, '\0' };
-        return TOK_IDENT(ident);
+        return get_token_int(p, 1);
     }
     if (isalpha(c) || is_special_initial(c)) {
         ungetc(c, p->in);
