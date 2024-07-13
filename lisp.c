@@ -30,8 +30,6 @@ typedef struct {
     const char *body;
 } String;
 
-#define ANYARGS /*empty*/
-typedef Value (*CFunc)(ANYARGS);
 typedef struct {
     ValueTag tag;
     CFunc cfunc;
@@ -92,7 +90,7 @@ inline bool value_is_string(Value v)
     return tagged_value_is(v, TAG_STR);
 }
 
-static bool value_is_func(Value v)
+bool value_is_func(Value v)
 {
     return tagged_value_is(v, TAG_FUNC);
 }
@@ -177,7 +175,7 @@ inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-static Value value_of_func(CFunc cfunc, long arity)
+Value value_of_func(CFunc cfunc, long arity)
 {
     Function *f = tagged_new(sizeof(Function), TAG_FUNC);
     f->cfunc = cfunc;

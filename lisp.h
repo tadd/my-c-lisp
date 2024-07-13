@@ -8,39 +8,41 @@
 #include "utils.h"
 
 typedef struct Pair Pair;
-// 0b..000 pointer
-// 0b....1 integer
-// 0b...10 id
+// 0b..000 Pointer
+// 0b....1 Integer
+// 0b...10 Symbol
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
+#define ANYARGS /*empty*/
+typedef Value (*CFunc)(ANYARGS);
 
 extern const Value Qnil;
 
 bool value_is_int(Value v);
 bool value_is_symbol(Value v);
-bool value_is_atom(Value v);
 bool value_is_string(Value v);
+bool value_is_func(Value v);
+bool value_is_atom(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);
 
-Value value_of_int(int64_t i);
-Value value_of_string(const char *s);
-Value value_of_symbol(const char *s);
-
 int64_t value_to_int(Value v);
-const char *value_to_string(Value v);
 Symbol value_to_symbol(Value v);
+const char *value_to_string(Value v);
+
+Value value_of_int(int64_t i);
+Value value_of_symbol(const char *s);
+Value value_of_string(const char *s);
+Value value_of_func(CFunc cfunc, long arity);
 
 Value cons(Value car, Value cdr);
 Value car(Value v);
 Value cdr(Value v);
-// 2
-Value caar(Value v);
+Value caar(Value v); // 2
 Value cadr(Value v);
 Value cdar(Value v);
 Value cddr(Value v);
-// 3
-Value caaar(Value v);
+Value caaar(Value v); // 3
 Value caadr(Value v);
 Value cadar(Value v);
 Value caddr(Value v);
@@ -48,8 +50,7 @@ Value cdaar(Value v);
 Value cdadr(Value v);
 Value cddar(Value v);
 Value cdddr(Value v);
-// 4
-Value caaaar(Value v);
+Value caaaar(Value v); // 4
 Value caaadr(Value v);
 Value caadar(Value v);
 Value caaddr(Value v);
