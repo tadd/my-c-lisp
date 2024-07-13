@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 {
     FILE *in = parse_opt(argc, argv);
     print(load(in));
+    printf("\n");
     fclose(in);
     return 0;
 }

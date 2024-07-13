@@ -92,3 +92,21 @@ Test(lisp, parse_peculiar) {
     v = parse_expr_string("+");
     cr_assert(value_is_symbol(v));
 }
+
+Test(lisp, eval_arithmetic_literal) {
+    Value v = eval_string("(+ 42 21)");
+    cr_assert(value_is_int(v));
+    cr_assert(eq(int, 63, value_to_int(v)));
+
+    v = eval_string("(- 42 21)");
+    cr_assert(value_is_int(v));
+    cr_assert(eq(int, 21, value_to_int(v)));
+
+    v = eval_string("(* 4 2)");
+    cr_assert(value_is_int(v));
+    cr_assert(eq(int, 8, value_to_int(v)));
+
+    v = eval_string("(/ 4 2)");
+    cr_assert(value_is_int(v));
+    cr_assert(eq(int, 2, value_to_int(v)));
+}

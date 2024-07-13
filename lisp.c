@@ -33,6 +33,22 @@ typedef struct {
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
 
+typedef enum {
+// immediate
+    TYPE_INT,
+    TYPE_SYMBOL,
+// boxed (tagged)
+    TYPE_PAIR,
+    TYPE_STR,
+} Type;
+
+static const char *TYPE_NAMES[] = {
+    [TYPE_INT] = "integer",
+    [TYPE_SYMBOL] = "symbol",
+    [TYPE_PAIR] = "pair",
+    [TYPE_STR] = "string",
+};
+
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 const Value Qnil = (Value) &PAIR_NIL;
@@ -93,6 +109,20 @@ inline Value value_of_string(const char *s)
 inline Symbol value_to_symbol(Value v)
 {
     return (Symbol) (v >> 2U);
+}
+
+static inline Type value_typeof(Value v)
+{
+    if (is_immediate(v))
+        return value_is_int(v) ? TYPE_INT : TYPE_SYMBOL;
+    switch (VALUE_TAG(v)) {
+    case TAG_STR:
+        return TYPE_STR;
+    case TAG_PAIR:
+        return TYPE_PAIR;
+    default:
+        UNREACHABLE();
+    }
 }
 
 static Symbol intern(const char *s);
@@ -497,16 +527,172 @@ static Parser *parser_new(FILE *in)
     return p;
 }
 
+static Symbol SYM_PLUS, SYM_MINUS, SYM_STAR, SYM_SLASH;
+
+static bool eval_init(void)
+{
+    SYM_PLUS = intern("+");
+    SYM_MINUS = intern("-");
+    SYM_STAR = intern("*");
+    SYM_SLASH = intern("/");
+    return true;
+}
+
+#define ANYARGS /*empty*/
+typedef Value (*Func)(ANYARGS);
+
+static long length(Value list)
+{
+    long l = 0;
+    while (list != Qnil) {
+        l++;
+        list = cdr(list);
+    }
+    return l;
+}
+
+Value funcall(Func f, Value vargs, long n)
+{
+    static const long ARG_MAX = 7;
+
+    if (n > ARG_MAX)
+        error("arguments too long: max is %ld but got %ld", ARG_MAX, n);
+    long l = length(vargs);
+    if (l != n)
+        error("wrong number of arguments: expected %ld but got %ld", n, l);
+
+    Value a[ARG_MAX];
+    Value v = vargs;
+    for (long i = 0; i < n; i++) {
+        a[i] = car(v);
+        v = cdr(v);
+    }
+    switch (n) {
+    case 0:
+        return (*f)();
+    case 1:
+        return (*f)(a[0]);
+    case 2:
+        return (*f)(a[0], a[1]);
+    case 3:
+        return (*f)(a[0], a[1], a[2]);
+    case 4:
+        return (*f)(a[0], a[1], a[2], a[3]);
+    case 5:
+        return (*f)(a[0], a[1], a[2], a[3], a[4]);
+    case 6:
+        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5]);
+    case 7:
+        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+    default:
+        UNREACHABLE();
+    }
+}
+
+static void expect_type(Type expected, Value v, const char *header)
+{
+    Type t = value_typeof(v);
+    if (t == expected)
+        return;
+    const char *delim;
+    if (header == NULL)
+        header = delim = "";
+    else
+        delim = ": ";
+    error("%s%stype error: expected %s but got %s",
+          header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
+}
+
+#define expect_type_pair(t, x, y, name) \
+    expect_type(t, x, name); \
+    expect_type(t, y, name);
+
+Value builtin_add(Value x, Value y)
+{
+    expect_type_pair(TYPE_INT, x, y, "+");
+
+    intptr_t ix = value_to_int(x);
+    intptr_t iy = value_to_int(y);
+    return value_of_int(ix + iy);
+}
+
+Value builtin_sub(Value x, Value y)
+{
+    expect_type_pair(TYPE_INT, x, y, "-");
+
+    intptr_t ix = value_to_int(x);
+    intptr_t iy = value_to_int(y);
+    return value_of_int(ix - iy);
+}
+
+Value builtin_mul(Value x, Value y)
+{
+    expect_type_pair(TYPE_INT, x, y, "*");
+
+    intptr_t ix = value_to_int(x);
+    intptr_t iy = value_to_int(y);
+    return value_of_int(ix * iy);
+}
+
+Value builtin_div(Value x, Value y)
+{
+    expect_type_pair(TYPE_INT, x, y, "/");
+
+    intptr_t ix = value_to_int(x);
+    intptr_t iy = value_to_int(y);
+    return value_of_int(ix / iy);
+}
+
+static Func lookup_func(Symbol name, long *parity)
+{
+    Func f;
+    if (name == SYM_PLUS)
+        f = builtin_add;
+    else if (name == SYM_MINUS)
+        f = builtin_sub;
+    else if (name == SYM_STAR)
+        f = builtin_mul;
+    else if (name == SYM_SLASH)
+        f = builtin_div;
+    else
+        error("unknown function name '%s'", unintern(name));
+    *parity = 2;
+    return f;
+}
+
+static Value eval_func(Value list)
+{
+    Value name = car(list);
+    if (!value_is_symbol(name))
+        error_expect("symbol (applicable)", "%s", stringify(name));
+
+    Symbol sym = value_to_symbol(name);
+    long arity;
+    Func f = lookup_func(sym, &arity);
+    return funcall(f, cdr(list), arity);
+}
+
+Value eval_string(const char *s)
+{
+    return eval(parse_expr_string(s));
+}
+
 Value eval(Value v)
 {
-    return v; // dummy
+    static bool initialized = false;
+    if (!initialized)
+        initialized = eval_init();
+
+    if (value_is_atom(v)) // int, symbol, string
+        return v;
+    return eval_func(v);
 }
 
 Value load(FILE *in)
 {
-    Value last;
+    Value last = Qnil;
     for (Value v = parse(in); !value_is_nil(v); v = cdr(v))
-        eval(last = car(v));
+        last = eval(car(v));
     return last;
 }
 
@@ -612,6 +798,14 @@ Value parse_expr_string(const char *in)
     Parser *p = parser_new(f);
     Value v = parse_expr(p);
     free(p);
+    fclose(f);
+    return v;
+}
+
+Value parse_string(const char *in)
+{
+    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    Value v = parse(f);
     fclose(f);
     return v;
 }

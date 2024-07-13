@@ -70,7 +70,10 @@ void print(Value v);
 Value parse(FILE *in);
 Value load(FILE *in);
 Value eval(Value v);
+Value eval_string(const char *s);
+
 ATTR_MALLOC char *stringify(Value v);
+Value parse_string(const char *in);
 Value parse_expr_string(const char *in);
 
 #endif
