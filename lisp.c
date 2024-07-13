@@ -74,12 +74,12 @@ inline bool value_is_nil(Value v)
 
 inline int64_t value_to_int(Value v)
 {
-    return (int64_t)v >> 1U;
+    return (int64_t) v >> 1U;
 }
 
 inline Value value_of_int(int64_t i)
 {
-    return (((uintptr_t) i) << 1U) | 1U;
+    return (Value) i << 1U | 1U;
 }
 
 inline Value value_of_string(const char *s)
