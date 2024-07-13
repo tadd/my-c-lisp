@@ -118,6 +118,7 @@ inline Symbol value_to_symbol(Value v)
 #define ANYARGS /*empty*/
 typedef Value (*CFunc)(ANYARGS);
 typedef struct {
+    ValueTag tag;
     CFunc cfunc;
     long arity;
 } Function;
@@ -125,9 +126,15 @@ typedef struct {
 static Value value_of_func(CFunc cfunc, long arity)
 {
     Function *f = xmalloc(sizeof(Function));
+    f->tag = TAG_FUNC;
     f->cfunc = cfunc;
     f->arity = arity;
     return (Value) f;
+}
+
+static bool value_is_func(Value v)
+{
+    return !is_immediate(v) && VALUE_TAG(v) == TAG_FUNC;
 }
 
 static inline Type value_typeof(Value v)
@@ -751,6 +758,8 @@ static void print_atom(FILE *f, Value v)
         fprintf(f, "\"%s\"", value_to_string(v));
     else if (value_is_symbol(v))
         fprintf(f, "'%s", value_to_string(v));
+    else if (value_is_func(v))
+        fprintf(f, "<function>");
 }
 
 static void fprint(FILE* f, Value v);
