@@ -17,6 +17,7 @@
 typedef enum {
     TAG_PAIR,
     TAG_STR,
+    TAG_FUNC,
 } ValueTag;
 
 struct Pair {
@@ -32,6 +33,7 @@ typedef struct {
 #define VALUE_TAG(v) (*(ValueTag*)(v))
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
+#define FUNCTION(v) ((Function *) v)
 
 typedef enum {
 // immediate
@@ -40,6 +42,7 @@ typedef enum {
 // boxed (tagged)
     TYPE_PAIR,
     TYPE_STR,
+    TYPE_FUNC,
 } Type;
 
 static const char *TYPE_NAMES[] = {
@@ -47,6 +50,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_SYMBOL] = "symbol",
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "string",
+    [TYPE_FUNC] = "function",
 };
 
 // singletons
@@ -111,6 +115,21 @@ inline Symbol value_to_symbol(Value v)
     return (Symbol) (v >> 2U);
 }
 
+#define ANYARGS /*empty*/
+typedef Value (*CFunc)(ANYARGS);
+typedef struct {
+    CFunc cfunc;
+    long arity;
+} Function;
+
+static Value value_of_func(CFunc cfunc, long arity)
+{
+    Function *f = xmalloc(sizeof(Function));
+    f->cfunc = cfunc;
+    f->arity = arity;
+    return (Value) f;
+}
+
 static inline Type value_typeof(Value v)
 {
     if (is_immediate(v))
@@ -120,6 +139,8 @@ static inline Type value_typeof(Value v)
         return TYPE_STR;
     case TAG_PAIR:
         return TYPE_PAIR;
+    case TAG_FUNC:
+        return TYPE_FUNC;
     default:
         UNREACHABLE();
     }
@@ -520,9 +541,6 @@ static bool eval_init(void)
     return true;
 }
 
-#define ANYARGS /*empty*/
-typedef Value (*Func)(ANYARGS);
-
 static long length(Value list)
 {
     long l = 0;
@@ -533,10 +551,11 @@ static long length(Value list)
     return l;
 }
 
-Value funcall(Func f, Value vargs, long n)
+Value funcall(Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
 
+    long n = FUNCTION(func)->arity;
     if (n > ARG_MAX)
         error("arguments too long: max is %ld but got %ld", ARG_MAX, n);
     long l = length(vargs);
@@ -549,6 +568,7 @@ Value funcall(Func f, Value vargs, long n)
         a[i] = car(v);
         v = cdr(v);
     }
+    CFunc f = FUNCTION(func)->cfunc;
     switch (n) {
     case 0:
         return (*f)();
@@ -625,20 +645,19 @@ static Value builtin_div(Value x, Value y)
     return value_of_int(ix / iy);
 }
 
-static Func lookup_func(Symbol name, long *parity)
+static Value lookup_func(Symbol name)
 {
-    Func f;
+    Value f;
     if (name == SYM_PLUS)
-        f = builtin_add;
+        f = value_of_func(builtin_add, 2);
     else if (name == SYM_MINUS)
-        f = builtin_sub;
+        f = value_of_func(builtin_sub, 2);
     else if (name == SYM_STAR)
-        f = builtin_mul;
+        f = value_of_func(builtin_mul, 2);
     else if (name == SYM_SLASH)
-        f = builtin_div;
+        f = value_of_func(builtin_div, 2);
     else
         error("unknown function name '%s'", unintern(name));
-    *parity = 2;
     return f;
 }
 
@@ -668,10 +687,9 @@ static Value eval_func(Value list)
         unexpected("symbol (applicable)", "%s", stringify(name));
 
     Symbol sym = value_to_symbol(name);
-    long arity;
-    Func f = lookup_func(sym, &arity);
+    Value f = lookup_func(sym);
     Value args = map(eval, cdr(list));
-    return funcall(f, args, arity);
+    return funcall(f, args);
 }
 
 Value eval_string(const char *s)
