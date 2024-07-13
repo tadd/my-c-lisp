@@ -502,6 +502,14 @@ Value eval(Value v)
     return v; // dummy
 }
 
+Value load(FILE *in)
+{
+    Value last;
+    for (Value v = parse(in); !value_is_nil(v); v = cdr(v))
+        eval(last = car(v));
+    return last;
+}
+
 static void print_atom(FILE *f, Value v)
 {
     if (value_is_int(v))

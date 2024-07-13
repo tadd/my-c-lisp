@@ -33,12 +33,7 @@ static FILE *parse_opt(int argc, char *const *argv)
 int main(int argc, char **argv)
 {
     FILE *in = parse_opt(argc, argv);
-    Value v = parse(in);
-    while (!value_is_nil(v)) {
-        print(car(v));
-        printf("\n");
-        v = cdr(v);
-    }
+    print(load(in));
     fclose(in);
     return 0;
 }
