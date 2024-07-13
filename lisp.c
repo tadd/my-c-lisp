@@ -638,7 +638,7 @@ typedef Value (*FuncMapper)(Value);
 
 static Value map(FuncMapper f, Value l)
 {
-    Value mapped, next, last = Qnil;
+    Value mapped = Qnil, last = Qnil, next;
     for (; l != Qnil; l = cdr(l), last = next) {
         next = cons(f(car(l)), Qnil);
         if (last == Qnil)
