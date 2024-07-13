@@ -607,7 +607,7 @@ static void expect_type(Type expected, Value v, const char *header)
     expect_type(t, x, name); \
     expect_type(t, y, name);
 
-Value builtin_add(Value x, Value y)
+static Value builtin_add(Value x, Value y)
 {
     expect_type_pair(TYPE_INT, x, y, "+");
 
@@ -616,7 +616,7 @@ Value builtin_add(Value x, Value y)
     return value_of_int(ix + iy);
 }
 
-Value builtin_sub(Value x, Value y)
+static Value builtin_sub(Value x, Value y)
 {
     expect_type_pair(TYPE_INT, x, y, "-");
 
@@ -625,7 +625,7 @@ Value builtin_sub(Value x, Value y)
     return value_of_int(ix - iy);
 }
 
-Value builtin_mul(Value x, Value y)
+static Value builtin_mul(Value x, Value y)
 {
     expect_type_pair(TYPE_INT, x, y, "*");
 
@@ -634,7 +634,7 @@ Value builtin_mul(Value x, Value y)
     return value_of_int(ix * iy);
 }
 
-Value builtin_div(Value x, Value y)
+static Value builtin_div(Value x, Value y)
 {
     expect_type_pair(TYPE_INT, x, y, "/");
 
