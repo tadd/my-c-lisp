@@ -530,17 +530,6 @@ static Parser *parser_new(FILE *in)
     return p;
 }
 
-static Symbol SYM_PLUS, SYM_MINUS, SYM_STAR, SYM_SLASH;
-
-static bool eval_init(void)
-{
-    SYM_PLUS = intern("+");
-    SYM_MINUS = intern("-");
-    SYM_STAR = intern("*");
-    SYM_SLASH = intern("/");
-    return true;
-}
-
 static long length(Value list)
 {
     long l = 0;
@@ -645,22 +634,6 @@ static Value builtin_div(Value x, Value y)
     return value_of_int(ix / iy);
 }
 
-static Value lookup_func(Symbol name)
-{
-    Value f;
-    if (name == SYM_PLUS)
-        f = value_of_func(builtin_add, 2);
-    else if (name == SYM_MINUS)
-        f = value_of_func(builtin_sub, 2);
-    else if (name == SYM_STAR)
-        f = value_of_func(builtin_mul, 2);
-    else if (name == SYM_SLASH)
-        f = value_of_func(builtin_div, 2);
-    else
-        error("unknown function name '%s'", unintern(name));
-    return f;
-}
-
 typedef Value (*FuncMapper)(Value);
 
 static Value map(FuncMapper f, Value l)
@@ -680,14 +653,63 @@ static Value map(FuncMapper f, Value l)
     return mapped;
 }
 
+static Value environment = Qnil; // alist of ('ident . <value>)
+
+// keys may duplicated
+static Value alist_prepend(Value *l, Value key, Value val)
+{
+    Value entry = cons(key, val);
+    Value pair = cons(entry, *l);
+    *l = pair;
+    return *l;
+}
+
+static Value put_env(const char *name, Value val)
+{
+    alist_prepend(&environment, value_of_symbol(name), val);
+    return val;
+}
+
+static Value define_function(const char *name, CFunc cfunc, long arity)
+{
+    return put_env(name, value_of_func(cfunc, arity));
+}
+
+static Value alist_find(Value l, Value vkey)
+{
+    if (!value_is_symbol(vkey))
+        return Qnil;
+    Symbol key = value_to_symbol(vkey);
+    Value p;
+    for (p = l; p != Qnil; p = cdr(p)) {
+        Value entry = car(p);
+        if (!value_is_pair(entry))
+            continue;
+        Value target = car(entry);
+        if (!value_is_symbol(target))
+            continue;
+        Symbol sym = value_to_symbol(target);
+        if (sym == key)
+            return cdr(entry);
+   }
+    return Qnil;
+}
+
+static Value lookup_func(Value name)
+{
+    Value f = alist_find(environment, name);
+    if (f == Qnil)
+        error("unknown function name '%s'", unintern(name));
+    return f;
+}
+
 static Value eval_func(Value list)
 {
     Value name = car(list);
     if (!value_is_symbol(name))
         unexpected("symbol (applicable)", "%s", stringify(name));
 
-    Symbol sym = value_to_symbol(name);
-    Value f = lookup_func(sym);
+    Value f = lookup_func(name);
     Value args = map(eval, cdr(list));
     return funcall(f, args);
 }
@@ -695,6 +717,15 @@ static Value eval_func(Value list)
 Value eval_string(const char *s)
 {
     return eval(parse_expr_string(s));
+}
+
+static bool eval_init(void)
+{
+    define_function("+", builtin_add, 2);
+    define_function("-", builtin_sub, 2);
+    define_function("*", builtin_mul, 2);
+    define_function("/", builtin_div, 2);
+    return true;
 }
 
 Value eval(Value v)
