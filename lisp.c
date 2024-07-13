@@ -30,6 +30,14 @@ typedef struct {
     const char *body;
 } String;
 
+#define ANYARGS /*empty*/
+typedef Value (*CFunc)(ANYARGS);
+typedef struct {
+    ValueTag tag;
+    CFunc cfunc;
+    long arity;
+} Function;
+
 #define VALUE_TAG(v) (*(ValueTag*)(v))
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
@@ -57,9 +65,16 @@ static const char *TYPE_NAMES[] = {
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 const Value Qnil = (Value) &PAIR_NIL;
 
+// value_is_*: type checks
+
 inline bool value_is_int(Value v)
 {
     return !!(v & 1U);
+}
+
+inline bool value_is_symbol(Value v)
+{
+    return (v & 0b11U) == 0b10U;
 }
 
 static inline bool is_immediate(Value v)
@@ -72,9 +87,9 @@ inline bool value_is_string(Value v)
     return !is_immediate(v) && VALUE_TAG(v) == TAG_STR;
 }
 
-inline bool value_is_symbol(Value v)
+static bool value_is_func(Value v)
 {
-    return (v & 0b11U) == 0b10U;
+    return !is_immediate(v) && VALUE_TAG(v) == TAG_FUNC;
 }
 
 inline bool value_is_pair(Value v)
@@ -90,51 +105,6 @@ inline bool value_is_atom(Value v)
 inline bool value_is_nil(Value v)
 {
     return v == Qnil;
-}
-
-inline int64_t value_to_int(Value v)
-{
-    return (int64_t) v >> 1U;
-}
-
-inline Value value_of_int(int64_t i)
-{
-    return (Value) i << 1U | 1U;
-}
-
-inline Value value_of_string(const char *s)
-{
-    String *str = xmalloc(sizeof(String));
-    str->tag = TAG_STR;
-    str->body = xstrdup(s);
-    return (Value) str;
-}
-
-inline Symbol value_to_symbol(Value v)
-{
-    return (Symbol) (v >> 2U);
-}
-
-#define ANYARGS /*empty*/
-typedef Value (*CFunc)(ANYARGS);
-typedef struct {
-    ValueTag tag;
-    CFunc cfunc;
-    long arity;
-} Function;
-
-static Value value_of_func(CFunc cfunc, long arity)
-{
-    Function *f = xmalloc(sizeof(Function));
-    f->tag = TAG_FUNC;
-    f->cfunc = cfunc;
-    f->arity = arity;
-    return (Value) f;
-}
-
-static bool value_is_func(Value v)
-{
-    return !is_immediate(v) && VALUE_TAG(v) == TAG_FUNC;
 }
 
 static inline Type value_typeof(Value v)
@@ -153,6 +123,18 @@ static inline Type value_typeof(Value v)
     }
 }
 
+// value_to_*: convert internal data to plain C
+
+inline int64_t value_to_int(Value v)
+{
+    return (int64_t) v >> 1U;
+}
+
+inline Symbol value_to_symbol(Value v)
+{
+    return (Symbol) (v >> 2U);
+}
+
 static Symbol intern(const char *s);
 static const char *unintern(Symbol sym);
 
@@ -163,10 +145,34 @@ inline const char *value_to_string(Value v)
     return STRING(v)->body;
 }
 
+// value_of_*: convert plain C data to internal
+
+inline Value value_of_int(int64_t i)
+{
+    return (Value) i << 1U | 1U;
+}
+
 inline Value value_of_symbol(const char *s)
 {
     Symbol sym = intern(s);
     return (Value) (sym << 2U | 0b10U);
+}
+
+inline Value value_of_string(const char *s)
+{
+    String *str = xmalloc(sizeof(String));
+    str->tag = TAG_STR;
+    str->body = xstrdup(s);
+    return (Value) str;
+}
+
+static Value value_of_func(CFunc cfunc, long arity)
+{
+    Function *f = xmalloc(sizeof(Function));
+    f->tag = TAG_FUNC;
+    f->cfunc = cfunc;
+    f->arity = arity;
+    return (Value) f;
 }
 
 typedef enum {
@@ -183,7 +189,6 @@ typedef struct {
     TokenType type;
     Value value;
 } Token;
-
 
 #define TOKEN(t) { .type = TTYPE_ ## t }
 // singletons
