@@ -699,17 +699,6 @@ static Value lookup_func(Value name)
     return f;
 }
 
-static Value eval_func(Value list)
-{
-    Value name = car(list);
-    if (!value_is_symbol(name))
-        unexpected("symbol (applicable)", "%s", stringify(name));
-
-    Value f = lookup_func(name);
-    Value args = map(eval, cdr(list));
-    return funcall(f, args);
-}
-
 Value eval_string(const char *s)
 {
     return eval(parse_expr_string(s));
@@ -722,6 +711,17 @@ static bool eval_init(void)
     define_function("*", builtin_mul, 2);
     define_function("/", builtin_div, 2);
     return true;
+}
+
+static Value eval_func(Value list)
+{
+    Value name = car(list);
+    if (!value_is_symbol(name))
+        unexpected("symbol (applicable)", "%s", stringify(name));
+
+    Value f = lookup_func(name);
+    Value args = map(eval, cdr(list));
+    return funcall(f, args);
 }
 
 Value eval(Value v)
