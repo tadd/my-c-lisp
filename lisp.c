@@ -660,6 +660,25 @@ static Func lookup_func(Symbol name, long *parity)
     return f;
 }
 
+typedef Value (*FuncMapper)(Value);
+
+static Value map(FuncMapper f, Value l)
+{
+    if (l == Qnil)
+        return Qnil;
+    Value mapped = cons(f(car(l)), Qnil);
+    Value last = mapped;
+    for (;;) {
+        l = cdr(l);
+        if (l == Qnil)
+            break;
+        Value next = cons(f(car(l)), Qnil);
+        PAIR(last)->cdr = next;
+        last = next;
+    }
+    return mapped;
+}
+
 static Value eval_func(Value list)
 {
     Value name = car(list);
@@ -669,7 +688,8 @@ static Value eval_func(Value list)
     Symbol sym = value_to_symbol(name);
     long arity;
     Func f = lookup_func(sym, &arity);
-    return funcall(f, cdr(list), arity);
+    Value args = map(eval, cdr(list));
+    return funcall(f, args, arity);
 }
 
 Value eval_string(const char *s)
