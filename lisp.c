@@ -82,19 +82,24 @@ static inline bool is_immediate(Value v)
     return !!(v & 0b111U); // expects 0b...000 for pointers
 }
 
+static inline bool tagged_value_is(Value v, ValueTag expected)
+{
+    return !is_immediate(v) && VALUE_TAG(v) == expected;
+}
+
 inline bool value_is_string(Value v)
 {
-    return !is_immediate(v) && VALUE_TAG(v) == TAG_STR;
+    return tagged_value_is(v, TAG_STR);
 }
 
 static bool value_is_func(Value v)
 {
-    return !is_immediate(v) && VALUE_TAG(v) == TAG_FUNC;
+    return tagged_value_is(v, TAG_FUNC);
 }
 
 inline bool value_is_pair(Value v)
 {
-    return !is_immediate(v) && VALUE_TAG(v) == TAG_PAIR;
+    return tagged_value_is(v, TAG_PAIR);
 }
 
 inline bool value_is_atom(Value v)
@@ -123,7 +128,7 @@ static inline Type value_typeof(Value v)
     }
 }
 
-// value_to_*: convert internal data to plain C
+// value_to_*: convert internal data to external plain C
 
 inline int64_t value_to_int(Value v)
 {
@@ -145,7 +150,7 @@ inline const char *value_to_string(Value v)
     return STRING(v)->body;
 }
 
-// value_of_*: convert plain C data to internal
+// value_of_*: convert external plain C data to internal
 
 inline Value value_of_int(int64_t i)
 {
@@ -158,21 +163,36 @@ inline Value value_of_symbol(const char *s)
     return (Value) (sym << 2U | 0b10U);
 }
 
+static inline void *tagged_new(size_t size, ValueTag t)
+{
+    void *p = xmalloc(size);
+    VALUE_TAG(p) = t;
+    return p;
+}
+
 inline Value value_of_string(const char *s)
 {
-    String *str = xmalloc(sizeof(String));
-    str->tag = TAG_STR;
+    String *str = tagged_new(sizeof(String), TAG_STR);
     str->body = xstrdup(s);
     return (Value) str;
 }
 
 static Value value_of_func(CFunc cfunc, long arity)
 {
-    Function *f = xmalloc(sizeof(Function));
-    f->tag = TAG_FUNC;
+    Function *f = tagged_new(sizeof(Function), TAG_FUNC);
     f->cfunc = cfunc;
     f->arity = arity;
     return (Value) f;
+}
+
+// `cons` is well-known name than "value_to_pair"
+Value cons(Value car, Value cdr)
+{
+    Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
+    p->tag = TAG_PAIR;
+    p->car = car;
+    p->cdr = cdr;
+    return (Value) p;
 }
 
 typedef enum {
@@ -404,15 +424,6 @@ static void unget_token(Parser *p, Token t)
 static inline bool got_eof(Parser *p)
 {
     return feof(p->in);
-}
-
-Value cons(Value car, Value cdr)
-{
-    Pair *c = xmalloc(sizeof(Pair));
-    c->tag = TAG_PAIR;
-    c->car = car;
-    c->cdr = cdr;
-    return (Value) c;
 }
 
 Value car(Value v)
