@@ -205,40 +205,27 @@ static Token get_token_string(Parser *p)
 }
 
 static Value symbol_names = Qnil;
-static uintptr_t symbol_names_length = 0;
 
-static int name_index(Value list, const char *name)
+static Symbol intern(const char *name)
 {
-    for (long i = 0; list != Qnil; list = cdr(list), i++) {
-        Value v = car(list);
+    long i;
+    Value l = symbol_names;
+    Value last = Qnil;
+    // find
+    for (i = 0; l != Qnil; l = cdr(l), i++) {
+        Value v = car(l);
         if (strcmp(STRING(v)->body, name) == 0)
             return i;
+        last = l;
     }
-    return -1;
-}
-
-static Symbol symbol_find(const char *name)
-{
-    if (symbol_names_length == 0)
-        return 0;
-    int index = name_index(symbol_names, name);
-    if (index < 0)
-        return (Symbol) 0;
-    return (Symbol) symbol_names_length - index; // symbol == reverse index + 1
-}
-
-static Symbol symbol_put(const char *s)
-{
-    symbol_names = cons(value_of_string(s), symbol_names);
-    return ++symbol_names_length;
-}
-
-static Symbol intern(const char *s)
-{
-    Symbol sym = symbol_find(s);
-    if (sym > 0)
-        return sym;
-    return symbol_put(s);
+    // or put at `i`
+    Value s = value_of_string(name);
+    Value next = cons(s, Qnil);
+    if (last == Qnil)
+        symbol_names = next;
+    else
+        PAIR(last)->cdr = next;
+    return i;
 }
 
 static const char *name_nth(Value list, long n)
@@ -252,17 +239,12 @@ static const char *name_nth(Value list, long n)
     return STRING(name)->body;
 }
 
-static const char *symbol_get_name(Symbol sym)
+static const char *unintern(Symbol sym)
 {
-    const char *name = name_nth(symbol_names, (long) symbol_names_length - sym);
+    const char *name = name_nth(symbol_names, (long) sym);
     if (name == NULL)
         error("symbol %lu not found", sym);
     return name;
-}
-
-static const char *unintern(Symbol sym)
-{
-    return symbol_get_name(sym);
 }
 
 static inline bool is_special_initial(int c)
