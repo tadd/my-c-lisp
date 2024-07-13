@@ -638,17 +638,13 @@ typedef Value (*FuncMapper)(Value);
 
 static Value map(FuncMapper f, Value l)
 {
-    if (l == Qnil)
-        return Qnil;
-    Value mapped = cons(f(car(l)), Qnil);
-    Value last = mapped;
-    for (;;) {
-        l = cdr(l);
-        if (l == Qnil)
-            break;
-        Value next = cons(f(car(l)), Qnil);
-        PAIR(last)->cdr = next;
-        last = next;
+    Value mapped, next, last = Qnil;
+    for (; l != Qnil; l = cdr(l), last = next) {
+        next = cons(f(car(l)), Qnil);
+        if (last == Qnil)
+            mapped = next;
+        else
+            PAIR(last)->cdr = next;
     }
     return mapped;
 }
