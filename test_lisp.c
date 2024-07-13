@@ -15,6 +15,10 @@ Test(lisp, nil) {
 Test(lisp, parse_int) {
     Value v = parse_expr_string("42");
     cr_assert(eq(42, value_to_int(v)));
+
+    v = parse_expr_string("-42");
+    cr_assert(eq(int, -42, value_to_int(v)));
+    cr_assert(streq("-42", stringify(v)));
 }
 
 Test(lisp, parse_nil) {
