@@ -10,6 +10,7 @@
 #define ATTR_MALLOC ATTR(malloc) ATTR(used)
 #define ATTR_XMALLOC ATTR_MALLOC ATTR(nonnull)
 #define ATTR_FORMAT(f, beg, end) ATTR(format(f, beg, end))
+#define ATTR_CTOR ATTR(constructor)
 
 ATTR_NORETURN ATTR_FORMAT(printf, 1, 2) void error(const char *fmt, ...);
 ATTR_XMALLOC void *xmalloc(size_t size);

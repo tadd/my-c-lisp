@@ -738,13 +738,13 @@ Value eval_string(const char *s)
     return eval(parse_expr_string(s));
 }
 
-static bool eval_init(void)
+ATTR_CTOR
+static void eval_init(void)
 {
     define_function("+", builtin_add, -1);
     define_function("-", builtin_sub, -1);
     define_function("*", builtin_mul, -1);
     define_function("/", builtin_div, -1);
-    return true;
 }
 
 static Value eval_func(Value list)
@@ -755,10 +755,6 @@ static Value eval_func(Value list)
 
 Value eval(Value v)
 {
-    static bool initialized = false;
-    if (!initialized)
-        initialized = eval_init();
-
     if (value_is_int(v) || value_is_string(v))
         return v;
     if (value_is_symbol(v))
