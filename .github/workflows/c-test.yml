@@ -1,0 +1,25 @@
+name: C/C++ CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - '.**'
+      - 'wip'
+      - 'wip-**'
+      - '**.wip-**'
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: install criterion
+      run: sudo apt install libcriterion-dev
+    - name: make
+      run: make
+    - name: test
+      run: make test
