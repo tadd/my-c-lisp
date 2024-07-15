@@ -8,7 +8,7 @@
 
 static FILE *parse_opt(int argc, char *const *argv)
 {
-    FILE *in = stdin;
+    FILE *in = NULL;
     int opt;
     while ((opt = getopt(argc, argv, "e:")) != -1) {
         switch (opt) {
@@ -21,13 +21,13 @@ static FILE *parse_opt(int argc, char *const *argv)
     }
     if (argv[optind]) {
         const char *f = argv[optind];
-        if (in != stdin)
+        if (in != NULL)
             error("filename %s given while option '-e' passed", f);
         in = fopen(f, "r");
         if (in == NULL)
             error("file %s not found", f);
     }
-    return in;
+    return in ? in : stdin;
 }
 
 int main(int argc, char **argv)
