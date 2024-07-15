@@ -712,7 +712,7 @@ static Value alist_find(Value l, Value vkey)
     return Qnil;
 }
 
-static Value lookup_func(Value name)
+static Value lookup(Value name)
 {
     Value f = alist_find(environment, name);
     if (f == Qnil)
@@ -736,13 +736,8 @@ static bool eval_init(void)
 
 static Value eval_func(Value list)
 {
-    Value name = car(list);
-    if (!value_is_symbol(name))
-        unexpected("symbol (applicable)", "%s", stringify(name));
-
-    Value f = lookup_func(name);
-    Value args = map(eval, cdr(list));
-    return funcall(f, args);
+    Value l = map(eval, list);
+    return funcall(car(l), cdr(l));
 }
 
 Value eval(Value v)
@@ -751,8 +746,10 @@ Value eval(Value v)
     if (!initialized)
         initialized = eval_init();
 
-    if (value_is_atom(v)) // int, symbol, string
+    if (value_is_int(v) || value_is_string(v))
         return v;
+    if (value_is_symbol(v))
+        return lookup(v);
     return eval_func(v);
 }
 
