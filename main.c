@@ -19,13 +19,13 @@ static FILE *parse_opt(int argc, char *const *argv)
             exit(2);
         }
     }
-    if (argv[optind]) {
-        const char *f = argv[optind];
+    const char *f = argv[optind];
+    if (f) {
         if (in != NULL)
             error("filename %s given while option '-e' passed", f);
         in = fopen(f, "r");
         if (in == NULL)
-            error("file %s not found", f);
+            error("can't read file %s", f);
     }
     return in ? in : stdin;
 }
