@@ -187,7 +187,6 @@ Value value_of_func(CFunc cfunc, long arity)
 Value cons(Value car, Value cdr)
 {
     Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
-    p->tag = TAG_PAIR;
     p->car = car;
     p->cdr = cdr;
     return (Value) p;
