@@ -1,6 +1,7 @@
 SRC=main.c lisp.c utils.c
 OBJ=$(SRC:.c=.o)
 CFLAGS=-std=gnu17 -O0 -ggdb3 -Wall -Wextra $(XCFLAGS)
+ANALYZER=-fanalyzer
 
 all: lisp
 
@@ -19,4 +20,9 @@ test: test_lisp
 clean:
 	rm -f *.o lisp test_lisp
 
-.PHONY: all clean test
+%.analyzer: %.c
+	$(CC) $(CFLAGS) $(ANALYZER) -c $< -o /dev/null
+
+analyze: $(OBJ:.o=.analyzer)
+
+.PHONY: all clean test analyze
