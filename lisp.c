@@ -90,7 +90,7 @@ inline bool value_is_string(Value v)
     return tagged_value_is(v, TAG_STR);
 }
 
-bool value_is_func(Value v)
+inline bool value_is_func(Value v)
 {
     return tagged_value_is(v, TAG_FUNC);
 }
@@ -175,7 +175,7 @@ inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-Value value_of_func(CFunc cfunc, long arity)
+inline Value value_of_func(CFunc cfunc, long arity)
 {
     Function *f = tagged_new(sizeof(Function), TAG_FUNC);
     f->cfunc = cfunc;
@@ -184,7 +184,7 @@ Value value_of_func(CFunc cfunc, long arity)
 }
 
 // `cons` is well-known name than "value_to_pair"
-Value cons(Value car, Value cdr)
+inline Value cons(Value car, Value cdr)
 {
     Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
     p->car = car;
