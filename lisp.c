@@ -738,15 +738,6 @@ Value eval_string(const char *s)
     return eval(parse_expr_string(s));
 }
 
-ATTR_CTOR
-static void eval_init(void)
-{
-    define_function("+", builtin_add, -1);
-    define_function("-", builtin_sub, -1);
-    define_function("*", builtin_mul, -1);
-    define_function("/", builtin_div, -1);
-}
-
 static Value eval_func(Value list)
 {
     Value l = map(eval, list);
@@ -884,4 +875,13 @@ Value parse_string(const char *in)
     Value v = parse(f);
     fclose(f);
     return v;
+}
+
+ATTR_CTOR
+static void initialize(void)
+{
+    define_function("+", builtin_add, -1);
+    define_function("-", builtin_sub, -1);
+    define_function("*", builtin_mul, -1);
+    define_function("/", builtin_div, -1);
 }
