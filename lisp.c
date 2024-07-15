@@ -571,7 +571,7 @@ static void expect_arity(long expected, long actual, const char *header)
           header, delim, expected, actual);
 }
 
-Value funcall(Value func, Value vargs)
+Value apply(Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
 
@@ -775,7 +775,7 @@ static bool eval_init(void)
 static Value eval_func(Value list)
 {
     Value l = map(eval, list);
-    return funcall(car(l), cdr(l));
+    return apply(car(l), cdr(l));
 }
 
 Value eval(Value v)
