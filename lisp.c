@@ -433,39 +433,14 @@ Value cdr(Value v)
     return PAIR(v)->cdr;
 }
 
-#define DEF_CXXR(x, y) \
-    Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
-#define DEF_CXXXR(x, y, z) DEF_CXXR(x, y##z)
-#define DEF_CXXXXR(x, y, z, w) DEF_CXXXR(x, y, z##w)
+#define DEF_CXR(x, y) Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
+#define DEF1(f, ...) f(a, __VA_ARGS__) f(d, __VA_ARGS__)
+#define DEF2(f, ...) DEF1(f, a ## __VA_ARGS__) DEF1(f, d ## __VA_ARGS__)
+#define DEF3(f, ...) DEF2(f, a ## __VA_ARGS__) DEF2(f, d ## __VA_ARGS__)
+#define DEF4(f, ...) DEF3(f, a ## __VA_ARGS__) DEF3(f, d ## __VA_ARGS__)
+#define DEF_CXRS() DEF2(DEF_CXR) DEF3(DEF_CXR) DEF4(DEF_CXR)
 
-DEF_CXXR(a, a)
-DEF_CXXR(a, d)
-DEF_CXXR(d, a)
-DEF_CXXR(d, d)
-DEF_CXXXR(a, a, a)
-DEF_CXXXR(a, a, d)
-DEF_CXXXR(a, d, a)
-DEF_CXXXR(a, d, d)
-DEF_CXXXR(d, a, a)
-DEF_CXXXR(d, a, d)
-DEF_CXXXR(d, d, a)
-DEF_CXXXR(d, d, d)
-DEF_CXXXXR(a, a, a, a)
-DEF_CXXXXR(a, a, a, d)
-DEF_CXXXXR(a, a, d, a)
-DEF_CXXXXR(a, a, d, d)
-DEF_CXXXXR(a, d, a, a)
-DEF_CXXXXR(a, d, a, d)
-DEF_CXXXXR(a, d, d, a)
-DEF_CXXXXR(a, d, d, d)
-DEF_CXXXXR(d, a, a, a)
-DEF_CXXXXR(d, a, a, d)
-DEF_CXXXXR(d, a, d, a)
-DEF_CXXXXR(d, a, d, d)
-DEF_CXXXXR(d, d, a, a)
-DEF_CXXXXR(d, d, a, d)
-DEF_CXXXXR(d, d, d, a)
-DEF_CXXXXR(d, d, d, d)
+DEF_CXRS()
 
 static Value parse_expr(Parser *p);
 
