@@ -561,6 +561,17 @@ static long length(Value list)
     return l;
 }
 
+static void expect_arity(long expected, long actual, const char *header)
+{
+    if (expected < 0 || expected == actual)
+        return;
+    const char *delim = ": ";
+    if (header == NULL)
+        header = delim = "";
+    error("%s%swrong number of arguments: expected %ld but got %ld",
+          header, delim, expected, actual);
+}
+
 Value funcall(Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
@@ -568,9 +579,7 @@ Value funcall(Value func, Value vargs)
     long n = FUNCTION(func)->arity;
     if (n > ARG_MAX)
         error("arguments too long: max is %ld but got %ld", ARG_MAX, n);
-    long l = length(vargs);
-    if (l != n)
-        error("wrong number of arguments: expected %ld but got %ld", n, l);
+    expect_arity(n, length(vargs), NULL);
 
     Value a[ARG_MAX];
     Value v = vargs;
@@ -580,6 +589,8 @@ Value funcall(Value func, Value vargs)
     }
     CFunc f = FUNCTION(func)->cfunc;
     switch (n) {
+    case -1:
+        return (*f)(vargs);
     case 0:
         return (*f)();
     case 1:
@@ -619,40 +630,68 @@ static void expect_type(Type expected, Value v, const char *header)
     expect_type(t, x, name); \
     expect_type(t, y, name);
 
-static Value builtin_add(Value x, Value y)
+static Value builtin_add(Value args)
 {
-    expect_type_pair(TYPE_INT, x, y, "+");
-
-    intptr_t ix = value_to_int(x);
-    intptr_t iy = value_to_int(y);
-    return value_of_int(ix + iy);
+    int64_t y = 0;
+    for (Value l = args; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "+");
+        y += value_to_int(x);
+    }
+    return value_of_int(y);
 }
 
-static Value builtin_sub(Value x, Value y)
+static Value builtin_sub(Value args)
 {
-    expect_type_pair(TYPE_INT, x, y, "-");
-
-    intptr_t ix = value_to_int(x);
-    intptr_t iy = value_to_int(y);
-    return value_of_int(ix - iy);
+    if (args == Qnil)
+        error("wrong number of arguments: expected 1 or more but got 0");
+    Value rest = cdr(args);
+    int64_t y = 0;
+    if (rest == Qnil)
+        rest = args;
+    else {
+        Value vy = car(args);
+        expect_type(TYPE_INT, vy, "-");
+        y = value_to_int(vy);
+    }
+    for (Value l = rest; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "-");
+        y -= value_to_int(x);
+    }
+    return value_of_int(y);
 }
 
-static Value builtin_mul(Value x, Value y)
+static Value builtin_mul(Value args)
 {
-    expect_type_pair(TYPE_INT, x, y, "*");
-
-    intptr_t ix = value_to_int(x);
-    intptr_t iy = value_to_int(y);
-    return value_of_int(ix * iy);
+    int64_t y = 1;
+    for (Value l = args; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "*");
+        y *= value_to_int(x);
+    }
+    return value_of_int(y);
 }
 
-static Value builtin_div(Value x, Value y)
+static Value builtin_div(Value args)
 {
-    expect_type_pair(TYPE_INT, x, y, "/");
-
-    intptr_t ix = value_to_int(x);
-    intptr_t iy = value_to_int(y);
-    return value_of_int(ix / iy);
+    if (args == Qnil)
+        error("wrong number of arguments: expected 1 or more but got 0");
+    Value rest = cdr(args);
+    int64_t y = 1;
+    if (rest == Qnil)
+        rest = args;
+    else {
+        Value vy = car(args);
+        expect_type(TYPE_INT, vy, "/");
+        y = value_to_int(vy);
+    }
+    for (Value l = rest; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "/");
+        y /= value_to_int(x);
+    }
+    return value_of_int(y);
 }
 
 typedef Value (*FuncMapper)(Value);
@@ -727,10 +766,10 @@ Value eval_string(const char *s)
 
 static bool eval_init(void)
 {
-    define_function("+", builtin_add, 2);
-    define_function("-", builtin_sub, 2);
-    define_function("*", builtin_mul, 2);
-    define_function("/", builtin_div, 2);
+    define_function("+", builtin_add, -1);
+    define_function("-", builtin_sub, -1);
+    define_function("*", builtin_mul, -1);
+    define_function("/", builtin_div, -1);
     return true;
 }
 
