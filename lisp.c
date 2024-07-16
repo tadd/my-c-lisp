@@ -733,9 +733,12 @@ static Value lookup(Value name)
     return f;
 }
 
-Value eval_string(const char *s)
+Value eval_string(const char *in)
 {
-    return eval(parse_expr_string(s));
+    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    Value v = load(f);
+    fclose(f);
+    return v;
 }
 
 static Value eval_func(Value list)
