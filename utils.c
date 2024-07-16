@@ -19,15 +19,15 @@ void *xmalloc(size_t size)
 {
     void *p = malloc(size);
     if (p == NULL)
-        error("malloc %zu bytes failed", size);
+        error("malloc(%zu) failed", size);
     return p;
 }
 
-void *xrealloc(void *p, size_t size)
+void *xrealloc(void *q, size_t size)
 {
-    p = realloc(p, size);
+    void *p = realloc(q, size);
     if (p == NULL)
-        error("realloc to %zu bytes failed", size);
+        error("realloc(ptr, %zu) failed", size);
     return p;
 }
 
@@ -35,6 +35,6 @@ char *xstrdup(const char *s)
 {
     char *dup = strdup(s);
     if (dup == NULL)
-        error("strdup of '%s' failed", s);
+        error("strdup(\"%s\") failed", s);
     return dup;
 }
