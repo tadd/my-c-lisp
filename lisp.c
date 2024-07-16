@@ -694,7 +694,7 @@ static Value alist_prepend(Value *l, Value key, Value val)
     return *l;
 }
 
-static Value put_env(const char *name, Value val)
+static Value env_put(const char *name, Value val)
 {
     alist_prepend(&environment, value_of_symbol(name), val);
     return val;
@@ -702,7 +702,7 @@ static Value put_env(const char *name, Value val)
 
 static Value define_function(const char *name, CFunc cfunc, long arity)
 {
-    return put_env(name, value_of_func(cfunc, arity));
+    return env_put(name, value_of_func(cfunc, arity));
 }
 
 static Value alist_find(Value l, Value vkey)
