@@ -823,6 +823,16 @@ static Value env_put(Value name, Value val)
     return name;
 }
 
+static Value builtin_define(Value ident, Value expr)
+{
+    if (!value_is_symbol(ident))
+        return Qundef;
+    Value val = eval(expr);
+     if (val == Qundef)
+        return Qundef;
+    return env_put(ident, val);
+}
+
 static Value define_special(const char *name, CFunc cfunc, long arity)
 {
     return env_put(value_of_symbol(name), value_of_special(cfunc, arity));
@@ -1011,6 +1021,7 @@ ATTR_CTOR
 static void initialize(void)
 {
     define_special("if", builtin_if, -1);
+    define_special("define", builtin_define, 2);
 
     define_function("+", builtin_add, -1);
     define_function("-", builtin_sub, -1);
