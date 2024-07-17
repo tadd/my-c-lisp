@@ -817,21 +817,20 @@ static Value alist_put_or_append(Value l, Value vkey, Value val)
     return l;
 }
 
-static Value env_put(const char *name, Value val)
+static Value env_put(Value name, Value val)
 {
-    const Value vsym = value_of_symbol(name);
-    environment = alist_put_or_append(environment, vsym, val);
-    return vsym;
+    environment = alist_put_or_append(environment, name, val);
+    return name;
 }
 
 static Value define_special(const char *name, CFunc cfunc, long arity)
 {
-    return env_put(name, value_of_special(cfunc, arity));
+    return env_put(value_of_symbol(name), value_of_special(cfunc, arity));
 }
 
 static Value define_function(const char *name, CFunc cfunc, long arity)
 {
-    return env_put(name, value_of_func(cfunc, arity));
+    return env_put(value_of_symbol(name), value_of_func(cfunc, arity));
 }
 
 static Value lookup(Value name)
