@@ -6,10 +6,7 @@ on:
   push:
     branches-ignore:
       - '.**'
-      - 'wip'
-      - 'wip-**'
-      - '**.wip-**'
-
+      - '**wip**'
 
 jobs:
   build:
