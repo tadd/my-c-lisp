@@ -779,7 +779,7 @@ Value eval(Value v)
 Value load(FILE *in)
 {
     Value last = Qnil;
-    for (Value v = parse(in); !value_is_nil(v); v = cdr(v))
+    for (Value v = parse(in); v != Qnil; v = cdr(v))
         last = eval(car(v));
     return last;
 }
@@ -792,7 +792,7 @@ static void print_list(FILE *f, Value v)
         Pair *p = PAIR(v);
         fprint(f, p->car);
         v = p->cdr;
-        if (value_is_nil(v))
+        if (v == Qnil)
             break;
         fprintf(f, " ");
         if (value_is_atom(v)) {
@@ -817,7 +817,7 @@ static void fprint(FILE* f, Value v)
         break;
     case TYPE_PAIR:
         fprintf(f, "(");
-        if (!value_is_nil(v))
+        if (v != Qnil)
             print_list(f, v);
         fprintf(f, ")");
         break;
@@ -855,17 +855,17 @@ char *stringify(Value v)
 
 static Value reverse(Value v)
 {
-    if (value_is_nil(v))
+    if (v == Qnil)
         return v;
     Value next = PAIR(v)->cdr;
-    if (value_is_nil(next))
+    if (next == Qnil)
         return v;
 
     Value prev = Qnil;
     for (;;) {
         next = PAIR(v)->cdr;
         PAIR(v)->cdr = prev;
-        if (value_is_nil(next))
+        if (next == Qnil)
             break;
         prev = v;
         v = next;
@@ -879,7 +879,7 @@ Value parse(FILE *in)
     Value v = Qnil;
     for (;;) {
         Value expr = parse_expr(p);
-        if (value_is_nil(expr) && got_eof(p))
+        if (expr == Qnil && got_eof(p))
             break;
         v = cons(expr, v);
     }
