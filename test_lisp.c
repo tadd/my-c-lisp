@@ -207,10 +207,13 @@ Test(lisp, list) {
              Qundef);
     cr_assert(value_is_pair(v));
     cr_assert(eq(3, length(v)));
-    cr_assert(value_is_int(car(v)));
-    cr_assert(eq(42, value_to_int(car(v))));
-    cr_assert(value_is_string(cadr(v)));
-    cr_assert(streq("foo", value_to_string(cadr(v))));
-    cr_assert(value_is_func(caddr(v)));
-    cr_assert(streq("<function>", stringify(caddr(v))));
+    Value v0 = car(v);
+    cr_assert(value_is_int(v0));
+    cr_assert(eq(42, value_to_int(v0)));
+    Value v1 = cadr(v);
+    cr_assert(value_is_string(v1));
+    cr_assert(streq("foo", value_to_string(v1)));
+    Value v2 = caddr(v);
+    cr_assert(value_is_func(v2));
+    cr_assert(streq("<function>", stringify(v2)));
 }
