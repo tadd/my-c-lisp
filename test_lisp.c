@@ -124,4 +124,7 @@ Test(lisp, eval_arithmetic_expr) {
 Test(lisp, unbound_variable) {
     Value v = eval_string("x");
     cr_assert(eq(v, Qundef));
+
+    v = eval_string("(+ x 2)");
+    cr_assert(eq(v, Qundef));
 }

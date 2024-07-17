@@ -756,15 +756,26 @@ Value eval_string(const char *in)
     return v;
 }
 
+static Value memq(Value needle, Value list)
+{
+    for (Value p = list; p != Qnil; p = cdr(p)) {
+        if (car(p) == needle)
+            return p;
+    }
+    return Qnil;
+}
+
 static Value eval_func(Value list)
 {
     Value l = map(eval, list);
+    if (memq(Qundef, l) != Qnil)
+        return Qundef;
     return apply(car(l), cdr(l));
 }
 
 Value eval(Value v)
 {
-    if (value_is_int(v) || value_is_string(v))
+    if (v == Qundef || value_is_int(v) || value_is_string(v))
         return v;
     if (value_is_symbol(v))
         return lookup(v);
