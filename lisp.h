@@ -8,9 +8,6 @@
 #include "utils.h"
 
 typedef struct Pair Pair;
-// 0b..000 Pointer
-// 0b....1 Integer
-// 0b...10 Symbol
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
 #define ANYARGS /*empty*/

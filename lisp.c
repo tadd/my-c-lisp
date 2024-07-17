@@ -14,6 +14,11 @@
 #define unexpected(exp, act, ...) \
     error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
+// Value (uintptr_t):
+//   0b..000 Pointer
+//   0b....1 Integer
+//   0b...10 Symbol
+
 typedef enum {
     TAG_PAIR,
     TAG_STR,
