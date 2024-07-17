@@ -498,11 +498,11 @@ inline Value cdr(Value v)
 }
 
 #define DEF_CXR(x, y) Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
-#define DEF1(f, ...) f(a, __VA_ARGS__) f(d, __VA_ARGS__)
-#define DEF2(f, ...) DEF1(f, a ## __VA_ARGS__) DEF1(f, d ## __VA_ARGS__)
-#define DEF3(f, ...) DEF2(f, a ## __VA_ARGS__) DEF2(f, d ## __VA_ARGS__)
-#define DEF4(f, ...) DEF3(f, a ## __VA_ARGS__) DEF3(f, d ## __VA_ARGS__)
-#define DEF_CXRS() DEF2(DEF_CXR) DEF3(DEF_CXR) DEF4(DEF_CXR)
+#define DEF_CXR1(x) DEF_CXR(a, x) DEF_CXR(d, x)
+#define DEF_CXR2(x) DEF_CXR1(a ## x) DEF_CXR1(d ## x)
+#define DEF_CXR3(x) DEF_CXR2(a ## x) DEF_CXR2(d ## x)
+#define DEF_CXR4(x) DEF_CXR3(a ## x) DEF_CXR3(d ## x)
+#define DEF_CXRS() DEF_CXR2() DEF_CXR3() DEF_CXR4()
 
 DEF_CXRS()
 
