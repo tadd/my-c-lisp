@@ -685,7 +685,7 @@ static Value map(FuncMapper f, Value l)
 
 static Value environment = Qnil; // alist of ('ident . <value>)
 
-static Value alist_put_or_append(Value l, Value vkey, Value val)
+static Value alist_find_or_last(Value l, Value vkey, Value *last)
 {
     if (!value_is_symbol(vkey))
         return Qnil;
@@ -699,15 +699,32 @@ static Value alist_put_or_append(Value l, Value vkey, Value val)
         if (!value_is_symbol(target))
             continue;
         Symbol sym = value_to_symbol(target);
-        if (sym == key) {
-            PAIR(entry)->cdr = val;
-            return l;
-        }
+        if (sym == key)
+            return entry;
+    }
+    if (last)
+        *last = prev; // may be Qnil
+    return Qnil;
+}
+
+static Value alist_find(Value l, Value vkey)
+{
+    Value entry = alist_find_or_last(l, vkey, NULL);
+    return cdr(entry);
+}
+
+static Value alist_put_or_append(Value l, Value vkey, Value val)
+{
+    Value last;
+    Value found = alist_find_or_last(l, vkey, &last);
+    if (found != Qnil) {
+        PAIR(found)->cdr = val; // put
+        return l;
     }
     Value next = cons(cons(vkey, val), Qnil);
-    if (prev == Qnil)
-        return next;
-    PAIR(prev)->cdr = next;
+    if (last == Qnil)
+        return next; // create new list
+    PAIR(last)->cdr = next; // append
     return l;
 }
 
@@ -721,26 +738,6 @@ static Value env_put(const char *name, Value val)
 static Value define_function(const char *name, CFunc cfunc, long arity)
 {
     return env_put(name, value_of_func(cfunc, arity));
-}
-
-static Value alist_find(Value l, Value vkey)
-{
-    if (!value_is_symbol(vkey))
-        return Qnil;
-    Symbol key = value_to_symbol(vkey);
-    Value p;
-    for (p = l; p != Qnil; p = cdr(p)) {
-        Value entry = car(p);
-        if (!value_is_pair(entry))
-            continue;
-        Value target = car(entry);
-        if (!value_is_symbol(target))
-            continue;
-        Symbol sym = value_to_symbol(target);
-        if (sym == key)
-            return cdr(entry);
-   }
-    return Qnil;
 }
 
 static Value lookup(Value name)
