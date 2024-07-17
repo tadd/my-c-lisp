@@ -653,88 +653,6 @@ Value apply(Value func, Value vargs)
     }
 }
 
-static void expect_type(Type expected, Value v, const char *header)
-{
-    Type t = value_typeof(v);
-    if (t == expected)
-        return;
-    const char *delim;
-    if (header == NULL)
-        header = delim = "";
-    else
-        delim = ": ";
-    error("%s%stype error: expected %s but got %s",
-          header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
-}
-
-#define expect_type_pair(t, x, y, name) \
-    expect_type(t, x, name); \
-    expect_type(t, y, name);
-
-static Value builtin_add(Value args)
-{
-    int64_t y = 0;
-    for (Value l = args; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type(TYPE_INT, x, "+");
-        y += value_to_int(x);
-    }
-    return value_of_int(y);
-}
-
-static Value builtin_sub(Value args)
-{
-    if (args == Qnil)
-        error("wrong number of arguments: expected 1 or more but got 0");
-    Value rest = cdr(args);
-    int64_t y = 0;
-    if (rest == Qnil)
-        rest = args;
-    else {
-        Value vy = car(args);
-        expect_type(TYPE_INT, vy, "-");
-        y = value_to_int(vy);
-    }
-    for (Value l = rest; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type(TYPE_INT, x, "-");
-        y -= value_to_int(x);
-    }
-    return value_of_int(y);
-}
-
-static Value builtin_mul(Value args)
-{
-    int64_t y = 1;
-    for (Value l = args; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type(TYPE_INT, x, "*");
-        y *= value_to_int(x);
-    }
-    return value_of_int(y);
-}
-
-static Value builtin_div(Value args)
-{
-    if (args == Qnil)
-        error("wrong number of arguments: expected 1 or more but got 0");
-    Value rest = cdr(args);
-    int64_t y = 1;
-    if (rest == Qnil)
-        rest = args;
-    else {
-        Value vy = car(args);
-        expect_type(TYPE_INT, vy, "/");
-        y = value_to_int(vy);
-    }
-    for (Value l = rest; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type(TYPE_INT, x, "/");
-        y /= value_to_int(x);
-    }
-    return value_of_int(y);
-}
-
 typedef Value (*FuncMapper)(Value);
 
 static Value map(FuncMapper f, Value l)
@@ -748,26 +666,6 @@ static Value map(FuncMapper f, Value l)
             PAIR(last)->cdr = next;
     }
     return mapped;
-}
-
-static bool validate_arity_range(Value args, long min, long max)
-{
-    long l = length(args);
-    return min <= l && l <= max;
-}
-
-static Value builtin_if(Value args)
-{
-    if (!validate_arity_range(args, 2, 3))
-        return Qundef;
-
-    Value cond = car(args), then = cadr(args);
-    if (eval(cond) != Qfalse)
-        return eval(then);
-    Value els = cddr(args);
-    if (els == Qnil)
-        return Qfalse;
-    return eval(car(els));
 }
 
 static Value environment = Qnil; // alist of ('ident . <value>)
@@ -821,16 +719,6 @@ static Value env_put(Value name, Value val)
 {
     environment = alist_put_or_append(environment, name, val);
     return name;
-}
-
-static Value builtin_define(Value ident, Value expr)
-{
-    if (!value_is_symbol(ident))
-        return Qundef;
-    Value val = eval(expr);
-     if (val == Qundef)
-        return Qundef;
-    return env_put(ident, val);
 }
 
 static Value define_special(const char *name, CFunc cfunc, long arity)
@@ -1015,6 +903,113 @@ Value parse_string(const char *in)
     Value v = parse(f);
     fclose(f);
     return v;
+}
+
+static void expect_type(Type expected, Value v, const char *header)
+{
+    Type t = value_typeof(v);
+    if (t == expected)
+        return;
+    const char *delim;
+    if (header == NULL)
+        header = delim = "";
+    else
+        delim = ": ";
+    error("%s%stype error: expected %s but got %s",
+          header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
+}
+
+static Value builtin_add(Value args)
+{
+    int64_t y = 0;
+    for (Value l = args; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "+");
+        y += value_to_int(x);
+    }
+    return value_of_int(y);
+}
+
+static Value builtin_sub(Value args)
+{
+    if (args == Qnil)
+        error("wrong number of arguments: expected 1 or more but got 0");
+    Value rest = cdr(args);
+    int64_t y = 0;
+    if (rest == Qnil)
+        rest = args;
+    else {
+        Value vy = car(args);
+        expect_type(TYPE_INT, vy, "-");
+        y = value_to_int(vy);
+    }
+    for (Value l = rest; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "-");
+        y -= value_to_int(x);
+    }
+    return value_of_int(y);
+}
+
+static Value builtin_mul(Value args)
+{
+    int64_t y = 1;
+    for (Value l = args; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "*");
+        y *= value_to_int(x);
+    }
+    return value_of_int(y);
+}
+
+static Value builtin_div(Value args)
+{
+    if (args == Qnil)
+        error("wrong number of arguments: expected 1 or more but got 0");
+    Value rest = cdr(args);
+    int64_t y = 1;
+    if (rest == Qnil)
+        rest = args;
+    else {
+        Value vy = car(args);
+        expect_type(TYPE_INT, vy, "/");
+        y = value_to_int(vy);
+    }
+    for (Value l = rest; l != Qnil; l = cdr(l)) {
+        Value x = car(l);
+        expect_type(TYPE_INT, x, "/");
+        y /= value_to_int(x);
+    }
+    return value_of_int(y);
+}
+
+static bool validate_arity_range(Value args, long min, long max)
+{
+    long l = length(args);
+    return min <= l && l <= max;
+}
+
+static Value builtin_if(Value args)
+{
+    if (!validate_arity_range(args, 2, 3))
+        return Qundef;
+
+    Value cond = car(args), then = cadr(args);
+    if (eval(cond) != Qfalse)
+        return eval(then);
+    Value els = cddr(args);
+    if (els == Qnil)
+        return Qfalse;
+    return eval(car(els));
+}
+
+static Value builtin_define(Value ident, Value expr)
+{
+    expect_type(TYPE_SYMBOL, ident, "define");
+    Value val = eval(expr);
+     if (val == Qundef)
+        return Qundef;
+    return env_put(ident, val);
 }
 
 ATTR_CTOR
