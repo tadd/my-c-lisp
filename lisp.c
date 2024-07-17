@@ -685,19 +685,37 @@ static Value map(FuncMapper f, Value l)
 
 static Value environment = Qnil; // alist of ('ident . <value>)
 
-// keys may duplicated
-static Value alist_prepend(Value *l, Value key, Value val)
+static Value alist_put_or_append(Value l, Value vkey, Value val)
 {
-    Value entry = cons(key, val);
-    Value pair = cons(entry, *l);
-    *l = pair;
-    return *l;
+    if (!value_is_symbol(vkey))
+        return Qnil;
+    Symbol key = value_to_symbol(vkey);
+    Value prev = Qnil;
+    for (Value p = l; p != Qnil; prev = p, p = cdr(p)) {
+        Value entry = car(p);
+        if (!value_is_pair(entry))
+            continue;
+        Value target = car(entry);
+        if (!value_is_symbol(target))
+            continue;
+        Symbol sym = value_to_symbol(target);
+        if (sym == key) {
+            PAIR(entry)->cdr = val;
+            return l;
+        }
+    }
+    Value next = cons(cons(vkey, val), Qnil);
+    if (prev == Qnil)
+        return next;
+    PAIR(prev)->cdr = next;
+    return l;
 }
 
 static Value env_put(const char *name, Value val)
 {
-    alist_prepend(&environment, value_of_symbol(name), val);
-    return val;
+    const Value vsym = value_of_symbol(name);
+    environment = alist_put_or_append(environment, vsym, val);
+    return vsym;
 }
 
 static Value define_function(const char *name, CFunc cfunc, long arity)
