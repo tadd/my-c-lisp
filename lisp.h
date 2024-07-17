@@ -33,6 +33,9 @@ Value value_of_string(const char *s);
 Value value_of_func(CFunc cfunc, long arity);
 
 Value cons(Value car, Value cdr);
+Value list(Value v, ...); // terminate with Qundef
+long length(Value list);
+
 Value car(Value v);
 Value cdr(Value v);
 Value caar(Value v); // 2

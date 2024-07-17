@@ -231,6 +231,22 @@ inline Value cons(Value car, Value cdr)
     return (Value) p;
 }
 
+inline Value list(Value v, ...)
+{
+    Value l = Qnil, last = Qnil;
+    va_list ap;
+    va_start(ap, v);
+    for (; v != Qundef; v = va_arg(ap, Value)) {
+        Value next = cons(v, Qnil);
+        if (l == Qnil)
+            l = last = next;
+        else
+            PAIR(last)->cdr = next;
+        last = next;
+    }
+    return l;
+}
+
 typedef enum {
     TTYPE_LPAREN,
     TTYPE_RPAREN,
@@ -576,7 +592,7 @@ static Parser *parser_new(FILE *in)
     return p;
 }
 
-static long length(Value list)
+long length(Value list)
 {
     long l = 0;
     while (list != Qnil) {

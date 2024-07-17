@@ -189,3 +189,28 @@ Test(lisp, if_composed) {
     v = eval_string("(if (if #f 1 #f) (if #f 3 4) (if #f 5 6))");
     cr_assert(eq(6, value_to_int(v)));
 }
+
+Test(lisp, list) {
+    Value v;
+    v = list(Qundef);
+    cr_assert(eq(v, Qnil));
+
+    v = list(value_of_int(42), Qundef);
+    cr_assert(value_is_pair(v));
+    cr_assert(eq(1, length(v)));
+    cr_assert(value_is_int(car(v)));
+    cr_assert(eq(42, value_to_int(car(v))));
+
+    v = list(value_of_int(42),
+             value_of_string("foo"),
+             value_of_func(value_of_func, 0),
+             Qundef);
+    cr_assert(value_is_pair(v));
+    cr_assert(eq(3, length(v)));
+    cr_assert(value_is_int(car(v)));
+    cr_assert(eq(42, value_to_int(car(v))));
+    cr_assert(value_is_string(cadr(v)));
+    cr_assert(streq("foo", value_to_string(cadr(v))));
+    cr_assert(value_is_func(caddr(v)));
+    cr_assert(streq("<function>", stringify(caddr(v))));
+}
