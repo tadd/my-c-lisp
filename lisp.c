@@ -51,6 +51,7 @@ typedef enum {
     TYPE_PAIR,
     TYPE_STR,
     TYPE_FUNC,
+    TYPE_SPECIAL,
     TYPE_UNDEF
 } Type;
 
@@ -151,9 +152,10 @@ static inline Type value_typeof(Value v)
         return TYPE_PAIR;
     case TAG_FUNC:
         return TYPE_FUNC;
-    default:
-        UNREACHABLE();
+    case TAG_SPECIAL:
+        return TYPE_SPECIAL;
     }
+    UNREACHABLE();
 }
 
 // value_to_*: convert internal data to external plain C
@@ -911,6 +913,9 @@ static void fprint(FILE* f, Value v)
         break;
     case TYPE_FUNC:
         fprintf(f, "<function>");
+        break;
+    case TYPE_SPECIAL:
+        fprintf(f, "<special>");
         break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
