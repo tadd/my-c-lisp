@@ -91,7 +91,7 @@ static inline uintptr_t flags(Value v)
 
 inline bool value_is_int(Value v)
 {
-    return !!(v & 1U);
+    return v & 1U;
 }
 
 inline bool value_is_symbol(Value v)
