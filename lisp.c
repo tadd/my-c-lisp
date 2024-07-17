@@ -220,7 +220,7 @@ static inline Value value_of_special(CFunc cfunc, long arity)
     return sp;
 }
 
-// `cons` is well-known name than "value_to_pair"
+// `cons` is well-known name than "value_of_pair"
 inline Value cons(Value car, Value cdr)
 {
     Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
