@@ -62,6 +62,7 @@ static const char *TYPE_NAMES[] = {
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 const Value Qnil = (Value) &PAIR_NIL;
+const Value Qundef = 8U; // may be an error or something
 
 // value_is_*: type checks
 
@@ -710,6 +711,8 @@ static Value alist_find_or_last(Value l, Value vkey, Value *last)
 static Value alist_find(Value l, Value vkey)
 {
     Value entry = alist_find_or_last(l, vkey, NULL);
+    if (entry == Qnil)
+        return Qundef;
     return cdr(entry);
 }
 
@@ -742,10 +745,7 @@ static Value define_function(const char *name, CFunc cfunc, long arity)
 
 static Value lookup(Value name)
 {
-    Value f = alist_find(environment, name);
-    if (f == Qnil)
-        error("unknown function name '%s'", unintern(name));
-    return f;
+    return alist_find(environment, name);
 }
 
 Value eval_string(const char *in)

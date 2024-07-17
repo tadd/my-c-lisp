@@ -120,3 +120,8 @@ Test(lisp, eval_arithmetic_expr) {
     cr_assert(value_is_int(v));
     cr_assert(eq(int, 42, value_to_int(v)));
 }
+
+Test(lisp, unbound_variable) {
+    Value v = eval_string("x");
+    cr_assert(eq(v, Qundef));
+}
