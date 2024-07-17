@@ -14,11 +14,6 @@
 #define unexpected(exp, act, ...) \
     error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
-// Value (uintptr_t):
-//   0b..000 Pointer
-//   0b....1 Integer
-//   0b...10 Symbol
-
 typedef enum {
     TAG_PAIR,
     TAG_STR,
@@ -66,10 +61,25 @@ static const char *TYPE_NAMES[] = {
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
+// Value (uintptr_t):
+//   0b....000 Pointer
+//   0b......1 Integer
+//   0b...1110 symbol
+//   0b0..0010 #f
+//   0b0..0100 #t
+//   0b0..0110 <undef>
+static const uintptr_t FLAG_NBIT = 4U;
+static const uintptr_t MASK_IMMEDIATE = 0b1111U;
+static const uintptr_t FLAG_SYMBOL    = 0b1110U;
 const Value Qnil = (Value) &PAIR_NIL;
-const Value Qundef = 8U; // may be an error or something
+const Value Qundef = 0b0110U; // may be an error or something
 
 // value_is_*: type checks
+
+static inline uintptr_t flags(Value v)
+{
+    return v & MASK_IMMEDIATE;
+}
 
 inline bool value_is_int(Value v)
 {
@@ -78,12 +88,12 @@ inline bool value_is_int(Value v)
 
 inline bool value_is_symbol(Value v)
 {
-    return (v & 0b11U) == 0b10U;
+    return flags(v) == FLAG_SYMBOL;
 }
 
 static inline bool is_immediate(Value v)
 {
-    return !!(v & 0b111U); // expects 0b...000 for pointers
+    return !!flags(v);
 }
 
 static inline bool tagged_value_is(Value v, ValueTag expected)
@@ -141,7 +151,7 @@ inline int64_t value_to_int(Value v)
 
 inline Symbol value_to_symbol(Value v)
 {
-    return (Symbol) (v >> 2U);
+    return (Symbol) (v >> FLAG_NBIT);
 }
 
 static Symbol intern(const char *s);
@@ -164,7 +174,7 @@ inline Value value_of_int(int64_t i)
 inline Value value_of_symbol(const char *s)
 {
     Symbol sym = intern(s);
-    return (Value) (sym << 2U | 0b10U);
+    return (Value) (sym << FLAG_NBIT | FLAG_SYMBOL);
 }
 
 static inline void *tagged_new(size_t size, ValueTag t)
