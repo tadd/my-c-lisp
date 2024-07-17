@@ -856,7 +856,7 @@ Value eval(Value v)
 {
     if (value_is_symbol(v))
         return lookup(v);
-    if (is_immediate(v) || value_is_string(v))
+    if (v == Qnil || is_immediate(v) || value_is_string(v))
         return v;
     return eval_funcy(v);
 }
