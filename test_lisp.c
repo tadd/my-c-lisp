@@ -128,3 +128,10 @@ Test(lisp, unbound_variable) {
     v = eval_string("(+ x 2)");
     cr_assert(eq(v, Qundef));
 }
+
+Test(lisp, true_false) {
+    Value v = eval_string("#t");
+    cr_assert(eq(v, Qtrue));
+    v = eval_string("#f");
+    cr_assert(eq(v, Qfalse));
+}

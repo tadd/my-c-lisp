@@ -43,20 +43,24 @@ typedef struct {
 
 typedef enum {
 // immediate
+    TYPE_BOOL,
     TYPE_INT,
     TYPE_SYMBOL,
 // boxed (tagged)
     TYPE_PAIR,
     TYPE_STR,
     TYPE_FUNC,
+    TYPE_UNDEF
 } Type;
 
 static const char *TYPE_NAMES[] = {
+    [TYPE_BOOL] = "boolean",
     [TYPE_INT] = "integer",
     [TYPE_SYMBOL] = "symbol",
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "string",
     [TYPE_FUNC] = "function",
+    [TYPE_UNDEF] = "undef",
 };
 
 // singletons
@@ -72,6 +76,8 @@ static const uintptr_t FLAG_NBIT = 4U;
 static const uintptr_t MASK_IMMEDIATE = 0b1111U;
 static const uintptr_t FLAG_SYMBOL    = 0b1110U;
 const Value Qnil = (Value) &PAIR_NIL;
+const Value Qfalse = 0b0010U;
+const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
 // value_is_*: type checks
@@ -128,8 +134,15 @@ inline bool value_is_nil(Value v)
 
 static inline Type value_typeof(Value v)
 {
-    if (is_immediate(v))
-        return value_is_int(v) ? TYPE_INT : TYPE_SYMBOL;
+    if (is_immediate(v)) {
+        if (value_is_int(v))
+            return TYPE_INT;
+        if (value_is_symbol(v))
+            return TYPE_SYMBOL;
+        if (v == Qtrue || v == Qfalse)
+            return TYPE_BOOL;
+        return TYPE_UNDEF;
+    }
     switch (VALUE_TAG(v)) {
     case TAG_STR:
         return TYPE_STR;
@@ -215,6 +228,7 @@ typedef enum {
     TTYPE_DOT,
     TTYPE_STR,
     TTYPE_IDENT,
+    TTYPE_CONST,
     TTYPE_EOF
 } TokenType;
 
@@ -235,6 +249,7 @@ static const Token
 #define TOK_INT(i) TOK_V(INT, value_of_int(i))
 #define TOK_STR(s) TOK_V(STR, value_of_string(s))
 #define TOK_IDENT(s) TOK_V(IDENT, value_of_symbol(s))
+#define TOK_CONST(c) TOK_V(CONST, c)
 
 typedef struct {
     FILE *in;
@@ -411,6 +426,13 @@ static Token get_token(Parser *p)
         return get_token_dotty(p);
     case '"':
         return get_token_string(p);
+    case '#':
+        c = fgetc(p->in);
+        if (c == 't')
+            return TOK_CONST(Qtrue);
+        if (c == 'f')
+            return TOK_CONST(Qfalse);
+        unexpected("constants", "#%c", c);
     case EOF:
         return TOK_EOF;
     default:
@@ -479,6 +501,8 @@ static const char *token_stringify(Token t)
     case TTYPE_STR:
         snprintf(buf, sizeof(buf), "\"%s\"", STRING(t.value)->body);
         break;
+    case TTYPE_CONST:
+        return t.value == Qtrue ? "#t" : "#f";
     case TTYPE_EOF:
         return "EOF";
     }
@@ -525,6 +549,7 @@ static Value parse_expr(Parser *p)
         unexpected("expression", "'.'");
     case TTYPE_STR:
     case TTYPE_INT:
+    case TTYPE_CONST:
     case TTYPE_IDENT:
         return t.value;
     case TTYPE_EOF:
@@ -790,10 +815,10 @@ static Value eval_func(Value list)
 
 Value eval(Value v)
 {
-    if (v == Qundef || value_is_int(v) || value_is_string(v))
-        return v;
     if (value_is_symbol(v))
         return lookup(v);
+    if (is_immediate(v) || value_is_string(v))
+        return v;
     return eval_func(v);
 }
 

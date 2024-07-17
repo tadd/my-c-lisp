@@ -13,7 +13,7 @@ typedef uintptr_t Symbol;
 #define ANYARGS /*empty*/
 typedef Value (*CFunc)(ANYARGS);
 
-extern const Value Qnil, Qundef;
+extern const Value Qnil, Qundef, Qfalse, Qtrue;
 
 bool value_is_int(Value v);
 bool value_is_symbol(Value v);
