@@ -11,6 +11,34 @@ Test(lisp, nil) {
     Value a = Qnil;
     cr_assert(value_is_nil(a));
 }
+static void assert_stringify(const char *expected, Value v)
+{
+        char *s = stringify(v);
+        cr_assert(streq(expected, s));
+        free(s);
+}
+
+Test(lisp, printing) {
+    assert_stringify("#t", Qtrue);
+    assert_stringify("#f", Qfalse);
+    assert_stringify("<undef>", Qundef);
+    assert_stringify("()", Qnil);
+
+    assert_stringify("0", value_of_int(0));
+    assert_stringify("42", value_of_int(42));
+    assert_stringify("-42", value_of_int(-42));
+
+    assert_stringify("'foo", value_of_symbol("foo"));
+
+    assert_stringify("\"bar\"", value_of_string("bar"));
+    assert_stringify("\"\\\"", value_of_string("\\"));
+
+    assert_stringify("<function>", value_of_func(value_of_func, 1));
+
+    assert_stringify("(1)", cons(value_of_int(1), Qnil));
+    assert_stringify("(1 . 2)", cons(value_of_int(1), value_of_int(2)));
+    assert_stringify("(1 2)", cons(value_of_int(1), cons(value_of_int(2), Qnil)));
+}
 
 Test(lisp, parse_int) {
     Value v = parse_expr_string("42");

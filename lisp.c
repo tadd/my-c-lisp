@@ -869,18 +869,6 @@ Value load(FILE *in)
     return last;
 }
 
-static void print_atom(FILE *f, Value v)
-{
-    if (value_is_int(v))
-        fprintf(f, "%ld", value_to_int(v));
-    else if (value_is_string(v))
-        fprintf(f, "\"%s\"", value_to_string(v));
-    else if (value_is_symbol(v))
-        fprintf(f, "'%s", value_to_string(v));
-    else if (value_is_func(v))
-        fprintf(f, "<function>");
-}
-
 static void fprint(FILE* f, Value v);
 
 static void print_list(FILE *f, Value v)
@@ -894,26 +882,40 @@ static void print_list(FILE *f, Value v)
         fprintf(f, " ");
         if (value_is_atom(v)) {
             fprintf(f, ". ");
-            print_atom(f, v);
+            fprint(f, v);
             break;
         }
     }
 }
 
-static void print_pair(FILE *f, Value v)
-{
-    fprintf(f, "(");
-    if (!value_is_nil(v))
-        print_list(f, v);
-    fprintf(f, ")");
-}
-
 static void fprint(FILE* f, Value v)
 {
-    if (value_is_atom(v))
-        print_atom(f, v);
-    else
-        print_pair(f, v);
+    switch (value_typeof(v)) {
+    case TYPE_BOOL:
+        fprintf(f, "%s", v == Qtrue ? "#t" : "#f");
+        break;
+    case TYPE_INT:
+        fprintf(f, "%ld", value_to_int(v));
+        break;
+    case TYPE_SYMBOL:
+        fprintf(f, "'%s", value_to_string(v));
+        break;
+    case TYPE_PAIR:
+        fprintf(f, "(");
+        if (!value_is_nil(v))
+            print_list(f, v);
+        fprintf(f, ")");
+        break;
+    case TYPE_STR:
+        fprintf(f, "\"%s\"", value_to_string(v));
+        break;
+    case TYPE_FUNC:
+        fprintf(f, "<function>");
+        break;
+    case TYPE_UNDEF:
+        fprintf(f, "<undef>");
+        break;
+    }
 }
 
 void print(Value v)
