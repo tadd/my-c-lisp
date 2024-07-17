@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: install criterion
-      run: sudo apt install libcriterion-dev
+      run: sudo apt install --no-install-recommends libcriterion-dev
     - name: make
       run: make
     - name: test
