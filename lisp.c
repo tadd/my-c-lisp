@@ -487,12 +487,12 @@ static inline bool got_eof(Parser *p)
     return feof(p->in);
 }
 
-Value car(Value v)
+inline Value car(Value v)
 {
     return PAIR(v)->car;
 }
 
-Value cdr(Value v)
+inline Value cdr(Value v)
 {
     return PAIR(v)->cdr;
 }
