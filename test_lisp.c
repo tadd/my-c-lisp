@@ -135,3 +135,29 @@ Test(lisp, true_false) {
     v = eval_string("#f");
     cr_assert(eq(v, Qfalse));
 }
+
+Test(lisp, if) {
+    Value v;
+    v = eval_string("(if #t 1)");
+    cr_assert(eq(1, value_to_int(v)));
+
+#if 0 // undefined in R^5RS, maybe
+    v = eval_string("(if #f 1)");
+    cr_assert(eq(Qfalse, v));
+#endif
+
+    v = eval_string("(if #t 1 2)");
+    cr_assert(eq(1, value_to_int(v)));
+
+    v = eval_string("(if #f 1 2)");
+    cr_assert(eq(2, value_to_int(v)));
+}
+
+Test(lisp, if_composed) {
+    Value v;
+    v = eval_string("(if (if #t 1 #f) (if #t 3 4) (if #t 5 6))");
+    cr_assert(eq(3, value_to_int(v)));
+
+    v = eval_string("(if (if #f 1 #f) (if #f 3 4) (if #f 5 6))");
+    cr_assert(eq(6, value_to_int(v)));
+}

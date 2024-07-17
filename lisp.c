@@ -18,6 +18,7 @@ typedef enum {
     TAG_PAIR,
     TAG_STR,
     TAG_FUNC,
+    TAG_SPECIAL, // almost a Function
 } ValueTag;
 
 struct Pair {
@@ -210,6 +211,13 @@ inline Value value_of_func(CFunc cfunc, long arity)
     f->cfunc = cfunc;
     f->arity = arity;
     return (Value) f;
+}
+
+static inline Value value_of_special(CFunc cfunc, long arity)
+{
+    Value sp = value_of_func(cfunc, arity);
+    FUNCTION(sp)->tag = TAG_SPECIAL;
+    return sp;
 }
 
 // `cons` is well-known name than "value_to_pair"
@@ -724,6 +732,26 @@ static Value map(FuncMapper f, Value l)
     return mapped;
 }
 
+static bool validate_arity_range(Value args, long min, long max)
+{
+    long l = length(args);
+    return min <= l && l <= max;
+}
+
+static Value builtin_if(Value args)
+{
+    if (!validate_arity_range(args, 2, 3))
+        return Qundef;
+
+    Value cond = car(args), then = cadr(args);
+    if (eval(cond) != Qfalse)
+        return eval(then);
+    Value els = cddr(args);
+    if (els == Qnil)
+        return Qfalse;
+    return eval(car(els));
+}
+
 static Value environment = Qnil; // alist of ('ident . <value>)
 
 static Value alist_find_or_last(Value l, Value vkey, Value *last)
@@ -778,6 +806,11 @@ static Value env_put(const char *name, Value val)
     return vsym;
 }
 
+static Value define_special(const char *name, CFunc cfunc, long arity)
+{
+    return env_put(name, value_of_special(cfunc, arity));
+}
+
 static Value define_function(const char *name, CFunc cfunc, long arity)
 {
     return env_put(name, value_of_func(cfunc, arity));
@@ -805,12 +838,18 @@ static Value memq(Value needle, Value list)
     return Qnil;
 }
 
-static Value eval_func(Value list)
+static Value eval_funcy(Value list)
 {
-    Value l = map(eval, list);
+    Value f = eval(car(list));
+    if (f == Qundef)
+        return Qundef;
+    Value args = cdr(list);
+    if (tagged_value_is(f, TAG_SPECIAL))
+        return apply(f, args);
+    Value l = map(eval, args);
     if (memq(Qundef, l) != Qnil)
         return Qundef;
-    return apply(car(l), cdr(l));
+    return apply(f, l);
 }
 
 Value eval(Value v)
@@ -819,7 +858,7 @@ Value eval(Value v)
         return lookup(v);
     if (is_immediate(v) || value_is_string(v))
         return v;
-    return eval_func(v);
+    return eval_funcy(v);
 }
 
 Value load(FILE *in)
@@ -949,6 +988,8 @@ Value parse_string(const char *in)
 ATTR_CTOR
 static void initialize(void)
 {
+    define_special("if", builtin_if, -1);
+
     define_function("+", builtin_add, -1);
     define_function("-", builtin_sub, -1);
     define_function("*", builtin_mul, -1);
