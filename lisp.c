@@ -15,16 +15,39 @@
     error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
 typedef enum {
+// immediate
+    TYPE_BOOL,
+    TYPE_INT,
+    TYPE_SYMBOL,
+    TYPE_UNDEF,
+// boxed (tagged)
+    TYPE_PAIR,
+    TYPE_STR,
+    TYPE_FUNC,
+    TYPE_SPECIAL,
+} Type;
+
+static const char *TYPE_NAMES[] = {
+    [TYPE_BOOL] = "boolean",
+    [TYPE_INT] = "integer",
+    [TYPE_SYMBOL] = "symbol",
+    [TYPE_UNDEF] = "undef",
+    [TYPE_PAIR] = "pair",
+    [TYPE_STR] = "string",
+    [TYPE_FUNC] = "function",
+};
+
+typedef enum {
     TAG_PAIR,
     TAG_STR,
     TAG_FUNC,
     TAG_SPECIAL, // almost a Function
 } ValueTag;
 
-struct Pair {
+typedef struct Pair {
     ValueTag tag; // common
     Value car, cdr;
-};
+} Pair;
 
 typedef struct {
     ValueTag tag;
@@ -41,29 +64,6 @@ typedef struct {
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
 #define FUNCTION(v) ((Function *) v)
-
-typedef enum {
-// immediate
-    TYPE_BOOL,
-    TYPE_INT,
-    TYPE_SYMBOL,
-// boxed (tagged)
-    TYPE_PAIR,
-    TYPE_STR,
-    TYPE_FUNC,
-    TYPE_SPECIAL,
-    TYPE_UNDEF
-} Type;
-
-static const char *TYPE_NAMES[] = {
-    [TYPE_BOOL] = "boolean",
-    [TYPE_INT] = "integer",
-    [TYPE_SYMBOL] = "symbol",
-    [TYPE_PAIR] = "pair",
-    [TYPE_STR] = "string",
-    [TYPE_FUNC] = "function",
-    [TYPE_UNDEF] = "undef",
-};
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
