@@ -979,6 +979,11 @@ static Value builtin_define(Value ident, Value expr)
     return env_put(ident, val);
 }
 
+static Value builtin_list(Value args)
+{
+    return args;
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -989,4 +994,5 @@ static void initialize(void)
     define_function("-", builtin_sub, -1);
     define_function("*", builtin_mul, -1);
     define_function("/", builtin_div, -1);
+    define_function("list", builtin_list, -1);
 }
