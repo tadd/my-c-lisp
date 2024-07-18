@@ -555,7 +555,7 @@ static void expect_arity(long expected, long actual)
           expected, actual);
 }
 
-Value apply(Value func, Value vargs)
+Value apply(Value func, Value vargs, Value env)
 {
     static const long ARG_MAX = 7;
 
@@ -573,23 +573,23 @@ Value apply(Value func, Value vargs)
     CFunc f = FUNCTION(func)->cfunc;
     switch (n) {
     case -1:
-        return (*f)(vargs);
+        return (*f)(env, vargs);
     case 0:
-        return (*f)();
+        return (*f)(env);
     case 1:
-        return (*f)(a[0]);
+        return (*f)(env, a[0]);
     case 2:
-        return (*f)(a[0], a[1]);
+        return (*f)(env, a[0], a[1]);
     case 3:
-        return (*f)(a[0], a[1], a[2]);
+        return (*f)(env, a[0], a[1], a[2]);
     case 4:
-        return (*f)(a[0], a[1], a[2], a[3]);
+        return (*f)(env, a[0], a[1], a[2], a[3]);
     case 5:
-        return (*f)(a[0], a[1], a[2], a[3], a[4]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4]);
     case 6:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5]);
     case 7:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
     default:
         UNREACHABLE();
     }
@@ -655,25 +655,25 @@ static Value alist_put_or_append(Value l, Value vkey, Value val)
     return l;
 }
 
-static Value env_put(Value name, Value val)
+static Value env_put(Value *env, Value name, Value val)
 {
-    default_environment = alist_put_or_append(default_environment, name, val);
+    *env = alist_put_or_append(*env, name, val);
     return name;
 }
 
-static Value define_special(const char *name, CFunc cfunc, long arity)
+static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
 {
-    return env_put(value_of_symbol(name), value_of_special(cfunc, arity));
+    return env_put(env, value_of_symbol(name), value_of_special(cfunc, arity));
 }
 
-static Value define_function(const char *name, CFunc cfunc, long arity)
+static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
 {
-    return env_put(value_of_symbol(name), value_of_func(cfunc, arity));
+    return env_put(env, value_of_symbol(name), value_of_func(cfunc, arity));
 }
 
-static Value lookup(Value name)
+static Value lookup(Value env, Value name)
 {
-    return alist_find(default_environment, name);
+    return alist_find(env, name);
 }
 
 Value eval_string(const char *in)
@@ -693,27 +693,34 @@ static Value memq(Value needle, Value list)
     return Qnil;
 }
 
-static Value eval_funcy(Value list)
+static Value ieval(Value v, Value env); // internal
+
+static Value eval_funcy(Value list, Value env)
 {
-    Value f = eval(car(list));
+    Value f = ieval(car(list), env);
     if (f == Qundef)
         return Qundef;
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
-        return apply(f, args);
+        return apply(f, args, env);
     Value l = map(eval, args);
     if (memq(Qundef, l) != Qnil)
         return Qundef;
-    return apply(f, l);
+    return apply(f, l, env);
+}
+
+static Value ieval(Value v, Value env)
+{
+    if (value_is_symbol(v))
+        return lookup(env, v);
+    if (v == Qnil || is_immediate(v) || value_is_string(v))
+        return v;
+    return eval_funcy(v, env);
 }
 
 Value eval(Value v)
 {
-    if (value_is_symbol(v))
-        return lookup(v);
-    if (v == Qnil || is_immediate(v) || value_is_string(v))
-        return v;
-    return eval_funcy(v);
+    return ieval(v, default_environment);
 }
 
 Value load(FILE *in)
@@ -846,7 +853,7 @@ static void expect_type(Type expected, Value v, const char *header)
           header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
-static Value builtin_add(Value args)
+static Value builtin_add(ATTR_UNUSED Value env, Value args)
 {
     int64_t y = 0;
     for (Value l = args; l != Qnil; l = cdr(l)) {
@@ -857,7 +864,7 @@ static Value builtin_add(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_sub(Value args)
+static Value builtin_sub(ATTR_UNUSED Value env, Value args)
 {
     if (args == Qnil)
         error("wrong number of arguments: expected 1 or more but got 0");
@@ -878,7 +885,7 @@ static Value builtin_sub(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_mul(Value args)
+static Value builtin_mul(ATTR_UNUSED Value env, Value args)
 {
     int64_t y = 1;
     for (Value l = args; l != Qnil; l = cdr(l)) {
@@ -889,7 +896,7 @@ static Value builtin_mul(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_div(Value args)
+static Value builtin_div(ATTR_UNUSED Value env, Value args)
 {
     if (args == Qnil)
         error("wrong number of arguments: expected 1 or more but got 0");
@@ -916,27 +923,27 @@ static bool validate_arity_range(Value args, long min, long max)
     return min <= l && l <= max;
 }
 
-static Value builtin_if(Value args)
+static Value builtin_if(Value env, Value args)
 {
     if (!validate_arity_range(args, 2, 3))
         return Qundef;
 
     Value cond = car(args), then = cadr(args);
-    if (eval(cond) != Qfalse)
-        return eval(then);
+    if (ieval(cond, env) != Qfalse)
+        return ieval(then, env);
     Value els = cddr(args);
     if (els == Qnil)
         return Qfalse;
-    return eval(car(els));
+    return ieval(car(els), env);
 }
 
-static Value builtin_define(Value ident, Value expr)
+static Value builtin_define(Value env, Value ident, Value expr)
 {
     expect_type(TYPE_SYMBOL, ident, "define");
-    Value val = eval(expr);
-     if (val == Qundef)
+    Value val = ieval(expr, env);
+    if (val == Qundef)
         return Qundef;
-    return env_put(ident, val);
+    return env_put(&env, ident, val);
 }
 
 static Value builtin_list(Value args)
@@ -947,13 +954,14 @@ static Value builtin_list(Value args)
 ATTR_CTOR
 static void initialize(void)
 {
-    define_special("if", builtin_if, -1);
-    define_special("define", builtin_define, 2);
+    Value *e = &default_environment;
+    define_special(e, "if", builtin_if, -1);
+    define_special(e, "define", builtin_define, 2);
 
-    define_function("+", builtin_add, -1);
-    define_function("-", builtin_sub, -1);
-    define_function("*", builtin_mul, -1);
-    define_function("/", builtin_div, -1);
-    define_function("list", builtin_list, -1);
-    define_function("reverse", reverse, 1);
+    define_function(e, "+", builtin_add, -1);
+    define_function(e, "-", builtin_sub, -1);
+    define_function(e, "*", builtin_mul, -1);
+    define_function(e, "/", builtin_div, -1);
+    define_function(e, "list", builtin_list, -1);
+    define_function(e, "reverse", reverse, 1);
 }
