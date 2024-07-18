@@ -995,4 +995,5 @@ static void initialize(void)
     define_function("*", builtin_mul, -1);
     define_function("/", builtin_div, -1);
     define_function("list", builtin_list, -1);
+    define_function("reverse", reverse, 1);
 }
