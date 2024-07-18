@@ -11,12 +11,12 @@ Test(lisp, nil) {
     Value a = Qnil;
     cr_assert(value_is_nil(a));
 }
-static void assert_stringify(const char *expected, Value v)
-{
-    char *s = stringify(v);
-    cr_assert(streq(expected, s));
-    free(s);
-}
+
+#define assert_stringify(expected, v) do { \
+        char *s = stringify(v); \
+        cr_assert(streq(expected, s)); \
+        free(s); \
+    } while (0)
 
 Test(lisp, printing) {
     assert_stringify("#t", Qtrue);
