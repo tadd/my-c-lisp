@@ -820,7 +820,7 @@ char *stringify(Value v)
     return s;
 }
 
-static Value reverse(Value v)
+Value reverse(Value v)
 {
     if (v == Qnil)
         return v;

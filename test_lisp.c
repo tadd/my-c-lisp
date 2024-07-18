@@ -214,6 +214,25 @@ Test(lisp, list) {
     cr_assert(streq("<function>", stringify(v2)));
 }
 
+static void assert_list_eq(Value expected, Value actual)
+{
+    cr_assert(value_is_pair(actual));
+    cr_assert(eq(long, length(expected), length(actual)));
+    for (; expected != Qnil; expected = cdr(expected), actual = cdr(actual))
+        cr_assert(eq(int, value_to_int(car(expected)), value_to_int(car(actual))));
+}
+#define V(x) _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
+
+Test(lisp, reverse) {
+    assert_list_eq(Qnil, reverse(Qnil));
+    Value l;
+    l = list(V(1), Qundef);
+    assert_list_eq(l, reverse(l));
+    assert_list_eq(list(V(2), V(1), Qundef), reverse(list(V(1), V(2), Qundef)));
+    assert_list_eq(list(V(3), V(2), V(1), Qundef),
+                   reverse(list(V(1), V(2), V(3), Qundef)));
+}
+
 Test(lisp, define_variable) {
     Value v;
     v = eval_string("(define x 42)");
