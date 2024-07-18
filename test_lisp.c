@@ -11,12 +11,12 @@ Test(lisp, nil) {
     Value a = Qnil;
     cr_assert(value_is_nil(a));
 }
-static void assert_stringify(const char *expected, Value v)
-{
-    char *s = stringify(v);
-    cr_assert(streq(expected, s));
-    free(s);
-}
+
+#define assert_stringify(expected, v) do { \
+        char *s = stringify(v); \
+        cr_assert(streq(expected, s)); \
+        free(s); \
+    } while (0)
 
 Test(lisp, printing) {
     assert_stringify("#t", Qtrue);
@@ -29,9 +29,6 @@ Test(lisp, printing) {
     assert_stringify("-42", value_of_int(-42));
 
     assert_stringify("'foo", value_of_symbol("foo"));
-
-    assert_stringify("\"bar\"", value_of_string("bar"));
-    assert_stringify("\"\\\"", value_of_string("\\"));
 
     assert_stringify("<function>", value_of_func(value_of_func, 1));
 
@@ -59,34 +56,6 @@ Test(lisp, parse_list) {
     cr_assert(eq(1, value_to_int(car(v))));
     cr_assert(eq(2, value_to_int(cadr(v))));
     cr_assert(value_is_nil(cddr(v)));
-}
-
-Test(lisp, parse_string) {
-    Value v = parse_expr_string("\"abc\"");
-    cr_assert(value_is_string(v));
-    cr_assert(streq("abc", value_to_string(v)));
-
-    v = parse_expr_string("\"a\\\\b\"");
-    cr_assert(value_is_string(v));
-    cr_assert(streq("a\\b", value_to_string(v)));
-
-    v = parse_expr_string("\"a\\\"b\"");
-    cr_assert(value_is_string(v));
-    cr_assert(streq("a\"b", value_to_string(v)));
-}
-
-Test(lisp, parse_string_list) {
-    Value v = parse_expr_string("(\"abc\" \"def\")");
-    cr_assert(value_is_pair(v));
-    cr_assert(not(value_is_nil(v)));
-
-    Value s = car(v);
-    cr_assert(value_is_string(s));
-    cr_assert(streq("abc", value_to_string(s)));
-
-    Value t = car(cdr(v));
-    cr_assert(value_is_string(t));
-    cr_assert(streq("def", value_to_string(t)));
 }
 
 Test(lisp, cxr) {
@@ -198,7 +167,7 @@ Test(lisp, list) {
     cr_assert(eq(42, value_to_int(car(v))));
 
     v = list(value_of_int(42),
-             value_of_string("foo"),
+             value_of_symbol("foo"),
              value_of_func(value_of_func, 0),
              Qundef);
     cr_assert(value_is_pair(v));
@@ -207,7 +176,7 @@ Test(lisp, list) {
     cr_assert(value_is_int(v0));
     cr_assert(eq(42, value_to_int(v0)));
     Value v1 = cadr(v);
-    cr_assert(value_is_string(v1));
+    cr_assert(value_is_symbol(v1));
     cr_assert(streq("foo", value_to_string(v1)));
     Value v2 = caddr(v);
     cr_assert(value_is_func(v2));
