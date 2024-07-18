@@ -819,22 +819,10 @@ char *stringify(Value v)
 
 Value reverse(Value v)
 {
-    if (v == Qnil)
-        return v;
-    Value next = PAIR(v)->cdr;
-    if (next == Qnil)
-        return v;
-
-    Value prev = Qnil;
-    for (;;) {
-        next = PAIR(v)->cdr;
-        PAIR(v)->cdr = prev;
-        if (next == Qnil)
-            break;
-        prev = v;
-        v = next;
-    }
-    return v;
+    Value l = Qnil;
+    for (; v != Qnil; v = cdr(v))
+        l = cons(car(v), l);
+    return l;
 }
 
 Value parse(FILE *in)
