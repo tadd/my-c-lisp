@@ -354,19 +354,10 @@ static const char *unintern(Symbol sym)
     return name;
 }
 
-static inline bool is_special_initial(int c)
-{
-    switch (c) {
-    case '*': case '/': case '<': case '=': case '>':
-        return true;
-    default:
-        return false;
-    }
-}
-
 static inline bool is_initial(int c)
 {
-    return isalpha(c) || is_special_initial(c);
+    return isalpha(c) ||
+        c == '*' || c == '/' || c == '<' || c == '=' || c == '>';
 }
 
 static inline bool is_subsequent(int c)
