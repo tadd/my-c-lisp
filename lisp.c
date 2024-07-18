@@ -231,18 +231,24 @@ inline Value cons(Value car, Value cdr)
     return (Value) p;
 }
 
+static Value append(Value l, Value elem)
+{
+    Value p = cons(elem, Qnil);
+    if (l == Qnil)
+        return p;
+    PAIR(l)->cdr = p;
+    return p;
+}
+
 inline Value list(Value v, ...)
 {
-    Value l = Qnil, last = Qnil;
+    Value l = Qnil, last = l;
     va_list ap;
     va_start(ap, v);
     for (; v != Qundef; v = va_arg(ap, Value)) {
-        Value next = cons(v, Qnil);
+        last = append(last, v);
         if (l == Qnil)
-            l = last = next;
-        else
-            PAIR(last)->cdr = next;
-        last = next;
+            l = last;
     }
     return l;
 }
@@ -621,13 +627,11 @@ typedef Value (*FuncMapper)(Value);
 
 static Value map(FuncMapper f, Value l)
 {
-    Value mapped = Qnil, last = Qnil, next;
-    for (; l != Qnil; l = cdr(l), last = next) {
-        next = cons(f(car(l)), Qnil);
-        if (last == Qnil)
-            mapped = next;
-        else
-            PAIR(last)->cdr = next;
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append(last, f(car(l)));
+        if (mapped == Qnil)
+            mapped = last;
     }
     return mapped;
 }
