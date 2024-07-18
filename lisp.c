@@ -668,7 +668,7 @@ static Value map(FuncMapper f, Value l)
     return mapped;
 }
 
-static Value environment = Qnil; // alist of ('ident . <value>)
+static Value default_environment = Qnil; // alist of ('ident . <value>)
 
 static Value alist_find_or_last(Value l, Value vkey, Value *last)
 {
@@ -717,7 +717,7 @@ static Value alist_put_or_append(Value l, Value vkey, Value val)
 
 static Value env_put(Value name, Value val)
 {
-    environment = alist_put_or_append(environment, name, val);
+    default_environment = alist_put_or_append(default_environment, name, val);
     return name;
 }
 
@@ -733,7 +733,7 @@ static Value define_function(const char *name, CFunc cfunc, long arity)
 
 static Value lookup(Value name)
 {
-    return alist_find(environment, name);
+    return alist_find(default_environment, name);
 }
 
 Value eval_string(const char *in)
