@@ -555,6 +555,27 @@ static void expect_arity(long expected, long actual)
           expected, actual);
 }
 
+#define APPLY_CASE(n) \
+    case n: \
+    return (*f)(APPLY_ARGS(n))
+#define APPLY_ARGS(n) AARGS ## n
+#define AARGS1  a[0]
+#define AARGS2  a[0], a[1]
+#define AARGS3  AARGS2, a[2]
+#define AARGS4  AARGS3, a[3]
+#define AARGS5  AARGS4, a[4]
+#define AARGS6  AARGS5, a[5]
+#define AARGS7  AARGS6, a[6]
+#define AARGS8  AARGS7, a[7]
+#define AARGS9  AARGS8, a[8]
+#define AARGS10 AARGS9, a[9]
+#define AARGS11 AARGS10, a[10]
+#define AARGS12 AARGS11, a[11]
+#define AARGS13 AARGS12, a[12]
+#define AARGS14 AARGS13, a[13]
+#define AARGS15 AARGS14, a[14]
+#define AARGS16 AARGS15, a[15]
+
 Value apply(Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
@@ -576,20 +597,21 @@ Value apply(Value func, Value vargs)
         return (*f)(vargs);
     case 0:
         return (*f)();
-    case 1:
-        return (*f)(a[0]);
-    case 2:
-        return (*f)(a[0], a[1]);
-    case 3:
-        return (*f)(a[0], a[1], a[2]);
-    case 4:
-        return (*f)(a[0], a[1], a[2], a[3]);
-    case 5:
-        return (*f)(a[0], a[1], a[2], a[3], a[4]);
-    case 6:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5]);
-    case 7:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+    APPLY_CASE(1);
+    APPLY_CASE(2);
+    APPLY_CASE(3);
+    APPLY_CASE(4);
+    APPLY_CASE(5);
+    APPLY_CASE(6);
+    APPLY_CASE(7);
+    APPLY_CASE(8);
+    APPLY_CASE(9);
+    APPLY_CASE(10);
+    APPLY_CASE(11);
+    APPLY_CASE(12);
+    APPLY_CASE(13);
+    APPLY_CASE(14);
+    APPLY_CASE(15);
     default:
         UNREACHABLE();
     }
