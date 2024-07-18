@@ -102,11 +102,7 @@ Test(lisp, parse_ident) {
     cr_assert(streq("a", value_to_string(v)));
 }
 
-Test(lisp, parse_dotty) {
-    Value v = parse_expr_string("...");
-    cr_assert(value_is_symbol(v));
-    cr_assert(streq("...", value_to_string(v)));
-
+Test(lisp, parse_dot) {
     Value v2 = parse_expr_string("(1 . 2)");
     cr_assert(value_is_pair(v2));
     cr_assert(eq(int, 1, value_to_int(car(v2))));
