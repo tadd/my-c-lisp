@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches-ignore:
-      - '.**'
+      - '_**'
       - '**wip**'
 
 jobs:
