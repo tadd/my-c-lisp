@@ -569,15 +569,12 @@ long length(Value list)
     return l;
 }
 
-static void expect_arity(long expected, long actual, const char *header)
+static void expect_arity(long expected, long actual)
 {
-    if (expected < 0 || expected == actual)
+    if (expected == -1 || expected == actual)
         return;
-    const char *delim = ": ";
-    if (header == NULL)
-        header = delim = "";
-    error("%s%swrong number of arguments: expected %ld but got %ld",
-          header, delim, expected, actual);
+    error("wrong number of arguments: expected %ld but got %ld",
+          expected, actual);
 }
 
 Value apply(Value func, Value vargs)
@@ -587,7 +584,7 @@ Value apply(Value func, Value vargs)
     long n = FUNCTION(func)->arity;
     if (n > ARG_MAX)
         error("arguments too long: max is %ld but got %ld", ARG_MAX, n);
-    expect_arity(n, length(vargs), NULL);
+    expect_arity(n, length(vargs));
 
     Value a[ARG_MAX];
     Value v = vargs;
