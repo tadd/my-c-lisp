@@ -357,9 +357,7 @@ static const char *unintern(Symbol sym)
 static inline bool is_special_initial(int c)
 {
     switch (c) {
-    case '!': case '$': case '%': case '&': case '*':
-    case '/': case ':': case '<': case '=': case '|':
-    case '>': case '?': case '^': case '_': case '~':
+    case '*': case '/': case '<': case '=': case '>':
         return true;
     default:
         return false;
@@ -371,29 +369,9 @@ static inline bool is_initial(int c)
     return isalpha(c) || is_special_initial(c);
 }
 
-static inline bool is_special_subsequent(int c)
-{
-    switch (c) {
-    case '+': case '-': case '.': case '@':
-        return true;
-    default:
-        return false;
-    }
-}
-
 static inline bool is_subsequent(int c)
 {
-    return is_initial(c) || isdigit(c) || is_special_subsequent(c);
-}
-
-static Token get_token_dotty(Parser *p)
-{
-    int c = fgetc(p->in);
-    if (c == '.' && (c = fgetc(p->in)) == '.') {
-        return TOK_IDENT("...");
-    }
-    ungetc(c, p->in);
-    return TOK_DOT;
+    return isalpha(c) || isdigit(c) || c == '-' || c == '.';
 }
 
 static Token get_token_ident(Parser *p)
@@ -401,8 +379,6 @@ static Token get_token_ident(Parser *p)
     char buf[BUFSIZ], *s = buf, *end = s + sizeof(buf);
     int c = fgetc(p->in);
 
-    if (!is_initial(c))
-        unexpected("identifier", "'%c' as initial", c);
     *s++ = c;
     for (;;) {
         c = fgetc(p->in);
@@ -449,7 +425,7 @@ static Token get_token(Parser *p)
     case ')':
         return TOK_RPAREN;
     case '.':
-        return get_token_dotty(p);
+        return TOK_DOT;
     case '"':
         return get_token_string(p);
     case '#':
@@ -470,7 +446,7 @@ static Token get_token(Parser *p)
         ungetc(c, p->in);
         return get_token_int(p, 1);
     }
-    if (isalpha(c) || is_special_initial(c)) {
+    if (is_initial(c)) {
         ungetc(c, p->in);
         return get_token_ident(p);
     }
