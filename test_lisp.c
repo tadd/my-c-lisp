@@ -13,9 +13,9 @@ Test(lisp, nil) {
 }
 static void assert_stringify(const char *expected, Value v)
 {
-        char *s = stringify(v);
-        cr_assert(streq(expected, s));
-        free(s);
+    char *s = stringify(v);
+    cr_assert(streq(expected, s));
+    free(s);
 }
 
 Test(lisp, printing) {
