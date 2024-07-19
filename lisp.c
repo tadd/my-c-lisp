@@ -549,7 +549,7 @@ long length(Value list)
 
 static void expect_arity(long expected, long actual)
 {
-    if (expected == -1 || expected == actual)
+    if (expected < 0 || expected == actual)
         return;
     error("wrong number of arguments: expected %ld but got %ld",
           expected, actual);
@@ -572,27 +572,39 @@ Value apply(Value func, Value vargs, Value env)
     }
     CFunc f = FUNCTION(func)->cfunc;
     switch (n) {
+    case -2:
+        return (*f)(env, cdr(vargs)); // special form
     case -1:
-        return (*f)(env, vargs);
+        return (*f)(vargs); // non-special
     case 0:
-        return (*f)(env);
+        return (*f)();
     case 1:
-        return (*f)(env, a[0]);
+        return (*f)(a[0]);
     case 2:
-        return (*f)(env, a[0], a[1]);
+        return (*f)(a[0], a[1]);
     case 3:
-        return (*f)(env, a[0], a[1], a[2]);
+        return (*f)(a[0], a[1], a[2]);
     case 4:
-        return (*f)(env, a[0], a[1], a[2], a[3]);
+        return (*f)(a[0], a[1], a[2], a[3]);
     case 5:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4]);
+        return (*f)(a[0], a[1], a[2], a[3], a[4]);
     case 6:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5]);
+        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5]);
     case 7:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
     default:
         UNREACHABLE();
     }
+}
+
+static Value apply_special(Value sp, Value vargs, Value env)
+{
+    Function f = *FUNCTION(sp);
+    if (f.arity == -1)
+        f.arity = -2; // only for special forms
+    else
+        f.arity++;
+    return apply((Value) &f, cons(env, vargs), env);
 }
 
 typedef Value (*FuncMapper)(Value);
@@ -702,7 +714,7 @@ static Value eval_funcy(Value list, Value env)
         return Qundef;
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
-        return apply(f, args, env);
+        return apply_special(f, args, env);
     Value l = map(eval, args);
     if (memq(Qundef, l) != Qnil)
         return Qundef;
@@ -853,7 +865,7 @@ static void expect_type(Type expected, Value v, const char *header)
           header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
-static Value builtin_add(ATTR_UNUSED Value env, Value args)
+static Value builtin_add(Value args)
 {
     int64_t y = 0;
     for (Value l = args; l != Qnil; l = cdr(l)) {
@@ -864,7 +876,7 @@ static Value builtin_add(ATTR_UNUSED Value env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_sub(ATTR_UNUSED Value env, Value args)
+static Value builtin_sub(Value args)
 {
     if (args == Qnil)
         error("wrong number of arguments: expected 1 or more but got 0");
@@ -885,7 +897,7 @@ static Value builtin_sub(ATTR_UNUSED Value env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_mul(ATTR_UNUSED Value env, Value args)
+static Value builtin_mul(Value args)
 {
     int64_t y = 1;
     for (Value l = args; l != Qnil; l = cdr(l)) {
@@ -896,7 +908,7 @@ static Value builtin_mul(ATTR_UNUSED Value env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_div(ATTR_UNUSED Value env, Value args)
+static Value builtin_div(Value args)
 {
     if (args == Qnil)
         error("wrong number of arguments: expected 1 or more but got 0");
