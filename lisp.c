@@ -602,19 +602,6 @@ static Value apply_special(Value env, Value sp, Value vargs)
     return apply(env, sp, cons(env, vargs));
 }
 
-typedef Value (*FuncMapper)(Value);
-
-static Value map(FuncMapper f, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append(last, f(car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 static Value default_environment = Qnil; // alist of ('ident . <value>)
 
 static Value alist_find_or_last(Value l, Value vkey, Value *last)
@@ -703,6 +690,19 @@ static Value memq(Value needle, Value list)
 
 static Value ieval(Value env, Value v); // internal
 
+typedef Value (*MapFunc)(Value common, Value v);
+static Value map2(MapFunc f, Value common, Value l)
+{
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append(last, f(common, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
+    }
+    return mapped;
+}
+
+
 static Value eval_funcy(Value env, Value list)
 {
     Value f = ieval(env, car(list));
@@ -711,7 +711,7 @@ static Value eval_funcy(Value env, Value list)
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
-    Value l = map(eval, args);
+    Value l = map2(ieval, env, args);
     if (memq(Qundef, l) != Qnil)
         return Qundef;
     return apply(env, f, l);
@@ -728,7 +728,8 @@ static Value ieval(Value env, Value v)
 
 Value eval(Value v)
 {
-    return ieval(default_environment, v);
+    Value env = default_environment;
+    return ieval(env, v);
 }
 
 Value load(FILE *in)
