@@ -599,12 +599,7 @@ Value apply(Value env, Value func, Value vargs)
 
 static Value apply_special(Value env, Value sp, Value vargs)
 {
-    Function f = *FUNCTION(sp);
-    if (f.arity == -1)
-        f.arity = -2; // only for special forms
-    else
-        f.arity++;
-    return apply(env, (Value) &f, cons(env, vargs));
+    return apply(env, sp, cons(env, vargs));
 }
 
 typedef Value (*FuncMapper)(Value);
@@ -675,6 +670,7 @@ static Value env_put(Value *env, Value name, Value val)
 
 static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
 {
+    arity += (arity == -1) ? -1 : 1;
     return env_put(env, value_of_symbol(name), value_of_special(cfunc, arity));
 }
 
