@@ -555,7 +555,7 @@ static void expect_arity(long expected, long actual)
           expected, actual);
 }
 
-Value apply(Value func, Value vargs, Value env)
+Value apply(Value env, Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
 
@@ -597,14 +597,14 @@ Value apply(Value func, Value vargs, Value env)
     }
 }
 
-static Value apply_special(Value sp, Value vargs, Value env)
+static Value apply_special(Value env, Value sp, Value vargs)
 {
     Function f = *FUNCTION(sp);
     if (f.arity == -1)
         f.arity = -2; // only for special forms
     else
         f.arity++;
-    return apply((Value) &f, cons(env, vargs), env);
+    return apply(env, (Value) &f, cons(env, vargs));
 }
 
 typedef Value (*FuncMapper)(Value);
@@ -705,34 +705,34 @@ static Value memq(Value needle, Value list)
     return Qnil;
 }
 
-static Value ieval(Value v, Value env); // internal
+static Value ieval(Value env, Value v); // internal
 
-static Value eval_funcy(Value list, Value env)
+static Value eval_funcy(Value env, Value list)
 {
-    Value f = ieval(car(list), env);
+    Value f = ieval(env, car(list));
     if (f == Qundef)
         return Qundef;
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
-        return apply_special(f, args, env);
+        return apply_special(env, f, args);
     Value l = map(eval, args);
     if (memq(Qundef, l) != Qnil)
         return Qundef;
-    return apply(f, l, env);
+    return apply(env, f, l);
 }
 
-static Value ieval(Value v, Value env)
+static Value ieval(Value env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(env, v);
     if (v == Qnil || is_immediate(v) || value_is_string(v))
         return v;
-    return eval_funcy(v, env);
+    return eval_funcy(env, v);
 }
 
 Value eval(Value v)
 {
-    return ieval(v, default_environment);
+    return ieval(default_environment, v);
 }
 
 Value load(FILE *in)
@@ -941,18 +941,18 @@ static Value builtin_if(Value env, Value args)
         return Qundef;
 
     Value cond = car(args), then = cadr(args);
-    if (ieval(cond, env) != Qfalse)
-        return ieval(then, env);
+    if (ieval(env, cond) != Qfalse)
+        return ieval(env, then);
     Value els = cddr(args);
     if (els == Qnil)
         return Qfalse;
-    return ieval(car(els), env);
+    return ieval(env, car(els));
 }
 
 static Value builtin_define(Value env, Value ident, Value expr)
 {
     expect_type(TYPE_SYMBOL, ident, "define");
-    Value val = ieval(expr, env);
+    Value val = ieval(env, expr);
     if (val == Qundef)
         return Qundef;
     return env_put(&env, ident, val);
