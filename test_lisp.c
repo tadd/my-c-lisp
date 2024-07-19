@@ -184,11 +184,11 @@ Test(lisp, list) {
 }
 
 #define assert_list_eq(expected, actual) do { \
-    Value exp = expected, act = actual; \
-    cr_assert(value_is_pair(act)); \
-    cr_assert(eq(long, length(exp), length(act))); \
-    for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
-        cr_assert(eq(int, value_to_int(car(exp)), value_to_int(car(act)))); \
+        Value exp = expected, act = actual; \
+        cr_assert(value_is_pair(act)); \
+        cr_assert(eq(long, length(exp), length(act))); \
+        for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
+            cr_assert(eq(int, value_to_int(car(exp)), value_to_int(car(act)))); \
     } while (0)
 #define V(x) _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
 
