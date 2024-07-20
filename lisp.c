@@ -222,6 +222,7 @@ inline Value value_of_func(CFunc cfunc, long arity)
 
 static inline Value value_of_special(CFunc cfunc, long arity)
 {
+    arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_func(cfunc, arity);
     FUNCTION(sp)->tag = TAG_SPECIAL;
     return sp;
@@ -663,7 +664,6 @@ static Value alist_prepend(Value list, Value key, Value val)
 
 static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
 {
-    arity += (arity == -1) ? -1 : 1;
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
