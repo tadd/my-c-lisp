@@ -210,3 +210,10 @@ Test(lisp, define_variable) {
     cr_assert(value_is_int(v));
     cr_assert_eq(-42, value_to_int(v));
 }
+
+Test(lisp, set) {
+    Value v;
+    v = eval_string("(define x 1) (set! x 42) x");
+    cr_assert(value_is_int(v));
+    cr_assert_eq(42, value_to_int(v));
+}

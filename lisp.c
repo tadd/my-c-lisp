@@ -350,7 +350,8 @@ static inline bool is_initial(int c)
 
 static inline bool is_subsequent(int c)
 {
-    return isalpha(c) || isdigit(c) || c == '-' || c == '.';
+    return isalpha(c) || isdigit(c) ||
+        c == '-' || c == '.' || c == '!';
 }
 
 static Token get_token_ident(Parser *p)
@@ -923,6 +924,16 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     return Qnil;
 }
 
+static Value builtin_set(Value *env, Value ident, Value expr)
+{
+    expect_type(TYPE_SYMBOL, ident, "define");
+    Value found = alist_find(*env, ident);
+    if (found == Qnil)
+        return Qundef;
+    PAIR(found)->cdr = ieval(env, expr);
+    return Qnil;
+}
+
 static Value builtin_list(Value args)
 {
     return args;
@@ -934,6 +945,7 @@ static void initialize(void)
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
     define_special(e, "define", builtin_define, 2);
+    define_special(e, "set!", builtin_set, 2);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
