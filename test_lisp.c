@@ -5,11 +5,6 @@
 
 #include "lisp.h"
 
-Test(lisp, nil) {
-    Value a = Qnil;
-    cr_assert(value_is_nil(a));
-}
-
 #define assert_stringify(expected, v) do { \
         char *s = stringify(v); \
         cr_assert_str_eq(expected, s); \
@@ -26,6 +21,16 @@ Test(lisp, nil) {
 
 #define V(x) \
     _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
+
+#define assert_runtime_error(v, pattern) do { \
+        cr_assert_eq(Qundef, v); \
+        cr_assert_not_null(strstr(error_message(), pattern)); \
+    } while (0)
+
+Test(lisp, nil) {
+    Value a = Qnil;
+    cr_assert(value_is_nil(a));
+}
 
 Test(lisp, printing) {
     assert_stringify("#t", Qtrue);
@@ -125,10 +130,10 @@ Test(lisp, eval_arithmetic_expr) {
 
 Test(lisp, unbound_variable) {
     Value v = eval_string("x");
-    cr_assert_eq(v, Qundef);
+    assert_runtime_error(v, "unbound variable: x");
 
     v = eval_string("(+ x 2)");
-    cr_assert_eq(v, Qundef);
+    assert_runtime_error(v, "unbound variable: x");
 }
 
 Test(lisp, true_false) {
@@ -214,4 +219,7 @@ Test(lisp, set) {
     v = eval_string("(define x 1) (set! x 42) x");
     cr_assert(value_is_int(v));
     cr_assert_eq(42, value_to_int(v));
+
+    v = eval_string("(set! x 42) x");
+    assert_runtime_error(v, "unbound variable: x");
 }

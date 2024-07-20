@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <setjmp.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,7 +13,24 @@
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 #define unexpected(exp, act, ...) \
-    error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
+    runtime_error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
+
+static jmp_buf jmp_runtime_error;
+static char errmsg[BUFSIZ];
+
+ATTR_NORETURN
+static void runtime_error(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    longjmp(jmp_runtime_error, Qundef);
+}
+
+const char *error_message(void)
+{
+    return errmsg;
+}
 
 typedef enum {
 // immediate
@@ -339,7 +357,7 @@ static const char *name_nth(Value list, long n)
 static const char *unintern(Symbol sym)
 {
     const char *name = name_nth(symbol_names, (long) sym);
-    if (name == NULL)
+    if (name == NULL) // fatal; known symbol should have name
         error("symbol %lu not found", sym);
     return name;
 }
@@ -430,7 +448,7 @@ static Token get_token(Parser *p)
         ungetc(c, p->in);
         return get_token_ident(p);
     }
-    error("got unexpected char '%c'", c);
+    runtime_error("got unexpected char: '%c'", c);
 }
 
 static void unget_token(Parser *p, Token t)
@@ -558,8 +576,18 @@ static void expect_arity(long expected, long actual)
 {
     if (expected < 0 || expected == actual)
         return;
-    error("wrong number of arguments: expected %ld but got %ld",
-          expected, actual);
+    runtime_error("wrong number of arguments: expected %ld but got %ld",
+                  expected, actual);
+}
+
+static void expect_arity_range(long min, long max, long actual)
+{
+    if ((min == -1 && actual <= max) ||
+        (max == -1 && min <= actual) ||
+        (min <= actual && actual <= max))
+        return;
+    runtime_error("wrong number of arguments: expected %ld..%ld but got %ld",
+                  min, max, actual);
 }
 
 Value apply(Value *env, Value func, Value vargs)
@@ -645,7 +673,9 @@ static Value define_function(Value *env, const char *name, CFunc cfunc, long ari
 static Value lookup(Value env, Value name)
 {
     Value found = alist_find(env, name);
-    return found == Qnil ? Qundef : cdr(found);
+    if (found == Qnil)
+        runtime_error("unbound variable: %s", value_to_string(name));
+    return cdr(found);
 }
 
 Value eval_string(const char *in)
@@ -654,15 +684,6 @@ Value eval_string(const char *in)
     Value v = load(f);
     fclose(f);
     return v;
-}
-
-static Value memq(Value needle, Value list)
-{
-    for (Value p = list; p != Qnil; p = cdr(p)) {
-        if (car(p) == needle)
-            return p;
-    }
-    return Qnil;
 }
 
 static Value ieval(Value *env, Value v); // internal
@@ -682,14 +703,10 @@ static Value map2(MapFunc f, Value *common, Value l)
 static Value eval_funcy(Value *env, Value list)
 {
     Value f = ieval(env, car(list));
-    if (f == Qundef)
-        return Qundef;
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
     Value l = map2(ieval, env, args);
-    if (memq(Qundef, l) != Qnil)
-        return Qundef;
     return apply(env, f, l);
 }
 
@@ -711,6 +728,8 @@ Value load(FILE *in)
 {
     Value env = toplevel_environment;
     Value last = Qnil;
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
     for (Value v = parse(in); v != Qnil; v = cdr(v))
         last = ieval(&env, car(v));
     return last;
@@ -829,8 +848,8 @@ static void expect_type(Type expected, Value v, const char *header)
     Type t = value_typeof(v);
     if (t == expected)
         return;
-    error("%s: type error: expected %s but got %s",
-          header, TYPE_NAMES[expected], TYPE_NAMES[t]);
+    runtime_error("%s: type error: expected %s but got %s",
+                  header, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
 static Value builtin_add(Value args)
@@ -846,8 +865,8 @@ static Value builtin_add(Value args)
 
 static Value builtin_sub(Value args)
 {
-    if (args == Qnil)
-        error("wrong number of arguments: expected 1 or more but got 0");
+    expect_arity_range(1, -1, length(args));
+
     Value rest = cdr(args);
     int64_t y = 0;
     if (rest == Qnil)
@@ -878,8 +897,8 @@ static Value builtin_mul(Value args)
 
 static Value builtin_div(Value args)
 {
-    if (args == Qnil)
-        error("wrong number of arguments: expected 1 or more but got 0");
+    expect_arity_range(1, -1, length(args));
+
     Value rest = cdr(args);
     int64_t y = 1;
     if (rest == Qnil)
@@ -897,16 +916,9 @@ static Value builtin_div(Value args)
     return value_of_int(y);
 }
 
-static bool validate_arity_range(Value args, long min, long max)
-{
-    long l = length(args);
-    return min <= l && l <= max;
-}
-
 static Value builtin_if(Value *env, Value args)
 {
-    if (!validate_arity_range(args, 2, 3))
-        return Qundef;
+    expect_arity_range(2, 3, length(args));
 
     Value cond = car(args), then = cadr(args);
     if (ieval(env, cond) != Qfalse)
@@ -920,19 +932,19 @@ static Value builtin_if(Value *env, Value args)
 static Value builtin_define(Value *env, Value ident, Value expr)
 {
     expect_type(TYPE_SYMBOL, ident, "define");
+
     Value val = ieval(env, expr);
-    if (val == Qundef)
-        return Qundef;
     *env = alist_prepend(*env, ident, val);
     return Qnil;
 }
 
 static Value builtin_set(Value *env, Value ident, Value expr)
 {
-    expect_type(TYPE_SYMBOL, ident, "define");
+    expect_type(TYPE_SYMBOL, ident, "set");
+
     Value found = alist_find(*env, ident);
     if (found == Qnil)
-        return Qundef;
+        runtime_error("set!: unbound variable: %s", value_to_string(ident));
     PAIR(found)->cdr = ieval(env, expr);
     return Qnil;
 }
