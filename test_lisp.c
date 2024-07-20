@@ -202,9 +202,9 @@ Test(lisp, reverse) {
 
 Test(lisp, define_variable) {
     Value v;
-    v = eval_string("(define x 42)");
-    cr_assert(value_is_symbol(v));
-    cr_assert_str_eq("x", value_to_string(v));
+    v = eval_string("(define x 42) x");
+    cr_assert(value_is_int(v));
+    cr_assert_eq(42, value_to_int(v));
 
     v = eval_string("x");
     cr_assert(value_is_int(v));
