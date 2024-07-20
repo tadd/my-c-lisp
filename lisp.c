@@ -82,6 +82,11 @@ const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
+// runtime-locals (aka global variables)
+
+static Value toplevel_environment = Qnil; // alist of ('ident . <value>)
+static Value symbol_names = Qnil;
+
 // value_is_*: type checks
 
 static inline uintptr_t flags(Value v)
@@ -294,8 +299,6 @@ static Token get_token_int(Parser *p, int sign)
         unexpected("integer", "invalid string");
     return TOK_INT(sign * i);
 }
-
-static Value symbol_names = Qnil;
 
 static Symbol intern(const char *name)
 {
@@ -602,8 +605,6 @@ static Value apply_special(Value env, Value sp, Value vargs)
     return apply(env, sp, cons(env, vargs));
 }
 
-static Value default_environment = Qnil; // alist of ('ident . <value>)
-
 static Value alist_find_or_last(Value l, Value vkey, Value *last)
 {
     if (!value_is_symbol(vkey))
@@ -728,8 +729,7 @@ static Value ieval(Value env, Value v)
 
 Value eval(Value v)
 {
-    Value env = default_environment;
-    return ieval(env, v);
+    return ieval(toplevel_environment, v);
 }
 
 Value load(FILE *in)
@@ -963,7 +963,7 @@ static Value builtin_list(Value args)
 ATTR_CTOR
 static void initialize(void)
 {
-    Value *e = &default_environment;
+    Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
     define_special(e, "define", builtin_define, 2);
 
