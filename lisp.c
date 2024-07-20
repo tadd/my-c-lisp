@@ -606,55 +606,14 @@ static Value apply_special(Value *env, Value sp, Value vargs)
     return apply(env, sp, cons((Value) env, vargs));
 }
 
-static Value alist_find_or_last(Value l, Value vkey, Value *last)
+static Value alist_find(Value l, Value key)
 {
-    if (!value_is_symbol(vkey))
-        return Qnil;
-    Symbol key = value_to_symbol(vkey);
-    Value prev = Qnil;
-    for (Value p = l; p != Qnil; prev = p, p = cdr(p)) {
+    for (Value p = l; p != Qnil; p = cdr(p)) {
         Value entry = car(p);
-        if (!value_is_pair(entry))
-            continue;
-        Value target = car(entry);
-        if (!value_is_symbol(target))
-            continue;
-        Symbol sym = value_to_symbol(target);
-        if (sym == key)
+        if (value_is_pair(entry) && car(entry) == key)
             return entry;
     }
-    if (last)
-        *last = prev; // may be Qnil
     return Qnil;
-}
-
-static Value alist_find(Value l, Value vkey)
-{
-    Value entry = alist_find_or_last(l, vkey, NULL);
-    if (entry == Qnil)
-        return Qundef;
-    return cdr(entry);
-}
-
-static Value alist_put_or_append(Value l, Value vkey, Value val)
-{
-    Value last;
-    Value found = alist_find_or_last(l, vkey, &last);
-    if (found != Qnil) {
-        PAIR(found)->cdr = val; // put
-        return l;
-    }
-    Value next = cons(cons(vkey, val), Qnil);
-    if (last == Qnil)
-        return next; // create new list
-    PAIR(last)->cdr = next; // append
-    return l;
-}
-
-static Value env_put(Value *env, Value name, Value val)
-{
-    *env = alist_put_or_append(*env, name, val);
-    return name;
 }
 
 static Value alist_prepend(Value list, Value key, Value val)
@@ -676,7 +635,8 @@ static Value define_function(Value *env, const char *name, CFunc cfunc, long ari
 
 static Value lookup(Value env, Value name)
 {
-    return alist_find(env, name);
+    Value found = alist_find(env, name);
+    return found == Qnil ? Qundef : cdr(found);
 }
 
 Value eval_string(const char *in)
@@ -959,7 +919,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     Value val = ieval(env, expr);
     if (val == Qundef)
         return Qundef;
-    env_put(env, ident, val);
+    *env = alist_prepend(*env, ident, val);
     return Qnil;
 }
 
