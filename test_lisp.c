@@ -16,6 +16,17 @@ Test(lisp, nil) {
         free(s); \
     } while (0)
 
+#define assert_list_eq(expected, actual) do { \
+        Value exp = expected, act = actual; \
+        cr_assert(value_is_pair(act)); \
+        cr_assert_eq(length(exp), length(act)); \
+        for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
+            cr_assert_eq(value_to_int(car(exp)), value_to_int(car(act))); \
+    } while (0)
+
+#define V(x) \
+    _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
+
 Test(lisp, printing) {
     assert_stringify("#t", Qtrue);
     assert_stringify("#f", Qfalse);
@@ -132,11 +143,6 @@ Test(lisp, if) {
     v = eval_string("(if #t 1)");
     cr_assert_eq(1, value_to_int(v));
 
-#if 0 // undefined in R^5RS, maybe
-    v = eval_string("(if #f 1)");
-    cr_assert_eq(Qfalse, v));
-#endif
-
     v = eval_string("(if #t 1 2)");
     cr_assert_eq(1, value_to_int(v));
 
@@ -181,14 +187,6 @@ Test(lisp, list) {
     cr_assert_str_eq("<function>", stringify(v2));
 }
 
-#define assert_list_eq(expected, actual) do { \
-        Value exp = expected, act = actual; \
-        cr_assert(value_is_pair(act)); \
-        cr_assert_eq(length(exp), length(act)); \
-        for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
-            cr_assert_eq(value_to_int(car(exp)), value_to_int(car(act))); \
-    } while (0)
-#define V(x) _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
 
 Test(lisp, reverse) {
     assert_list_eq(Qnil, reverse(Qnil));
