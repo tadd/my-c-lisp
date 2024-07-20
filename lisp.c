@@ -558,7 +558,7 @@ static void expect_arity(long expected, long actual)
           expected, actual);
 }
 
-Value apply(Value env, Value func, Value vargs)
+Value apply(Value *env, Value func, Value vargs)
 {
     static const long ARG_MAX = 7;
 
@@ -600,9 +600,9 @@ Value apply(Value env, Value func, Value vargs)
     }
 }
 
-static Value apply_special(Value env, Value sp, Value vargs)
+static Value apply_special(Value *env, Value sp, Value vargs)
 {
-    return apply(env, sp, cons(env, vargs));
+    return apply(env, sp, cons((Value) env, vargs));
 }
 
 static Value alist_find_or_last(Value l, Value vkey, Value *last)
@@ -696,10 +696,10 @@ static Value memq(Value needle, Value list)
     return Qnil;
 }
 
-static Value ieval(Value env, Value v); // internal
+static Value ieval(Value *env, Value v); // internal
 
-typedef Value (*MapFunc)(Value common, Value v);
-static Value map2(MapFunc f, Value common, Value l)
+typedef Value (*MapFunc)(Value *common, Value v);
+static Value map2(MapFunc f, Value *common, Value l)
 {
     Value mapped = Qnil, last = Qnil;
     for (; l != Qnil; l = cdr(l)) {
@@ -710,8 +710,7 @@ static Value map2(MapFunc f, Value common, Value l)
     return mapped;
 }
 
-
-static Value eval_funcy(Value env, Value list)
+static Value eval_funcy(Value *env, Value list)
 {
     Value f = ieval(env, car(list));
     if (f == Qundef)
@@ -725,10 +724,10 @@ static Value eval_funcy(Value env, Value list)
     return apply(env, f, l);
 }
 
-static Value ieval(Value env, Value v)
+static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
-        return lookup(env, v);
+        return lookup(*env, v);
     if (v == Qnil || is_immediate(v) || value_is_string(v))
         return v;
     return eval_funcy(env, v);
@@ -736,14 +735,15 @@ static Value ieval(Value env, Value v)
 
 Value eval(Value v)
 {
-    return ieval(toplevel_environment, v);
+    return ieval(&toplevel_environment, v);
 }
 
 Value load(FILE *in)
 {
+    Value env = toplevel_environment;
     Value last = Qnil;
     for (Value v = parse(in); v != Qnil; v = cdr(v))
-        last = eval(car(v));
+        last = ieval(&env, car(v));
     return last;
 }
 
@@ -939,7 +939,7 @@ static bool validate_arity_range(Value args, long min, long max)
     return min <= l && l <= max;
 }
 
-static Value builtin_if(Value env, Value args)
+static Value builtin_if(Value *env, Value args)
 {
     if (!validate_arity_range(args, 2, 3))
         return Qundef;
@@ -953,13 +953,13 @@ static Value builtin_if(Value env, Value args)
     return ieval(env, car(els));
 }
 
-static Value builtin_define(Value env, Value ident, Value expr)
+static Value builtin_define(Value *env, Value ident, Value expr)
 {
     expect_type(TYPE_SYMBOL, ident, "define");
     Value val = ieval(env, expr);
     if (val == Qundef)
         return Qundef;
-    env_put(&env, ident, val);
+    env_put(env, ident, val);
     return Qnil;
 }
 
