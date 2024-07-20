@@ -656,15 +656,22 @@ static Value env_put(Value *env, Value name, Value val)
     return name;
 }
 
+static Value alist_prepend(Value list, Value key, Value val)
+{
+    return cons(cons(key, val), list);
+}
+
 static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
 {
     arity += (arity == -1) ? -1 : 1;
-    return env_put(env, value_of_symbol(name), value_of_special(cfunc, arity));
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
+    return Qnil;
 }
 
 static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
 {
-    return env_put(env, value_of_symbol(name), value_of_func(cfunc, arity));
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_func(cfunc, arity));
+    return Qnil;
 }
 
 static Value lookup(Value env, Value name)
@@ -952,7 +959,8 @@ static Value builtin_define(Value env, Value ident, Value expr)
     Value val = ieval(env, expr);
     if (val == Qundef)
         return Qundef;
-    return env_put(&env, ident, val);
+    env_put(&env, ident, val);
+    return Qnil;
 }
 
 static Value builtin_list(Value args)
