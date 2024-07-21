@@ -1058,15 +1058,12 @@ static Value builtin_define(Value *env, Value ident, Value expr)
 {
     expect_type("define", TYPE_SYMBOL, ident);
 
-    Value val = ieval(env, expr);
-    if (*env == toplevel_environment) { // set!?
-        Value found = alist_find(*env, ident);
-        if (found != Qnil) {
-            PAIR(found)->cdr = val;
-            return Qnil;
-        }
-    }
-    *env = alist_prepend(*env, ident, val);
+    Value found = Qnil;
+    if (*env == toplevel_environment) // set?
+        found = alist_find(*env, ident);
+    if (found == Qnil) // prepend
+        found = *env = alist_prepend(*env, ident, Qundef);
+    PAIR(car(found))->cdr = ieval(env, expr); // set!
     return Qnil;
 }
 

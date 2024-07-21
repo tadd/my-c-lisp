@@ -372,6 +372,12 @@ Test(lisp, lambda) {
     assert_vint_eq(42, v);
 }
 
+Test(lisp, lambda_rec) {
+    Value v;
+    v = eval_string("(define f (lambda (x) (if (> x 0) x (f (+ x 1))))) (f 0)");
+    assert_vint_eq(1, v);
+}
+
 Test(lisp, begin) {
     Value v;
     v = eval_string("(begin 1 2 3)");
