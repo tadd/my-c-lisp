@@ -1178,6 +1178,9 @@ static void initialize(void)
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
 
+    define_function(e, "car", car, 1);
+    define_function(e, "cdr", cdr, 1);
+    define_function(e, "cons", cons, 2);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);

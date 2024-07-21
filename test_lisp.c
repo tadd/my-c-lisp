@@ -265,6 +265,20 @@ Test(lisp, reverse) {
     assert_list_eq(list(V(3), V(2), V(1), Qundef), v);
 }
 
+Test(lisp, cons_etc) {
+    Value v;
+    v = eval_string("(cons 1 2)");
+    cr_assert(value_is_pair(v));
+    assert_vint_eq(1, car(v));
+    assert_vint_eq(2, cdr(v));
+
+    v = eval_string("(car (cons 1 2))");
+    assert_vint_eq(1, v);
+
+    v = eval_string("(cdr (cons 1 2))");
+    assert_vint_eq(2, v);
+}
+
 Test(lisp, define_variable) {
     Value v;
     v = eval_string("(define x 42) x");
