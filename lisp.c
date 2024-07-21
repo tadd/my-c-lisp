@@ -53,6 +53,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "internal string",
     [TYPE_FUNC] = "function",
+    [TYPE_SPECIAL] = "special form",
 };
 
 typedef enum {
