@@ -590,7 +590,7 @@ static void expect_arity_range(const char *func, long min, long max, long actual
                   func, min, max, actual);
 }
 
-Value apply(Value *env, Value func, Value vargs)
+static Value apply(Value *env, Value func, Value vargs)
 {
     long n = FUNCTION(func)->arity;
     expect_arity(n, length(vargs));
