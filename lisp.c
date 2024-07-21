@@ -852,14 +852,17 @@ static void expect_type(const char *header, Type expected, Value v)
                   header, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
+static int64_t value_get_int(const char *header, Value v)
+{
+    expect_type(header, TYPE_INT, v);
+    return value_to_int(v);
+}
+
 static Value builtin_add(Value args)
 {
     int64_t y = 0;
-    for (Value l = args; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type("+", TYPE_INT, x);
-        y += value_to_int(x);
-    }
+    for (Value l = args; l != Qnil; l = cdr(l))
+        y += value_get_int("+", car(l));
     return value_of_int(y);
 }
 
@@ -872,26 +875,18 @@ static Value builtin_sub(Value args)
     if (rest == Qnil)
         rest = args;
     else {
-        Value vy = car(args);
-        expect_type("-", TYPE_INT, vy);
-        y = value_to_int(vy);
+        y = value_get_int("-", car(args));
     }
-    for (Value l = rest; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type("-", TYPE_INT, x);
-        y -= value_to_int(x);
-    }
+    for (Value l = rest; l != Qnil; l = cdr(l))
+        y -= value_get_int("-", car(l));
     return value_of_int(y);
 }
 
 static Value builtin_mul(Value args)
 {
     int64_t y = 1;
-    for (Value l = args; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type("*", TYPE_INT, x);
-        y *= value_to_int(x);
-    }
+    for (Value l = args; l != Qnil; l = cdr(l))
+        y *= value_get_int("*", car(l));
     return value_of_int(y);
 }
 
@@ -903,15 +898,10 @@ static Value builtin_div(Value args)
     int64_t y = 1;
     if (rest == Qnil)
         rest = args;
-    else {
-        Value vy = car(args);
-        expect_type("/", TYPE_INT, vy);
-        y = value_to_int(vy);
-    }
+    else
+        y = value_get_int("/", car(args));
     for (Value l = rest; l != Qnil; l = cdr(l)) {
-        Value vx = car(l);
-        expect_type("/", TYPE_INT, vx);
-        long x = value_to_int(vx);
+        int64_t x = value_get_int("/", car(l));
         if (x == 0)
             runtime_error("/: divided by zero");
         y /= x;
