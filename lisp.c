@@ -82,6 +82,8 @@ const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
+static const long FUNCARG_MAX = 7;
+
 // runtime-locals (aka global variables)
 
 static Value toplevel_environment = Qnil; // alist of ('ident . <value>)
@@ -562,11 +564,7 @@ static void expect_arity(long expected, long actual)
 
 Value apply(Value *env, Value func, Value vargs)
 {
-    static const long FUNCARG_MAX = 7;
-
     long n = FUNCTION(func)->arity;
-    if (n > FUNCARG_MAX)
-        error("arguments too long: max is %ld but got %ld", FUNCARG_MAX, n);
     expect_arity(n, length(vargs));
 
     Value a[FUNCARG_MAX];
@@ -622,14 +620,24 @@ static Value alist_prepend(Value list, Value key, Value val)
     return cons(cons(key, val), list);
 }
 
+static void expect_valid_arity(long expected_max, long actual)
+{
+    if (actual <= expected_max)
+        return;
+    error("arity too large: expected ..%ld but got %ld",
+          expected_max, actual);
+}
+
 static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
 {
+    expect_valid_arity(FUNCARG_MAX - 1, arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
 
 static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
 {
+    expect_valid_arity(FUNCARG_MAX, arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_func(cfunc, arity));
     return Qnil;
 }
