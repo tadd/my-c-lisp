@@ -12,8 +12,8 @@
 
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
-#define unexpected(exp, act, ...) \
-    runtime_error("expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
+#define parse_error(exp, act, ...) \
+    runtime_error("while parsing: expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
 static jmp_buf jmp_runtime_error;
 static char errmsg[BUFSIZ];
@@ -317,7 +317,7 @@ static Token get_token_int(Parser *p, int sign)
     int64_t i;
     int n = fscanf(p->in, "%ld", &i);
     if (n != 1)
-        unexpected("integer", "invalid string");
+        parse_error("integer", "invalid string");
     return TOK_INT(sign * i);
 }
 
@@ -386,7 +386,7 @@ static Token get_token_ident(Parser *p)
             break;
         *s++ = c;
         if (s == end)
-            unexpected("identifier", "too long");
+            parse_error("identifier", "too long");
     }
     ungetc(c, p->in);
     *s = '\0';
@@ -432,7 +432,7 @@ static Token get_token(Parser *p)
             return TOK_CONST(Qtrue);
         if (c == 'f')
             return TOK_CONST(Qfalse);
-        unexpected("constants", "#%c", c);
+        parse_error("constants", "#%c", c);
     case EOF:
         return TOK_EOF;
     default:
@@ -448,7 +448,7 @@ static Token get_token(Parser *p)
         ungetc(c, p->in);
         return get_token_ident(p);
     }
-    runtime_error("got unexpected char: '%c'", c);
+    parse_error("valid char", "'%c'", c);
 }
 
 static void unget_token(Parser *p, Token t)
@@ -511,7 +511,7 @@ static Value parse_dotted_pair(Parser *p)
     Value e = parse_expr(p);
     Token t = get_token(p);
     if (t.type != TTYPE_RPAREN)
-        unexpected("')'", "'%s'", token_stringify(t));
+        parse_error("')'", "'%s'", token_stringify(t));
     return e;
 }
 
@@ -524,7 +524,7 @@ static Value parse_list(Parser *p)
     Value car = parse_expr(p), cdr;
     t = get_token(p);
     if (t.type == TTYPE_EOF)
-        unexpected("')'", "'%s'", token_stringify(t));
+        parse_error("')'", "'%s'", token_stringify(t));
     if (t.type == TTYPE_DOT) {
         cdr = parse_dotted_pair(p);
     } else {
@@ -541,9 +541,9 @@ static Value parse_expr(Parser *p)
     case TTYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TTYPE_RPAREN:
-        unexpected("expression", "')'");
+        parse_error("expression", "')'");
     case TTYPE_DOT:
-        unexpected("expression", "'.'");
+        parse_error("expression", "'.'");
     case TTYPE_INT:
     case TTYPE_CONST:
     case TTYPE_IDENT:
