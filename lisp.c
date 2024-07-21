@@ -638,7 +638,7 @@ static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
     expect_arity(arity, i);
 }
 
-static Value apply(Value *env, Value func, Value vargs)
+static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
     Value a[FUNCARG_MAX];
     long n = FUNCTION(func)->arity;
@@ -670,6 +670,11 @@ static Value apply(Value *env, Value func, Value vargs)
     default:
         UNREACHABLE();
     }
+}
+
+static Value apply(Value *env, Value func, Value vargs)
+{
+    return apply_cfunc(env, func, vargs);
 }
 
 static Value apply_special(Value *env, Value sp, Value vargs)
@@ -750,7 +755,10 @@ static Value eval_funcy(Value *env, Value list)
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
-    expect_type("(eval)", TYPE_CFUNC, f);
+    Type t = value_typeof(f);
+    if (t != TYPE_CFUNC)
+        runtime_error("type error in (eval): expected C function or closure but got %s",
+                      TYPE_NAMES[t]);
     Value l = map2(ieval, env, args);
     return apply(env, f, l);
 }
