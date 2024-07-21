@@ -302,3 +302,9 @@ Test(lisp, let_star) {
     assert_eq(42, value_to_int(car(v)));
     assert_eq(10, value_to_int(cadr(v)));
 }
+
+Test(lisp, applicable) {
+    Value v;
+    v = eval_string("(1 1)");
+    assert_runtime_error(v, "expected function");
+}

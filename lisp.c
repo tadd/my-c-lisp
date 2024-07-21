@@ -257,6 +257,20 @@ inline Value cons(Value car, Value cdr)
     return (Value) p;
 }
 
+// utilities for errors
+
+static void expect_type(const char *header, Type expected, Value v)
+{
+    Type t = value_typeof(v);
+    if (t == expected)
+        return;
+    runtime_error("type error in %s: expected %s but got %s",
+                  header, TYPE_NAMES[expected], TYPE_NAMES[t]);
+}
+#define expect_type_twin(h, t, x, y) expect_type(h, t, x), expect_type(h, t, y)
+
+// for parsing
+
 static Value append(Value l, Value elem)
 {
     Value p = cons(elem, Qnil);
@@ -709,6 +723,7 @@ static Value eval_funcy(Value *env, Value list)
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
+    expect_type("(eval)", TYPE_FUNC, f);
     Value l = map2(ieval, env, args);
     return apply(env, f, l);
 }
@@ -845,16 +860,6 @@ Value parse_string(const char *in)
     fclose(f);
     return v;
 }
-
-static void expect_type(const char *header, Type expected, Value v)
-{
-    Type t = value_typeof(v);
-    if (t == expected)
-        return;
-    runtime_error("type error in %s: expected %s but got %s",
-                  header, TYPE_NAMES[expected], TYPE_NAMES[t]);
-}
-#define expect_type_twin(h, t, x, y) expect_type(h, t, x), expect_type(h, t, y)
 
 static int64_t value_get_int(const char *header, Value v)
 {
