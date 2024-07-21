@@ -699,24 +699,38 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
     return eval_body(&clenv, body);
 }
 
-static void expect_applicative(Value func)
+typedef Value (*MapFunc)(Value *common, Value v);
+static Value map2(MapFunc f, Value *common, Value l)
 {
-    if (!is_immediate(func)) {
-        ValueTag t = VALUE_TAG(func);
-        if (t == TAG_CFUNC || t == TAG_SPECIAL || t == TAG_CLOSURE)
-            return;
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append(last, f(common, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
     }
-    runtime_error("type error in (eval): expected applicative but got %s",
-                  TYPE_NAMES[value_typeof(func)]);
+    return mapped;
 }
 
-static Value apply(Value *env, Value func, Value vargs)
+static Value apply(Value *env, Value func, Value args)
 {
-    expect_applicative(func);
-    ValueTag t = VALUE_TAG(func);
-    if (t == TAG_CLOSURE)
-        return apply_closure(env, func, vargs);
-    return apply_cfunc(env, func, vargs);
+    if (is_immediate(func))
+        goto unapplicative;
+    switch (VALUE_TAG(func)) {
+    case TAG_SPECIAL:
+        args = cons((Value) env, args);
+        return apply_cfunc(env, func, args);
+    case TAG_CFUNC:
+        args = map2(ieval, env, args);
+        return apply_cfunc(env, func, args);
+    case TAG_CLOSURE:
+        args = map2(ieval, env, args);
+        return apply_closure(env, func, args);
+    default:
+        break;
+    }
+ unapplicative:
+    runtime_error("type error in (eval): expected applicative but got %s",
+                  TYPE_NAMES[value_typeof(func)]);
 }
 
 static Value alist_find(Value l, Value key)
@@ -772,27 +786,10 @@ Value eval_string(const char *in)
     return v;
 }
 
-typedef Value (*MapFunc)(Value *common, Value v);
-static Value map2(MapFunc f, Value *common, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append(last, f(common, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 static Value eval_funcy(Value *env, Value list)
 {
     Value f = ieval(env, car(list));
-    Value args = cdr(list);
-    if (tagged_value_is(f, TAG_SPECIAL))
-        args = cons((Value) env, args);
-    else
-        args = map2(ieval, env, args);
-    return apply(env, f, args);
+    return apply(env, f, cdr(list));
 }
 
 static Value ieval(Value *env, Value v)
