@@ -371,7 +371,7 @@ static inline bool is_initial(int c)
 static inline bool is_subsequent(int c)
 {
     return isalpha(c) || isdigit(c) ||
-        c == '-' || c == '.' || c == '!';
+        c == '*' || c == '-' || c == '.' || c == '!' ;
 }
 
 static Token get_token_ident(Parser *p)
@@ -854,6 +854,7 @@ static void expect_type(const char *header, Type expected, Value v)
     runtime_error("type error in %s: expected %s but got %s",
                   header, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
+#define expect_type_twin(h, t, x, y) expect_type(h, t, x), expect_type(h, t, y)
 
 static int64_t value_get_int(const char *header, Value v)
 {
@@ -930,11 +931,14 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     expect_type("define", TYPE_SYMBOL, ident);
 
     Value val = ieval(env, expr);
-    Value found = alist_find(*env, ident);
-    if (found == Qnil)
-        *env = alist_prepend(*env, ident, val);
-    else
-        PAIR(found)->cdr = ieval(env, expr);
+    if (*env == toplevel_environment) { // set!?
+        Value found = alist_find(*env, ident);
+        if (found != Qnil) {
+            PAIR(found)->cdr = ieval(env, expr);
+            return Qnil;
+        }
+    }
+    *env = alist_prepend(*env, ident, val);
     return Qnil;
 }
 
@@ -949,6 +953,31 @@ static Value builtin_set(Value *env, Value ident, Value expr)
     return Qnil;
 }
 
+static Value builtin_let(Value *env, Value args)
+{
+    Value bindings = car(args);
+    Value body = cdr(args);
+    expect_type_twin("let", TYPE_PAIR, bindings, body);
+    Value letenv = *env;
+    for (; bindings != Qnil; bindings = cdr(bindings)) {
+        Value b = car(bindings);
+        if (b == Qnil)
+            continue;
+        expect_type("let", TYPE_PAIR, b);
+        Value ident = car(b), expr = cadr(b);
+        expect_type("let", TYPE_SYMBOL, ident);
+        letenv = cons(cons(ident, ieval(env, expr)), letenv);
+    }
+    if (body == Qnil)
+        runtime_error("let: one or more expressions needed in body");
+    Value last;
+    do {
+        last = ieval(&letenv, car(body));
+        body = cdr(body);
+    } while (body != Qnil);
+    return last;
+}
+
 static Value builtin_list(Value args)
 {
     return args;
@@ -961,6 +990,8 @@ static void initialize(void)
     define_special(e, "if", builtin_if, -1);
     define_special(e, "define", builtin_define, 2);
     define_special(e, "set!", builtin_set, 2);
+    define_special(e, "let", builtin_let, -1);
+    define_special(e, "let*", builtin_let, -1); // alias
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);

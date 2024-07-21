@@ -237,3 +237,68 @@ Test(lisp, set) {
     v = eval_string("(set! x 42) x");
     assert_runtime_error(v, "unbound variable: x");
 }
+
+Test(lisp, let) {
+    Value v;
+    v = eval_string("(let ((x 42)) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("(let ((x 42) (y 21)) (+ x y))");
+    cr_assert(value_is_int(v));
+    assert_eq(63, value_to_int(v));
+
+    v = eval_string("(let ((x 42)) (let ((y 21)) (+ x y)))");
+    cr_assert(value_is_int(v));
+    assert_eq(63, value_to_int(v));
+
+    v = eval_string("(let ((x 42)) (let ((x 1)) x))");
+    cr_assert(value_is_int(v));
+    assert_eq(1, value_to_int(v));
+
+    v = eval_string("(let ((x 42)) (let ((y x)) y))");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("(let ((x 42)) (let ((x x)) x))");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("(let ((x 42)) (let ((x 10)) x) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("(let ((x 42) (y 10)) (list x y))");
+    cr_assert(value_is_pair(v));
+    assert_eq(42, value_to_int(car(v)));
+    assert_eq(10, value_to_int(cadr(v)));
+
+    v = eval_string("(let ((x 42)))");
+    assert_runtime_error(v, "one or more expressions");
+
+    v = eval_string("(let ((x 42) (y 100)))");
+    assert_runtime_error(v, "one or more expressions");
+}
+
+Test(lisp, let_body_define) {
+    Value v;
+    v = eval_string("(let ((x 42)) (define x 2) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(2, value_to_int(v));
+
+    v = eval_string("(define x 1) (let ((x 42)) (define x 2) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(2, value_to_int(v));
+
+    v = eval_string("(define x 1) (let () (define x 2) x) x");
+    cr_assert(value_is_int(v));
+    assert_eq(1, value_to_int(v));
+}
+
+Test(lisp, let_star) {
+    Value v;
+    v = eval_string("(let* ((x 42) (y 10)) (list x y))");
+    cr_assert(value_is_pair(v));
+    assert_eq(42, value_to_int(car(v)));
+    assert_eq(10, value_to_int(cadr(v)));
+}
