@@ -1133,6 +1133,28 @@ static Value builtin_begin(Value *env, Value body)
     return eval_body(env, body);
 }
 
+static Value builtin_cond(Value *env, Value clauses)
+{
+    static Value ELSE = Qnil;
+    if (ELSE == Qnil)
+        ELSE = value_of_symbol("else");
+
+    expect_arity_range("cond", 1, -1, length(clauses));
+
+    for (; clauses != Qnil; clauses = cdr(clauses)) {
+        Value clause = car(clauses);
+        expect_type("cond", TYPE_PAIR, clause);
+        Value test = car(clause);
+        Value exprs = cdr(clause);
+        if (test == ELSE)
+            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+        Value t = ieval(env, test);
+        if (t != Qfalse)
+            return exprs == Qnil ? t : eval_body(env, exprs);
+    }
+    return Qnil;
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1144,6 +1166,7 @@ static void initialize(void)
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "lambda", builtin_lambda, -1);
     define_special(e, "begin", builtin_begin, -1);
+    define_special(e, "cond", builtin_cond, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);

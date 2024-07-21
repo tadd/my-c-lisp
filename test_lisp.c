@@ -363,3 +363,15 @@ Test(lisp, begin) {
     v = eval_string("(begin 1 2 3)");
     assert_vint_eq(3, v);
 }
+
+Test(lisp, cond) {
+    Value v;
+    v = eval_string("(cond (#f 1) (#t 2) (else 3))");
+    assert_vint_eq(2, v);
+
+    v = eval_string("(cond (#f 1) (else 3))");
+    assert_vint_eq(3, v);
+
+    v = eval_string("(cond (#f) (2))");
+    assert_vint_eq(2, v);
+}
