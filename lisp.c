@@ -562,14 +562,14 @@ static void expect_arity(long expected, long actual)
 
 Value apply(Value *env, Value func, Value vargs)
 {
-    static const long ARG_MAX = 7;
+    static const long FUNCARG_MAX = 7;
 
     long n = FUNCTION(func)->arity;
-    if (n > ARG_MAX)
-        error("arguments too long: max is %ld but got %ld", ARG_MAX, n);
+    if (n > FUNCARG_MAX)
+        error("arguments too long: max is %ld but got %ld", FUNCARG_MAX, n);
     expect_arity(n, length(vargs));
 
-    Value a[ARG_MAX];
+    Value a[FUNCARG_MAX];
     Value v = vargs;
     for (long i = 0; i < n; i++) {
         a[i] = car(v);
