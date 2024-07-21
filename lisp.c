@@ -141,11 +141,6 @@ static inline bool tagged_value_is(Value v, ValueTag expected)
     return !is_immediate(v) && VALUE_TAG(v) == expected;
 }
 
-static inline bool value_is_string(Value v)
-{
-    return tagged_value_is(v, TAG_STR);
-}
-
 inline bool value_is_cfunc(Value v)
 {
     return tagged_value_is(v, TAG_CFUNC);
@@ -796,7 +791,7 @@ static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
-    if (v == Qnil || is_immediate(v) || value_is_string(v))
+    if (v == Qnil || is_immediate(v))
         return v;
     return eval_funcy(env, v);
 }
