@@ -943,7 +943,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
 
 static Value builtin_set(Value *env, Value ident, Value expr)
 {
-    expect_type(TYPE_SYMBOL, ident, "set");
+    expect_type(TYPE_SYMBOL, ident, "set!");
 
     Value found = alist_find(*env, ident);
     if (found == Qnil)
