@@ -616,6 +616,14 @@ static void expect_arity_range(const char *func, long min, long max, long actual
                   func, min, max, actual);
 }
 
+static void expect_arity(long arity, long n)
+{
+    if (arity < 0 || arity == n)
+        return;
+    runtime_error("wrong number of arguments: expected %ld but got %ld",
+                  arity, n);
+}
+
 static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
 {
     long i;
@@ -627,10 +635,7 @@ static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
         a = cdr(a);
     }
     i += length(a);
-    if (arity < 0 || arity == i)
-        return;
-    runtime_error("wrong number of arguments: expected %ld but got %ld",
-                  arity, i);
+    expect_arity(arity, i);
 }
 
 static Value apply(Value *env, Value func, Value vargs)
