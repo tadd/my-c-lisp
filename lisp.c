@@ -396,7 +396,7 @@ static const char *unintern(Symbol sym)
 static inline bool is_initial(int c)
 {
     return isalpha(c) ||
-        c == '*' || c == '/' || c == '<' || c == '=' || c == '>';
+        c == '*' || c == '/' || c == '<' || c == '=' || c == '>' || c == '_';
 }
 
 static inline bool is_subsequent(int c)
