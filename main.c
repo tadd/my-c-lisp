@@ -6,14 +6,22 @@
 #include "lisp.h"
 #include "utils.h"
 
-static FILE *parse_opt(int argc, char *const *argv)
+typedef struct {
+    FILE *in;
+    bool print;
+} Option;
+
+static Option parse_opt(int argc, char *const *argv)
 {
-    FILE *in = NULL;
+    Option o = { .in = NULL, .print = false };
     int opt;
-    while ((opt = getopt(argc, argv, "e:")) != -1) {
+    while ((opt = getopt(argc, argv, "e:p")) != -1) {
         switch (opt) {
         case 'e':
-            in = fmemopen(optarg, strlen(optarg), "r");
+            o.in = fmemopen(optarg, strlen(optarg), "r");
+            break;
+        case 'p':
+            o.print = true;
             break;
         case '?':
             exit(2);
@@ -21,23 +29,24 @@ static FILE *parse_opt(int argc, char *const *argv)
     }
     const char *f = argv[optind];
     if (f) {
-        if (in != NULL)
+        if (o.in != NULL)
             error("filename %s given while option '-e' passed", f);
-        in = fopen(f, "r");
-        if (in == NULL)
+        o.in = fopen(f, "r");
+        if (o.in == NULL)
             error("can't read file %s", f);
     }
-    return in ? in : stdin;
+    return o;
 }
-
 int main(int argc, char **argv)
 {
-    FILE *in = parse_opt(argc, argv);
-    Value v = load(in);
-    fclose(in);
+    Option opt = parse_opt(argc, argv);
+    Value v = load(opt.in);
+    fclose(opt.in);
     if (v == Qundef)
         error("%s", error_message());
-    display(v);
-    printf("\n");
+    if (opt.print) {
+        display(v);
+        printf("\n");
+    }
     return 0;
 }
