@@ -975,73 +975,78 @@ static Value builtin_div(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_numeq(Value args)
-{
-    expect_arity_range("=", 2, -1, length(args));
+typedef enum {
+    RELOP_EQ,
+    RELOP_LT,
+    RELOP_LE,
+    RELOP_GT,
+    RELOP_GE,
+} RelOp;
 
-    int64_t x = value_get_int("=", car(args));
+
+typedef bool (*RelOpFunc)(int64_t x, int64_t y);
+
+static inline bool relop_eq(int64_t x, int64_t y) { return x == y; }
+static inline bool relop_lt(int64_t x, int64_t y) { return x <  y; }
+static inline bool relop_le(int64_t x, int64_t y) { return x <= y; }
+static inline bool relop_gt(int64_t x, int64_t y) { return x >  y; }
+static inline bool relop_ge(int64_t x, int64_t y) { return x >= y; }
+
+static Value relop(RelOp op, Value args)
+{
+    static const char *names[] = {
+        [RELOP_EQ] = "=",
+        [RELOP_LT] = "<",
+        [RELOP_LE] = "<=",
+        [RELOP_GT] = ">",
+        [RELOP_GE] = ">=",
+    };
+    static const RelOpFunc funcs[] = {
+        [RELOP_EQ] = relop_eq,
+        [RELOP_LT] = relop_lt,
+        [RELOP_LE] = relop_le,
+        [RELOP_GT] = relop_gt,
+        [RELOP_GE] = relop_ge,
+    };
+
+    const char *const name = names[op];
+    expect_arity_range(name, 2, -1, length(args));
+
+    RelOpFunc func = funcs[op];
+    int64_t x = value_get_int(name, car(args));
+
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("=", car(args));
-        if (x != y)
+        int64_t y = value_get_int(name, car(args));
+        if (!func(x, y))
             return Qfalse;
+        x = y;
     }
     return Qtrue;
+}
+
+static Value builtin_numeq(Value args)
+{
+    return relop(RELOP_EQ, args);
 }
 
 static Value builtin_lt(Value args)
 {
-    expect_arity_range("<", 2, -1, length(args));
-
-    int64_t x = value_get_int("<", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<", car(args));
-        if (x >= y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
+    return relop(RELOP_LT, args);
 }
 
 static Value builtin_gt(Value args)
 {
-    expect_arity_range(">", 2, -1, length(args));
-
-    int64_t x = value_get_int(">", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">", car(args));
-        if (x <= y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
+    return relop(RELOP_GT, args);
 }
 
 static Value builtin_le(Value args)
 {
-    expect_arity_range("<=", 2, -1, length(args));
-
-    int64_t x = value_get_int("<=", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<=", car(args));
-        if (x > y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
+    return relop(RELOP_LE, args);
 }
 
 static Value builtin_ge(Value args)
 {
-    expect_arity_range(">=", 2, -1, length(args));
-
-    int64_t x = value_get_int(">=", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">=", car(args));
-        if (x < y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
+    return relop(RELOP_GE, args);
 }
 
 static Value builtin_if(Value *env, Value args)
