@@ -848,7 +848,7 @@ static void expect_type(const char *header, Type expected, Value v)
     Type t = value_typeof(v);
     if (t == expected)
         return;
-    runtime_error("%s: type error: expected %s but got %s",
+    runtime_error("type error in %s: expected %s but got %s",
                   header, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
