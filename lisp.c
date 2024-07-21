@@ -972,6 +972,19 @@ static Value builtin_div(Value args)
     return value_of_int(y);
 }
 
+static Value builtin_numeq(Value args)
+{
+    expect_arity_range("=", 2, -1, length(args));
+
+    int64_t x = value_get_int("=", car(args));
+    while ((args = cdr(args)) != Qnil) {
+        int64_t y = value_get_int("=", car(args));
+        if (x != y)
+            return Qfalse;
+    }
+    return Qtrue;
+}
+
 static Value builtin_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, length(args));
@@ -1074,6 +1087,7 @@ static void initialize(void)
     define_function(e, "-", builtin_sub, -1);
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "/", builtin_div, -1);
+    define_function(e, "=", builtin_numeq, -1);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);

@@ -19,6 +19,8 @@
         for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
             assert_vint_eq(value_to_int(car(exp)), car(act)); \
     } while (0)
+#define V(x) \
+    _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
 
 #define assert_int_eq(expected, actual) cr_assert(eq(int, expected, actual))
 #define assert_vint_eq(expected, actual) do { \
@@ -26,8 +28,8 @@
         assert_int_eq(expected, value_to_int(actual)); \
     } while (0)
 
-#define V(x) \
-    _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
+#define assert_vtrue(actual) assert_int_eq(Qtrue, actual)
+#define assert_vfalse(actual) assert_int_eq(Qfalse, actual)
 
 #define assert_runtime_error(v, pattern) do { \
         assert_int_eq(Qundef, v); \
@@ -131,6 +133,19 @@ Test(lisp, eval_arithmetic_expr) {
 Test(lisp, div0) {
     Value v = eval_string("(/ 42 0)");
     assert_runtime_error(v, "divided by zero");
+}
+
+Test(lisp, relop) {
+    Value v;
+    v = eval_string("(= 42 42)");
+    assert_vtrue(v);
+    v = eval_string("(= 0 0 0 0 0)");
+    assert_vtrue(v);
+
+    v = eval_string("(= 42 0)");
+    assert_vfalse(v);
+    v = eval_string("(= 0 0 0 0 42)");
+    assert_vfalse(v);
 }
 
 Test(lisp, unbound_variable) {
