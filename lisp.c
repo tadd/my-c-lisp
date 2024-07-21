@@ -672,8 +672,45 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     }
 }
 
+static Value ieval(Value *env, Value v); // internal
+
+static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
+{
+    long arity = FUNCTION(func)->arity;
+    expect_arity(arity, length(args));
+
+    Value closure = FUNCTION(func)->closure;
+    Value clenv = car(closure), params = cadr(closure), body = cddr(closure);
+    if (arity == -1)
+        runtime_error("(apply): variadic arguments not supported yet");
+    while (args != Qnil) {
+        clenv = cons(cons(car(params), car(args)), clenv);
+        args = cdr(args);
+        params = cdr(params);
+    }
+    Value last = Qnil;
+    for (Value b = body; b != Qnil; b = cdr(b))
+        last = ieval(&clenv, car(b));
+    return last;
+}
+
+static void expect_applicative(Value func)
+{
+    if (!is_immediate(func)) {
+        ValueTag t = VALUE_TAG(func);
+        if (t == TAG_CFUNC || t == TAG_SPECIAL || t == TAG_CLOSURE)
+            return;
+    }
+    runtime_error("type error in (eval): expected applicative but got %s",
+                  TYPE_NAMES[value_typeof(func)]);
+}
+
 static Value apply(Value *env, Value func, Value vargs)
 {
+    expect_applicative(func);
+    ValueTag t = VALUE_TAG(func);
+    if (t == TAG_CLOSURE)
+        return apply_closure(env, func, vargs);
     return apply_cfunc(env, func, vargs);
 }
 
@@ -735,8 +772,6 @@ Value eval_string(const char *in)
     return v;
 }
 
-static Value ieval(Value *env, Value v); // internal
-
 typedef Value (*MapFunc)(Value *common, Value v);
 static Value map2(MapFunc f, Value *common, Value l)
 {
@@ -755,10 +790,6 @@ static Value eval_funcy(Value *env, Value list)
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
-    Type t = value_typeof(f);
-    if (t != TYPE_CFUNC)
-        runtime_error("type error in (eval): expected C function or closure but got %s",
-                      TYPE_NAMES[t]);
     Value l = map2(ieval, env, args);
     return apply(env, f, l);
 }

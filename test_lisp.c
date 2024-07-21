@@ -306,11 +306,23 @@ Test(lisp, let_star) {
 Test(lisp, applicable) {
     Value v;
     v = eval_string("(1 1)");
-    assert_runtime_error(v, "expected C function");
+    assert_runtime_error(v, "expected applicative");
 }
 
 Test(lisp, lambda) {
     Value v;
     v = eval_string("(lambda () 1)");
     cr_assert(value_is_closure(v));
+
+    v = eval_string("((lambda () 1))");
+    cr_assert(value_is_int(v));
+    assert_eq(1, value_to_int(v));
+
+    v = eval_string("((lambda (x) (* 2 x)) 21)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("((lambda (x y) (* x y)) 3 14)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
 }
