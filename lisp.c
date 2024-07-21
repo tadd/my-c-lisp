@@ -674,6 +674,14 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
 
 static Value ieval(Value *env, Value v); // internal
 
+static Value eval_body(Value *env, Value body)
+{
+    Value last = Qnil;
+    for (Value b = body; b != Qnil; b = cdr(b))
+        last = ieval(env, car(b));
+    return last;
+}
+
 static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
 {
     long arity = FUNCTION(func)->arity;
@@ -688,10 +696,7 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
         args = cdr(args);
         params = cdr(params);
     }
-    Value last = Qnil;
-    for (Value b = body; b != Qnil; b = cdr(b))
-        last = ieval(&clenv, car(b));
-    return last;
+    return eval_body(&clenv, body);
 }
 
 static void expect_applicative(Value func)
@@ -811,12 +816,9 @@ Value eval(Value v)
 Value load(FILE *in)
 {
     Value env = toplevel_environment;
-    Value last = Qnil;
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    for (Value v = parse(in); v != Qnil; v = cdr(v))
-        last = ieval(&env, car(v));
-    return last;
+    return eval_body(&env, parse(in));
 }
 
 static void fprint(FILE* f, Value v);
@@ -1044,12 +1046,7 @@ static Value builtin_let(Value *env, Value args)
     }
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
-    Value last;
-    do {
-        last = ieval(&letenv, car(body));
-        body = cdr(body);
-    } while (body != Qnil);
-    return last;
+    return eval_body(&letenv, body);
 }
 
 static Value builtin_lambda(Value *env, Value args)
