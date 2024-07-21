@@ -1047,6 +1047,12 @@ static Value builtin_list(Value args)
     return args;
 }
 
+static Value builtin_display(Value obj)
+{
+    display(obj);
+    return obj;
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1064,4 +1070,5 @@ static void initialize(void)
     define_function(e, "/", builtin_div, -1);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
+    define_function(e, "display", builtin_display, 1);
 }
