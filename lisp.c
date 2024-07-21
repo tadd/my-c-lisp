@@ -918,7 +918,7 @@ static Value builtin_if(Value *env, Value args)
         return ieval(env, then);
     Value els = cddr(args);
     if (els == Qnil)
-        return Qfalse;
+        return Qnil;
     return ieval(env, car(els));
 }
 
