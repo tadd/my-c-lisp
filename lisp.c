@@ -843,7 +843,7 @@ Value parse_string(const char *in)
     return v;
 }
 
-static void expect_type(Type expected, Value v, const char *header)
+static void expect_type(const char *header, Type expected, Value v)
 {
     Type t = value_typeof(v);
     if (t == expected)
@@ -857,7 +857,7 @@ static Value builtin_add(Value args)
     int64_t y = 0;
     for (Value l = args; l != Qnil; l = cdr(l)) {
         Value x = car(l);
-        expect_type(TYPE_INT, x, "+");
+        expect_type("+", TYPE_INT, x);
         y += value_to_int(x);
     }
     return value_of_int(y);
@@ -873,12 +873,12 @@ static Value builtin_sub(Value args)
         rest = args;
     else {
         Value vy = car(args);
-        expect_type(TYPE_INT, vy, "-");
+        expect_type("-", TYPE_INT, vy);
         y = value_to_int(vy);
     }
     for (Value l = rest; l != Qnil; l = cdr(l)) {
         Value x = car(l);
-        expect_type(TYPE_INT, x, "-");
+        expect_type("-", TYPE_INT, x);
         y -= value_to_int(x);
     }
     return value_of_int(y);
@@ -889,7 +889,7 @@ static Value builtin_mul(Value args)
     int64_t y = 1;
     for (Value l = args; l != Qnil; l = cdr(l)) {
         Value x = car(l);
-        expect_type(TYPE_INT, x, "*");
+        expect_type("*", TYPE_INT, x);
         y *= value_to_int(x);
     }
     return value_of_int(y);
@@ -905,12 +905,12 @@ static Value builtin_div(Value args)
         rest = args;
     else {
         Value vy = car(args);
-        expect_type(TYPE_INT, vy, "/");
+        expect_type("/", TYPE_INT, vy);
         y = value_to_int(vy);
     }
     for (Value l = rest; l != Qnil; l = cdr(l)) {
         Value vx = car(l);
-        expect_type(TYPE_INT, vx, "/");
+        expect_type("/", TYPE_INT, vx);
         long x = value_to_int(vx);
         if (x == 0)
             runtime_error("/: divided by zero");
@@ -934,7 +934,7 @@ static Value builtin_if(Value *env, Value args)
 
 static Value builtin_define(Value *env, Value ident, Value expr)
 {
-    expect_type(TYPE_SYMBOL, ident, "define");
+    expect_type("define", TYPE_SYMBOL, ident);
 
     Value val = ieval(env, expr);
     *env = alist_prepend(*env, ident, val);
@@ -943,7 +943,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
 
 static Value builtin_set(Value *env, Value ident, Value expr)
 {
-    expect_type(TYPE_SYMBOL, ident, "set!");
+    expect_type("set!", TYPE_SYMBOL, ident);
 
     Value found = alist_find(*env, ident);
     if (found == Qnil)
