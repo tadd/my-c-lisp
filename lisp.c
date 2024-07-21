@@ -804,26 +804,26 @@ Value load(FILE *in)
     return eval_body(&env, parse(in));
 }
 
-static void fprint(FILE* f, Value v);
+static void fdisplay(FILE* f, Value v);
 
-static void print_list(FILE *f, Value v)
+static void display_list(FILE *f, Value v)
 {
     for (;;) {
         Pair *p = PAIR(v);
-        fprint(f, p->car);
+        fdisplay(f, p->car);
         v = p->cdr;
         if (v == Qnil)
             break;
         fprintf(f, " ");
         if (value_is_atom(v)) {
             fprintf(f, ". ");
-            fprint(f, v);
+            fdisplay(f, v);
             break;
         }
     }
 }
 
-static void fprint(FILE* f, Value v)
+static void fdisplay(FILE* f, Value v)
 {
     switch (value_typeof(v)) {
     case TYPE_BOOL:
@@ -838,7 +838,7 @@ static void fprint(FILE* f, Value v)
     case TYPE_PAIR:
         fprintf(f, "(");
         if (v != Qnil)
-            print_list(f, v);
+            display_list(f, v);
         fprintf(f, ")");
         break;
     case TYPE_STR:
@@ -858,9 +858,9 @@ static void fprint(FILE* f, Value v)
     }
 }
 
-void print(Value v)
+void display(Value v)
 {
-    fprint(stdout, v);
+    fdisplay(stdout, v);
 }
 
 char *stringify(Value v)
@@ -870,7 +870,7 @@ char *stringify(Value v)
     FILE *stream = open_memstream(&s, &size);
     if (stream == NULL)
         return NULL;
-    fprint(stream, v);
+    fdisplay(stream, v);
     fclose(stream);
     return s;
 }

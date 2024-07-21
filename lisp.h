@@ -66,7 +66,7 @@ Value cddadr(Value v);
 Value cdddar(Value v);
 Value cddddr(Value v);
 
-void print(Value v);
+void display(Value v);
 Value parse(FILE *in);
 Value load(FILE *in);
 Value eval(Value v);

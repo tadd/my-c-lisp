@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     fclose(in);
     if (v == Qundef)
         error("%s", error_message());
-    print(v);
+    display(v);
     printf("\n");
     return 0;
 }
