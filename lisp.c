@@ -1053,6 +1053,12 @@ static Value builtin_display(Value obj)
     return obj;
 }
 
+static Value builtin_newline(void)
+{
+    puts("");
+    return Qnil;
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1071,4 +1077,5 @@ static void initialize(void)
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);
+    define_function(e, "newline", builtin_newline, 0);
 }
