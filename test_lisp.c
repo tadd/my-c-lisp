@@ -146,6 +146,46 @@ Test(lisp, relop) {
     assert_vfalse(v);
     v = eval_string("(= 0 0 0 0 42)");
     assert_vfalse(v);
+
+    v = eval_string("(< 2 4)");
+    assert_vtrue(v);
+    v = eval_string("(< 2 3 4 5)");
+    assert_vtrue(v);
+
+    v = eval_string("(< 2 0)");
+    assert_vfalse(v);
+    v = eval_string("(< 2 3 4 4)");
+    assert_vfalse(v);
+
+    v = eval_string("(<= 2 4)");
+    assert_vtrue(v);
+    v = eval_string("(<= 2 3 4 4)");
+    assert_vtrue(v);
+
+    v = eval_string("(<= 2 0)");
+    assert_vfalse(v);
+    v = eval_string("(<= 2 3 4 3)");
+    assert_vfalse(v);
+
+    v = eval_string("(> 3 2)");
+    assert_vtrue(v);
+    v = eval_string("(> 4 3 2 1)");
+    assert_vtrue(v);
+
+    v = eval_string("(> 0 1)");
+    assert_vfalse(v);
+    v = eval_string("(> 4 3 2 2)");
+    assert_vfalse(v);
+
+    v = eval_string("(>= 3 2)");
+    assert_vtrue(v);
+    v = eval_string("(>= 4 3 2 2)");
+    assert_vtrue(v);
+
+    v = eval_string("(>= 0 1)");
+    assert_vfalse(v);
+    v = eval_string("(>= 4 3 2 3)");
+    assert_vfalse(v);
 }
 
 Test(lisp, unbound_variable) {

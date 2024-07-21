@@ -402,7 +402,7 @@ static inline bool is_initial(int c)
 static inline bool is_subsequent(int c)
 {
     return isalpha(c) || isdigit(c) ||
-        c == '*' || c == '-' || c == '.' || c == '!' ;
+        c == '*' || c == '-' || c == '.' || c == '!' || c == '=';
 }
 
 static Token get_token_ident(Parser *p)
@@ -985,6 +985,62 @@ static Value builtin_numeq(Value args)
     return Qtrue;
 }
 
+static Value builtin_lt(Value args)
+{
+    expect_arity_range("<", 2, -1, length(args));
+
+    int64_t x = value_get_int("<", car(args));
+    while ((args = cdr(args)) != Qnil) {
+        int64_t y = value_get_int("<", car(args));
+        if (x >= y)
+            return Qfalse;
+        x = y;
+    }
+    return Qtrue;
+}
+
+static Value builtin_gt(Value args)
+{
+    expect_arity_range(">", 2, -1, length(args));
+
+    int64_t x = value_get_int(">", car(args));
+    while ((args = cdr(args)) != Qnil) {
+        int64_t y = value_get_int(">", car(args));
+        if (x <= y)
+            return Qfalse;
+        x = y;
+    }
+    return Qtrue;
+}
+
+static Value builtin_le(Value args)
+{
+    expect_arity_range("<=", 2, -1, length(args));
+
+    int64_t x = value_get_int("<=", car(args));
+    while ((args = cdr(args)) != Qnil) {
+        int64_t y = value_get_int("<=", car(args));
+        if (x > y)
+            return Qfalse;
+        x = y;
+    }
+    return Qtrue;
+}
+
+static Value builtin_ge(Value args)
+{
+    expect_arity_range(">=", 2, -1, length(args));
+
+    int64_t x = value_get_int(">=", car(args));
+    while ((args = cdr(args)) != Qnil) {
+        int64_t y = value_get_int(">=", car(args));
+        if (x < y)
+            return Qfalse;
+        x = y;
+    }
+    return Qtrue;
+}
+
 static Value builtin_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, length(args));
@@ -1088,6 +1144,10 @@ static void initialize(void)
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "/", builtin_div, -1);
     define_function(e, "=", builtin_numeq, -1);
+    define_function(e, "<", builtin_lt, -1);
+    define_function(e, ">", builtin_gt, -1);
+    define_function(e, "<=", builtin_le, -1);
+    define_function(e, ">=", builtin_ge, -1);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);
