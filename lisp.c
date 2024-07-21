@@ -246,7 +246,7 @@ static inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-inline Value value_of_cfunc(CFunc cfunc, long arity)
+static inline Value value_of_cfunc(CFunc cfunc, long arity)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;

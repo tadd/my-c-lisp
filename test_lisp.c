@@ -47,7 +47,7 @@ Test(lisp, printing) {
 
     assert_stringify("'foo", value_of_symbol("foo"));
 
-    assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
+    //assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
 
     assert_stringify("(1)", cons(value_of_int(1), Qnil));
     assert_stringify("(1 . 2)", cons(value_of_int(1), value_of_int(2)));
@@ -191,19 +191,15 @@ Test(lisp, list) {
 
     v = list(value_of_int(42),
              value_of_symbol("foo"),
-             value_of_cfunc(value_of_cfunc, 0),
              Qundef);
     cr_assert(value_is_pair(v));
-    assert_eq(3, length(v));
+    assert_eq(2, length(v));
     Value v0 = car(v);
     cr_assert(value_is_int(v0));
     assert_eq(42, value_to_int(v0));
     Value v1 = cadr(v);
     cr_assert(value_is_symbol(v1));
     cr_assert_str_eq("foo", value_to_string(v1));
-    Value v2 = caddr(v);
-    cr_assert(value_is_cfunc(v2));
-    cr_assert_str_eq("<function>", stringify(v2));
 }
 
 

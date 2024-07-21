@@ -29,7 +29,6 @@ const char *value_to_string(Value v);
 
 Value value_of_int(int64_t i);
 Value value_of_symbol(const char *s);
-Value value_of_cfunc(CFunc cfunc, long arity);
 
 Value cons(Value car, Value cdr);
 Value list(Value v, ...); // terminate with Qundef
