@@ -308,3 +308,9 @@ Test(lisp, applicable) {
     v = eval_string("(1 1)");
     assert_runtime_error(v, "expected C function");
 }
+
+Test(lisp, lambda) {
+    Value v;
+    v = eval_string("(lambda () 1)");
+    cr_assert(value_is_closure(v));
+}

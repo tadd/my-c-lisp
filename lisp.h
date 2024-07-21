@@ -18,6 +18,7 @@ extern const Value Qnil, Qundef, Qfalse, Qtrue;
 bool value_is_int(Value v);
 bool value_is_symbol(Value v);
 bool value_is_cfunc(Value v);
+bool value_is_closure(Value v);
 bool value_is_atom(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);

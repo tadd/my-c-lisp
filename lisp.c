@@ -43,6 +43,7 @@ typedef enum {
     TYPE_STR,
     TYPE_CFUNC,
     TYPE_SPECIAL,
+    TYPE_CLOSURE,
 } Type;
 
 static const char *TYPE_NAMES[] = {
@@ -54,6 +55,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_STR] = "internal string",
     [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
+    [TYPE_CLOSURE] = "closure",
 };
 
 typedef enum {
@@ -61,6 +63,7 @@ typedef enum {
     TAG_STR,
     TAG_CFUNC,
     TAG_SPECIAL, // almost a Function
+    TAG_CLOSURE,
 } ValueTag;
 
 typedef struct Pair {
@@ -76,7 +79,10 @@ typedef struct {
 typedef struct {
     ValueTag tag;
     long arity;
-    CFunc cfunc;
+    union {
+        CFunc cfunc;
+        Value closure; // '(env (params . body))
+    };
 } Function;
 
 #define VALUE_TAG(v) (*(ValueTag*)(v))
@@ -145,6 +151,11 @@ inline bool value_is_cfunc(Value v)
     return tagged_value_is(v, TAG_CFUNC);
 }
 
+inline bool value_is_closure(Value v)
+{
+    return tagged_value_is(v, TAG_CLOSURE);
+}
+
 inline bool value_is_pair(Value v)
 {
     return tagged_value_is(v, TAG_PAIR);
@@ -180,6 +191,8 @@ static inline Type value_typeof(Value v)
         return TYPE_CFUNC;
     case TAG_SPECIAL:
         return TYPE_SPECIAL;
+    case TAG_CLOSURE:
+        return TYPE_CLOSURE;
     }
     UNREACHABLE();
 }
@@ -247,6 +260,14 @@ static inline Value value_of_special(CFunc cfunc, long arity)
     Value sp = value_of_cfunc(cfunc, arity);
     FUNCTION(sp)->tag = TAG_SPECIAL;
     return sp;
+}
+
+static inline Value value_of_closure(Value env, Value params, Value body)
+{
+    Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
+    f->arity = length(params);
+    f->closure = cons(env, cons(params, body));
+    return (Value) f;
 }
 
 // `cons` is well-known name than "value_of_pair"
@@ -799,6 +820,9 @@ static void fprint(FILE* f, Value v)
     case TYPE_SPECIAL:
         fprintf(f, "<special>");
         break;
+    case TYPE_CLOSURE:
+        fprintf(f, "<closure>");
+        break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
         break;
@@ -984,6 +1008,16 @@ static Value builtin_let(Value *env, Value args)
     return last;
 }
 
+static Value builtin_lambda(Value *env, Value args)
+{
+    Value params = car(args);
+    Value body = cdr(args);
+    expect_type_twin("let", TYPE_PAIR, params, body);
+    if (body == Qnil)
+        runtime_error("let: one or more expressions needed in body");
+    return value_of_closure(*env, params, body);
+}
+
 static Value builtin_list(Value args)
 {
     return args;
@@ -998,6 +1032,7 @@ static void initialize(void)
     define_special(e, "set!", builtin_set, 2);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
+    define_special(e, "lambda", builtin_lambda, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
