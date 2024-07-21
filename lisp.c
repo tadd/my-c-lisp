@@ -290,6 +290,7 @@ static void expect_type(const char *header, Type expected, Value v)
 
 // for parsing
 
+// l: last pair
 static Value append(Value l, Value elem)
 {
     Value p = cons(elem, Qnil);
@@ -1129,6 +1130,7 @@ static Value builtin_let(Value *env, Value args)
     Value bindings = car(args);
     Value body = cdr(args);
     expect_type_twin("let", TYPE_PAIR, bindings, body);
+
     Value letenv = *env;
     for (; bindings != Qnil; bindings = cdr(bindings)) {
         Value b = car(bindings);
@@ -1141,6 +1143,33 @@ static Value builtin_let(Value *env, Value args)
     }
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
+    return eval_body(&letenv, body);
+}
+
+static Value builtin_letrec(Value *env, Value args)
+{
+    Value bindings = car(args);
+    Value body = cdr(args);
+    expect_type_twin("letrec", TYPE_PAIR, bindings, body);
+
+    Value letenv = Qnil, last = Qnil;
+    // collect idents
+    for (Value b = bindings; b != Qnil; b = cdr(b)) {
+        Value p = car(b);
+        expect_type("letrec", TYPE_PAIR, p);
+        Value ident = car(p);
+        expect_type("letrec", TYPE_SYMBOL, ident);
+        last = append(last, cons(ident, Qundef)); // dummy
+        if (letenv == Qnil)
+            letenv = last;
+    }
+    PAIR(last)->cdr = *env; // concat
+    // then eval with letenv
+    for (Value b = bindings, p = letenv; b != Qnil; b = cdr(b), p = cdr(p))
+        PAIR(car(p))->cdr = ieval(&letenv, cadar(b)); // set! to dummy
+
+    if (body == Qnil)
+        runtime_error("letrec: one or more expressions needed in body");
     return eval_body(&letenv, body);
 }
 
@@ -1229,6 +1258,7 @@ static void initialize(void)
     define_special(e, "lambda", builtin_lambda, -1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
+    define_special(e, "letrec", builtin_letrec, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);

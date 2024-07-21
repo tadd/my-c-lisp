@@ -348,6 +348,23 @@ Test(lisp, let_star) {
     assert_list_eq(list(V(42), V(10), Qundef), v);
 }
 
+Test(lisp, letrec) {
+    Value v;
+    v = eval_string(
+"(letrec ((myeven?\n"
+"          (lambda (n)\n"
+"            (if (= n 0)\n"
+"                #t\n"
+"                (myodd? (- n 1)))))\n"
+"         (myodd?\n"
+"          (lambda (n)\n"
+"            (if (= n 0)\n"
+"                #f\n"
+"                (myeven? (- n 1))))))\n"
+"   (myeven? 8888))");
+    assert_vtrue(v);
+}
+
 Test(lisp, applicable) {
     Value v;
     v = eval_string("(1 1)");
