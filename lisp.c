@@ -719,11 +719,6 @@ static Value apply(Value *env, Value func, Value vargs)
     return apply_cfunc(env, func, vargs);
 }
 
-static Value apply_special(Value *env, Value sp, Value vargs)
-{
-    return apply(env, sp, cons((Value) env, vargs));
-}
-
 static Value alist_find(Value l, Value key)
 {
     for (Value p = l; p != Qnil; p = cdr(p)) {
@@ -794,9 +789,10 @@ static Value eval_funcy(Value *env, Value list)
     Value f = ieval(env, car(list));
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
-        return apply_special(env, f, args);
-    Value l = map2(ieval, env, args);
-    return apply(env, f, l);
+        args = cons((Value) env, args);
+    else
+        args = map2(ieval, env, args);
+    return apply(env, f, args);
 }
 
 static Value ieval(Value *env, Value v)
