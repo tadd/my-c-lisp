@@ -371,7 +371,7 @@ static inline bool is_initial(int c)
 static inline bool is_subsequent(int c)
 {
     return isalpha(c) || isdigit(c) ||
-        c == '-' || c == '.' || c == '!';
+        c == '*' || c == '-' || c == '.' || c == '!' ;
 }
 
 static Token get_token_ident(Parser *p)
@@ -991,6 +991,7 @@ static void initialize(void)
     define_special(e, "define", builtin_define, 2);
     define_special(e, "set!", builtin_set, 2);
     define_special(e, "let", builtin_let, -1);
+    define_special(e, "let*", builtin_let, -1); // alias
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);

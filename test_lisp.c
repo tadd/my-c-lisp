@@ -294,3 +294,11 @@ Test(lisp, let_body_define) {
     cr_assert(value_is_int(v));
     assert_eq(1, value_to_int(v));
 }
+
+Test(lisp, let_star) {
+    Value v;
+    v = eval_string("(let* ((x 42) (y 10)) (list x y))");
+    cr_assert(value_is_pair(v));
+    assert_eq(42, value_to_int(car(v)));
+    assert_eq(10, value_to_int(cadr(v)));
+}
