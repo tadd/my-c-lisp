@@ -53,9 +53,9 @@ Test(lisp, printing) {
 
     //assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
 
-    assert_stringify("(1)", cons(value_of_int(1), Qnil));
-    assert_stringify("(1 . 2)", cons(value_of_int(1), value_of_int(2)));
-    assert_stringify("(1 2)", cons(value_of_int(1), cons(value_of_int(2), Qnil)));
+    assert_stringify("(1)", cons(V(1), Qnil));
+    assert_stringify("(1 . 2)", cons(V(1), V(2)));
+    assert_stringify("(1 2)", list(V(1), V(2), Qundef));
 }
 
 Test(lisp, parse_int) {
@@ -177,10 +177,10 @@ Test(lisp, if_composed) {
 
 Test(lisp, list) {
     Value v;
-    v = list(Qundef);
+    v = eval_string("(list)");
     assert_int_eq(v, Qnil);
 
-    v = list(value_of_int(42), Qundef);
+    v = eval_string("(list 42)");
     cr_assert(value_is_pair(v));
     assert_int_eq(1, length(v));
     assert_vint_eq(42, car(v));
@@ -199,13 +199,15 @@ Test(lisp, list) {
 
 
 Test(lisp, reverse) {
-    assert_list_eq(Qnil, reverse(Qnil));
-    Value l;
-    l = list(V(1), Qundef);
-    assert_list_eq(l, reverse(l));
-    assert_list_eq(list(V(2), V(1), Qundef), reverse(list(V(1), V(2), Qundef)));
-    assert_list_eq(list(V(3), V(2), V(1), Qundef),
-                   reverse(list(V(1), V(2), V(3), Qundef)));
+    Value v;
+    v = eval_string("()");
+    assert_list_eq(Qnil, v);
+    v = eval_string("(reverse (list 1))");
+    assert_list_eq(list(V(1), Qundef), v);
+    v = eval_string("(reverse (list 1 2))");
+    assert_list_eq(list(V(2), V(1), Qundef), v);
+    v = eval_string("(reverse (list 1 2 3))");
+    assert_list_eq(list(V(3), V(2), V(1), Qundef), v);
 }
 
 Test(lisp, define_variable) {
