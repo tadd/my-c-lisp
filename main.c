@@ -33,8 +33,11 @@ static FILE *parse_opt(int argc, char *const *argv)
 int main(int argc, char **argv)
 {
     FILE *in = parse_opt(argc, argv);
-    print(load(in));
-    printf("\n");
+    Value v = load(in);
     fclose(in);
+    if (v == Qundef)
+        error("%s", error_message());
+    print(v);
+    printf("\n");
     return 0;
 }
