@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #define ATTR(x) __attribute__((x))
-#define UNREACHABLE() __builtin_unreachable()
+#define UNREACHABLE() error("unreachable"), __builtin_unreachable()
 #define ATTR_UNUSED ATTR(unused)
 #define ATTR_NORETURN ATTR(noreturn)
 #define ATTR_MALLOC ATTR(malloc) ATTR(used)
