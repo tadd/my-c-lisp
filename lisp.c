@@ -702,12 +702,26 @@ static Value map2(MapFunc f, Value *common, Value l)
 
 static Value eval_funcy(Value *env, Value list)
 {
-    Value f = ieval(env, car(list));
+    Value fname = car(list);
+    Value f = ieval(env, fname);
     Value args = cdr(list);
+    jmp_buf jmp_apply;
+    memcpy(jmp_apply, jmp_runtime_error, sizeof(jmp_buf));
+    if (setjmp(jmp_runtime_error) != 0) {
+        memcpy(jmp_runtime_error, jmp_apply, sizeof(jmp_buf));
+        char *msg = xstrdup(errmsg);
+        runtime_error("in %s: %s", value_to_string(fname), msg);
+        free(msg);
+    }
+    Value retval;
     if (tagged_value_is(f, TAG_SPECIAL))
-        return apply_special(env, f, args);
-    Value l = map2(ieval, env, args);
-    return apply(env, f, l);
+        retval = apply_special(env, f, args);
+    else {
+        Value l = map2(ieval, env, args);
+        retval = apply(env, f, l);
+    }
+    memcpy(jmp_runtime_error, jmp_apply, sizeof(jmp_buf));
+    return retval;
 }
 
 static Value ieval(Value *env, Value v)
