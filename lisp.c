@@ -41,7 +41,7 @@ typedef enum {
 // boxed (tagged)
     TYPE_PAIR,
     TYPE_STR,
-    TYPE_FUNC,
+    TYPE_CFUNC,
     TYPE_SPECIAL,
 } Type;
 
@@ -52,14 +52,14 @@ static const char *TYPE_NAMES[] = {
     [TYPE_UNDEF] = "undef",
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "internal string",
-    [TYPE_FUNC] = "function",
+    [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
 };
 
 typedef enum {
     TAG_PAIR,
     TAG_STR,
-    TAG_FUNC,
+    TAG_CFUNC,
     TAG_SPECIAL, // almost a Function
 } ValueTag;
 
@@ -75,8 +75,8 @@ typedef struct {
 
 typedef struct {
     ValueTag tag;
-    CFunc cfunc;
     long arity;
+    CFunc cfunc;
 } Function;
 
 #define VALUE_TAG(v) (*(ValueTag*)(v))
@@ -140,9 +140,9 @@ static inline bool value_is_string(Value v)
     return tagged_value_is(v, TAG_STR);
 }
 
-inline bool value_is_func(Value v)
+inline bool value_is_cfunc(Value v)
 {
-    return tagged_value_is(v, TAG_FUNC);
+    return tagged_value_is(v, TAG_CFUNC);
 }
 
 inline bool value_is_pair(Value v)
@@ -176,8 +176,8 @@ static inline Type value_typeof(Value v)
         UNREACHABLE(); // internal string
     case TAG_PAIR:
         return TYPE_PAIR;
-    case TAG_FUNC:
-        return TYPE_FUNC;
+    case TAG_CFUNC:
+        return TYPE_CFUNC;
     case TAG_SPECIAL:
         return TYPE_SPECIAL;
     }
@@ -233,9 +233,9 @@ static inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-inline Value value_of_func(CFunc cfunc, long arity)
+inline Value value_of_cfunc(CFunc cfunc, long arity)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_FUNC);
+    Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;
     f->arity = arity;
     return (Value) f;
@@ -244,7 +244,7 @@ inline Value value_of_func(CFunc cfunc, long arity)
 static inline Value value_of_special(CFunc cfunc, long arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
-    Value sp = value_of_func(cfunc, arity);
+    Value sp = value_of_cfunc(cfunc, arity);
     FUNCTION(sp)->tag = TAG_SPECIAL;
     return sp;
 }
@@ -684,7 +684,7 @@ static Value define_special(Value *env, const char *name, CFunc cfunc, long arit
 static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
 {
     expect_valid_arity(FUNCARG_MAX, arity);
-    *env = alist_prepend(*env, value_of_symbol(name), value_of_func(cfunc, arity));
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
     return Qnil;
 }
 
@@ -724,7 +724,7 @@ static Value eval_funcy(Value *env, Value list)
     Value args = cdr(list);
     if (tagged_value_is(f, TAG_SPECIAL))
         return apply_special(env, f, args);
-    expect_type("(eval)", TYPE_FUNC, f);
+    expect_type("(eval)", TYPE_CFUNC, f);
     Value l = map2(ieval, env, args);
     return apply(env, f, l);
 }
@@ -793,7 +793,7 @@ static void fprint(FILE* f, Value v)
         break;
     case TYPE_STR:
         UNREACHABLE(); // internal string
-    case TYPE_FUNC:
+    case TYPE_CFUNC:
         fprintf(f, "<function>");
         break;
     case TYPE_SPECIAL:

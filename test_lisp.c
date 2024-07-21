@@ -47,7 +47,7 @@ Test(lisp, printing) {
 
     assert_stringify("'foo", value_of_symbol("foo"));
 
-    assert_stringify("<function>", value_of_func(value_of_func, 1));
+    assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
 
     assert_stringify("(1)", cons(value_of_int(1), Qnil));
     assert_stringify("(1 . 2)", cons(value_of_int(1), value_of_int(2)));
@@ -191,7 +191,7 @@ Test(lisp, list) {
 
     v = list(value_of_int(42),
              value_of_symbol("foo"),
-             value_of_func(value_of_func, 0),
+             value_of_cfunc(value_of_cfunc, 0),
              Qundef);
     cr_assert(value_is_pair(v));
     assert_eq(3, length(v));
@@ -202,7 +202,7 @@ Test(lisp, list) {
     cr_assert(value_is_symbol(v1));
     cr_assert_str_eq("foo", value_to_string(v1));
     Value v2 = caddr(v);
-    cr_assert(value_is_func(v2));
+    cr_assert(value_is_cfunc(v2));
     cr_assert_str_eq("<function>", stringify(v2));
 }
 
@@ -306,5 +306,5 @@ Test(lisp, let_star) {
 Test(lisp, applicable) {
     Value v;
     v = eval_string("(1 1)");
-    assert_runtime_error(v, "expected function");
+    assert_runtime_error(v, "expected C function");
 }
