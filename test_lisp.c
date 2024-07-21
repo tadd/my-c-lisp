@@ -279,3 +279,18 @@ Test(lisp, let) {
     v = eval_string("(let ((x 42) (y 100)))");
     assert_runtime_error(v, "one or more expressions");
 }
+
+Test(lisp, let_body_define) {
+    Value v;
+    v = eval_string("(let ((x 42)) (define x 2) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(2, value_to_int(v));
+
+    v = eval_string("(define x 1) (let ((x 42)) (define x 2) x)");
+    cr_assert(value_is_int(v));
+    assert_eq(2, value_to_int(v));
+
+    v = eval_string("(define x 1) (let () (define x 2) x) x");
+    cr_assert(value_is_int(v));
+    assert_eq(1, value_to_int(v));
+}
