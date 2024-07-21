@@ -923,6 +923,51 @@ static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t 
     return Qnil;
 }
 
+// min, max: 0..255
+static const int64_t RANGE_ARITY_OFFSET = 255;
+
+static inline bool is_range_arity(int64_t arity)
+{
+    return arity > RANGE_ARITY_OFFSET;
+}
+
+static inline int64_t encode_range_arity(uint8_t min, uint8_t max)
+{
+    return ((int64_t) min << 8U) | (max << 16U);
+}
+
+static inline void decode_range_arity(int64_t encoded, uint8_t *min, uint8_t *max)
+{
+    *min = (encoded >> 8U) & 0xFFU;
+    *max = (encoded >> 16U) & 0xFFU;
+}
+
+static void expect_valid_range_arity(uint8_t min, uint8_t max)
+{
+    if (min >= max)
+        error("invalid range arity: expected min %u < max %u", min, max);
+}
+
+static Value define_special_variadic(Value *env, const char *name, CFunc cfunc,
+                                     uint8_t arity_min, uint8_t arity_max)
+{
+    expect_valid_arity(FUNCARG_MAX, arity_max + 1);
+    expect_valid_range_arity(arity_min, arity_max);
+    int64_t enc = encode_range_arity(arity_min, arity_max);
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, enc));
+    return Qnil;
+}
+
+static Value define_function_variadic(Value *env, const char *name, CFunc cfunc,
+                                      uint8_t arity_min, uint8_t arity_max)
+{
+    expect_valid_arity(FUNCARG_MAX, arity_max);
+    expect_valid_range_arity(arity_min, arity_max);
+    int64_t enc = encode_range_arity(arity_min, arity_max);
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, enc));
+    return Qnil;
+}
+
 static Value lookup(Value env, Value name)
 {
     Value found = alist_find(env, name);
