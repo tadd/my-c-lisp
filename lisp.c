@@ -909,9 +909,12 @@ static Value builtin_div(Value args)
         y = value_to_int(vy);
     }
     for (Value l = rest; l != Qnil; l = cdr(l)) {
-        Value x = car(l);
-        expect_type(TYPE_INT, x, "/");
-        y /= value_to_int(x);
+        Value vx = car(l);
+        expect_type(TYPE_INT, vx, "/");
+        long x = value_to_int(vx);
+        if (x == 0)
+            runtime_error("/: divided by zero");
+        y /= x;
     }
     return value_of_int(y);
 }

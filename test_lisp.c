@@ -128,6 +128,11 @@ Test(lisp, eval_arithmetic_expr) {
     cr_assert_eq(42, value_to_int(v));
 }
 
+Test(lisp, div0) {
+    Value v = eval_string("(/ 42 0)");
+    assert_runtime_error(v, "divided by zero");
+}
+
 Test(lisp, unbound_variable) {
     Value v = eval_string("x");
     assert_runtime_error(v, "unbound variable: x");
