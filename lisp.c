@@ -1062,7 +1062,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     if (*env == toplevel_environment) { // set!?
         Value found = alist_find(*env, ident);
         if (found != Qnil) {
-            PAIR(found)->cdr = ieval(env, expr);
+            PAIR(found)->cdr = val;
             return Qnil;
         }
     }
