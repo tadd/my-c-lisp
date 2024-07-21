@@ -572,14 +572,6 @@ long length(Value list)
     return l;
 }
 
-static void expect_arity(long expected, long actual)
-{
-    if (expected < 0 || expected == actual)
-        return;
-    runtime_error("wrong number of arguments: expected %ld but got %ld",
-                  expected, actual);
-}
-
 static void expect_arity_range(const char *func, long min, long max, long actual)
 {
     if ((min == -1 && actual <= max) ||
@@ -590,18 +582,31 @@ static void expect_arity_range(const char *func, long min, long max, long actual
                   func, min, max, actual);
 }
 
+static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
+{
+    long i;
+    Value a = args;
+    for (i = 0; i < arity; i++) {
+        if (a == Qnil)
+            break;
+        ary[i] = car(a);
+        a = cdr(a);
+    }
+    i += length(a);
+    if (arity < 0 || arity == i)
+        return;
+    runtime_error("wrong number of arguments: expected %ld but got %ld",
+                  arity, i);
+}
+
 static Value apply(Value *env, Value func, Value vargs)
 {
-    long n = FUNCTION(func)->arity;
-    expect_arity(n, length(vargs));
-
     Value a[FUNCARG_MAX];
-    Value v = vargs;
-    for (long i = 0; i < n; i++) {
-        a[i] = car(v);
-        v = cdr(v);
-    }
+    long n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
+
+    scan_args(a, n, vargs);
+
     switch (n) {
     case -2:
         return (*f)(env, cdr(vargs)); // special form

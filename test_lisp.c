@@ -158,6 +158,12 @@ Test(lisp, if) {
 
     v = eval_string("(if #f 1 2)");
     cr_assert_eq(2, value_to_int(v));
+
+    v = eval_string("(if #f)");
+    assert_runtime_error(v, "2..3 but got 1");
+
+    v = eval_string("(if #f 1 2 3)");
+    assert_runtime_error(v, "2..3 but got 4");
 }
 
 Test(lisp, if_composed) {
