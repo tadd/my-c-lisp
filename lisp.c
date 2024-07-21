@@ -565,10 +565,8 @@ static Parser *parser_new(FILE *in)
 long length(Value list)
 {
     long l = 0;
-    while (list != Qnil) {
+    for (; list != Qnil; list = cdr(list))
         l++;
-        list = cdr(list);
-    }
     return l;
 }
 
