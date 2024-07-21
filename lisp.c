@@ -580,14 +580,14 @@ static void expect_arity(long expected, long actual)
                   expected, actual);
 }
 
-static void expect_arity_range(long min, long max, long actual)
+static void expect_arity_range(const char *func, long min, long max, long actual)
 {
     if ((min == -1 && actual <= max) ||
         (max == -1 && min <= actual) ||
         (min <= actual && actual <= max))
         return;
-    runtime_error("wrong number of arguments: expected %ld..%ld but got %ld",
-                  min, max, actual);
+    runtime_error("%s: wrong number of arguments: expected %ld..%ld but got %ld",
+                  func, min, max, actual);
 }
 
 Value apply(Value *env, Value func, Value vargs)
@@ -865,7 +865,7 @@ static Value builtin_add(Value args)
 
 static Value builtin_sub(Value args)
 {
-    expect_arity_range(1, -1, length(args));
+    expect_arity_range("-", 1, -1, length(args));
 
     Value rest = cdr(args);
     int64_t y = 0;
@@ -897,7 +897,7 @@ static Value builtin_mul(Value args)
 
 static Value builtin_div(Value args)
 {
-    expect_arity_range(1, -1, length(args));
+    expect_arity_range("/", 1, -1, length(args));
 
     Value rest = cdr(args);
     int64_t y = 1;
@@ -918,7 +918,7 @@ static Value builtin_div(Value args)
 
 static Value builtin_if(Value *env, Value args)
 {
-    expect_arity_range(2, 3, length(args));
+    expect_arity_range("if", 2, 3, length(args));
 
     Value cond = car(args), then = cadr(args);
     if (ieval(env, cond) != Qfalse)
