@@ -1128,6 +1128,11 @@ static Value builtin_newline(void)
     return Qnil;
 }
 
+static Value builtin_begin(Value *env, Value body)
+{
+    return eval_body(env, body);
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1138,6 +1143,7 @@ static void initialize(void)
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "lambda", builtin_lambda, -1);
+    define_special(e, "begin", builtin_begin, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
@@ -1148,6 +1154,7 @@ static void initialize(void)
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
+
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);

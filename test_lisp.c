@@ -357,3 +357,9 @@ Test(lisp, lambda) {
     v = eval_string("(define mul (lambda (x y) (* x y))) (mul 3 14)");
     assert_vint_eq(42, v);
 }
+
+Test(lisp, begin) {
+    Value v;
+    v = eval_string("(begin 1 2 3)");
+    assert_vint_eq(3, v);
+}
