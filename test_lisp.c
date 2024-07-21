@@ -47,7 +47,7 @@ Test(lisp, printing) {
 
     assert_stringify("'foo", value_of_symbol("foo"));
 
-    assert_stringify("<function>", value_of_func(value_of_func, 1));
+    //assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
 
     assert_stringify("(1)", cons(value_of_int(1), Qnil));
     assert_stringify("(1 . 2)", cons(value_of_int(1), value_of_int(2)));
@@ -191,19 +191,15 @@ Test(lisp, list) {
 
     v = list(value_of_int(42),
              value_of_symbol("foo"),
-             value_of_func(value_of_func, 0),
              Qundef);
     cr_assert(value_is_pair(v));
-    assert_eq(3, length(v));
+    assert_eq(2, length(v));
     Value v0 = car(v);
     cr_assert(value_is_int(v0));
     assert_eq(42, value_to_int(v0));
     Value v1 = cadr(v);
     cr_assert(value_is_symbol(v1));
     cr_assert_str_eq("foo", value_to_string(v1));
-    Value v2 = caddr(v);
-    cr_assert(value_is_func(v2));
-    cr_assert_str_eq("<function>", stringify(v2));
 }
 
 
@@ -306,5 +302,23 @@ Test(lisp, let_star) {
 Test(lisp, applicable) {
     Value v;
     v = eval_string("(1 1)");
-    assert_runtime_error(v, "expected function");
+    assert_runtime_error(v, "expected applicative");
+}
+
+Test(lisp, lambda) {
+    Value v;
+    v = eval_string("(lambda () 1)");
+    cr_assert(value_is_closure(v));
+
+    v = eval_string("((lambda () 1))");
+    cr_assert(value_is_int(v));
+    assert_eq(1, value_to_int(v));
+
+    v = eval_string("((lambda (x) (* 2 x)) 21)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
+
+    v = eval_string("((lambda (x y) (* x y)) 3 14)");
+    cr_assert(value_is_int(v));
+    assert_eq(42, value_to_int(v));
 }

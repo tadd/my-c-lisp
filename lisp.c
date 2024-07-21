@@ -41,8 +41,9 @@ typedef enum {
 // boxed (tagged)
     TYPE_PAIR,
     TYPE_STR,
-    TYPE_FUNC,
+    TYPE_CFUNC,
     TYPE_SPECIAL,
+    TYPE_CLOSURE,
 } Type;
 
 static const char *TYPE_NAMES[] = {
@@ -52,15 +53,17 @@ static const char *TYPE_NAMES[] = {
     [TYPE_UNDEF] = "undef",
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "internal string",
-    [TYPE_FUNC] = "function",
+    [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
+    [TYPE_CLOSURE] = "closure",
 };
 
 typedef enum {
     TAG_PAIR,
     TAG_STR,
-    TAG_FUNC,
+    TAG_CFUNC,
     TAG_SPECIAL, // almost a Function
+    TAG_CLOSURE,
 } ValueTag;
 
 typedef struct Pair {
@@ -75,8 +78,11 @@ typedef struct {
 
 typedef struct {
     ValueTag tag;
-    CFunc cfunc;
     long arity;
+    union {
+        CFunc cfunc;
+        Value closure; // '(env (params . body))
+    };
 } Function;
 
 #define VALUE_TAG(v) (*(ValueTag*)(v))
@@ -140,9 +146,14 @@ static inline bool value_is_string(Value v)
     return tagged_value_is(v, TAG_STR);
 }
 
-inline bool value_is_func(Value v)
+inline bool value_is_cfunc(Value v)
 {
-    return tagged_value_is(v, TAG_FUNC);
+    return tagged_value_is(v, TAG_CFUNC);
+}
+
+inline bool value_is_closure(Value v)
+{
+    return tagged_value_is(v, TAG_CLOSURE);
 }
 
 inline bool value_is_pair(Value v)
@@ -176,10 +187,12 @@ static inline Type value_typeof(Value v)
         UNREACHABLE(); // internal string
     case TAG_PAIR:
         return TYPE_PAIR;
-    case TAG_FUNC:
-        return TYPE_FUNC;
+    case TAG_CFUNC:
+        return TYPE_CFUNC;
     case TAG_SPECIAL:
         return TYPE_SPECIAL;
+    case TAG_CLOSURE:
+        return TYPE_CLOSURE;
     }
     UNREACHABLE();
 }
@@ -233,9 +246,9 @@ static inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-inline Value value_of_func(CFunc cfunc, long arity)
+static inline Value value_of_cfunc(CFunc cfunc, long arity)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_FUNC);
+    Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;
     f->arity = arity;
     return (Value) f;
@@ -244,9 +257,17 @@ inline Value value_of_func(CFunc cfunc, long arity)
 static inline Value value_of_special(CFunc cfunc, long arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
-    Value sp = value_of_func(cfunc, arity);
+    Value sp = value_of_cfunc(cfunc, arity);
     FUNCTION(sp)->tag = TAG_SPECIAL;
     return sp;
+}
+
+static inline Value value_of_closure(Value env, Value params, Value body)
+{
+    Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
+    f->arity = length(params);
+    f->closure = cons(env, cons(params, body));
+    return (Value) f;
 }
 
 // `cons` is well-known name than "value_of_pair"
@@ -595,6 +616,14 @@ static void expect_arity_range(const char *func, long min, long max, long actual
                   func, min, max, actual);
 }
 
+static void expect_arity(long arity, long n)
+{
+    if (arity < 0 || arity == n)
+        return;
+    runtime_error("wrong number of arguments: expected %ld but got %ld",
+                  arity, n);
+}
+
 static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
 {
     long i;
@@ -606,13 +635,10 @@ static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
         a = cdr(a);
     }
     i += length(a);
-    if (arity < 0 || arity == i)
-        return;
-    runtime_error("wrong number of arguments: expected %ld but got %ld",
-                  arity, i);
+    expect_arity(arity, i);
 }
 
-static Value apply(Value *env, Value func, Value vargs)
+static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
     Value a[FUNCARG_MAX];
     long n = FUNCTION(func)->arity;
@@ -646,9 +672,65 @@ static Value apply(Value *env, Value func, Value vargs)
     }
 }
 
-static Value apply_special(Value *env, Value sp, Value vargs)
+static Value ieval(Value *env, Value v); // internal
+
+static Value eval_body(Value *env, Value body)
 {
-    return apply(env, sp, cons((Value) env, vargs));
+    Value last = Qnil;
+    for (Value b = body; b != Qnil; b = cdr(b))
+        last = ieval(env, car(b));
+    return last;
+}
+
+static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
+{
+    long arity = FUNCTION(func)->arity;
+    expect_arity(arity, length(args));
+
+    Value closure = FUNCTION(func)->closure;
+    Value clenv = car(closure), params = cadr(closure), body = cddr(closure);
+    if (arity == -1)
+        runtime_error("(apply): variadic arguments not supported yet");
+    while (args != Qnil) {
+        clenv = cons(cons(car(params), car(args)), clenv);
+        args = cdr(args);
+        params = cdr(params);
+    }
+    return eval_body(&clenv, body);
+}
+
+typedef Value (*MapFunc)(Value *common, Value v);
+static Value map2(MapFunc f, Value *common, Value l)
+{
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append(last, f(common, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
+    }
+    return mapped;
+}
+
+static Value apply(Value *env, Value func, Value args)
+{
+    if (is_immediate(func))
+        goto unapplicative;
+    switch (VALUE_TAG(func)) {
+    case TAG_SPECIAL:
+        args = cons((Value) env, args);
+        return apply_cfunc(env, func, args);
+    case TAG_CFUNC:
+        args = map2(ieval, env, args);
+        return apply_cfunc(env, func, args);
+    case TAG_CLOSURE:
+        args = map2(ieval, env, args);
+        return apply_closure(env, func, args);
+    default:
+        break;
+    }
+ unapplicative:
+    runtime_error("type error in (eval): expected applicative but got %s",
+                  TYPE_NAMES[value_typeof(func)]);
 }
 
 static Value alist_find(Value l, Value key)
@@ -684,7 +766,7 @@ static Value define_special(Value *env, const char *name, CFunc cfunc, long arit
 static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
 {
     expect_valid_arity(FUNCARG_MAX, arity);
-    *env = alist_prepend(*env, value_of_symbol(name), value_of_func(cfunc, arity));
+    *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
     return Qnil;
 }
 
@@ -704,29 +786,10 @@ Value eval_string(const char *in)
     return v;
 }
 
-static Value ieval(Value *env, Value v); // internal
-
-typedef Value (*MapFunc)(Value *common, Value v);
-static Value map2(MapFunc f, Value *common, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append(last, f(common, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 static Value eval_funcy(Value *env, Value list)
 {
     Value f = ieval(env, car(list));
-    Value args = cdr(list);
-    if (tagged_value_is(f, TAG_SPECIAL))
-        return apply_special(env, f, args);
-    expect_type("(eval)", TYPE_FUNC, f);
-    Value l = map2(ieval, env, args);
-    return apply(env, f, l);
+    return apply(env, f, cdr(list));
 }
 
 static Value ieval(Value *env, Value v)
@@ -746,12 +809,9 @@ Value eval(Value v)
 Value load(FILE *in)
 {
     Value env = toplevel_environment;
-    Value last = Qnil;
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    for (Value v = parse(in); v != Qnil; v = cdr(v))
-        last = ieval(&env, car(v));
-    return last;
+    return eval_body(&env, parse(in));
 }
 
 static void fprint(FILE* f, Value v);
@@ -793,11 +853,14 @@ static void fprint(FILE* f, Value v)
         break;
     case TYPE_STR:
         UNREACHABLE(); // internal string
-    case TYPE_FUNC:
+    case TYPE_CFUNC:
         fprintf(f, "<function>");
         break;
     case TYPE_SPECIAL:
         fprintf(f, "<special>");
+        break;
+    case TYPE_CLOSURE:
+        fprintf(f, "<closure>");
         break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
@@ -976,12 +1039,17 @@ static Value builtin_let(Value *env, Value args)
     }
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
-    Value last;
-    do {
-        last = ieval(&letenv, car(body));
-        body = cdr(body);
-    } while (body != Qnil);
-    return last;
+    return eval_body(&letenv, body);
+}
+
+static Value builtin_lambda(Value *env, Value args)
+{
+    Value params = car(args);
+    Value body = cdr(args);
+    expect_type_twin("let", TYPE_PAIR, params, body);
+    if (body == Qnil)
+        runtime_error("let: one or more expressions needed in body");
+    return value_of_closure(*env, params, body);
 }
 
 static Value builtin_list(Value args)
@@ -998,6 +1066,7 @@ static void initialize(void)
     define_special(e, "set!", builtin_set, 2);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
+    define_special(e, "lambda", builtin_lambda, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
