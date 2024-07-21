@@ -781,19 +781,14 @@ Value eval_string(const char *in)
     return v;
 }
 
-static Value eval_funcy(Value *env, Value list)
-{
-    Value f = ieval(env, car(list));
-    return apply(env, f, cdr(list));
-}
-
 static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
     if (v == Qnil || is_immediate(v))
         return v;
-    return eval_funcy(env, v);
+    Value func = ieval(env, car(v));
+    return apply(env, func, cdr(v));
 }
 
 Value eval(Value v)
