@@ -179,7 +179,7 @@ static inline Type value_typeof(Value v)
     }
     switch (VALUE_TAG(v)) {
     case TAG_STR:
-        UNREACHABLE(); // internal string
+        error("got internal string: %s", value_to_string(v));
     case TAG_PAIR:
         return TYPE_PAIR;
     case TAG_CFUNC:
@@ -842,7 +842,7 @@ static void fprint(FILE* f, Value v)
         fprintf(f, ")");
         break;
     case TYPE_STR:
-        UNREACHABLE(); // internal string
+        error("got internal string: %s", value_to_string(v));
     case TYPE_CFUNC:
         fprintf(f, "<function>");
         break;
