@@ -821,13 +821,8 @@ static void expect_type(Type expected, Value v, const char *header)
     Type t = value_typeof(v);
     if (t == expected)
         return;
-    const char *delim;
-    if (header == NULL)
-        header = delim = "";
-    else
-        delim = ": ";
-    error("%s%stype error: expected %s but got %s",
-          header, delim, TYPE_NAMES[expected], TYPE_NAMES[t]);
+    error("%s: type error: expected %s but got %s",
+          header, TYPE_NAMES[expected], TYPE_NAMES[t]);
 }
 
 static Value builtin_add(Value args)
