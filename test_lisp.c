@@ -395,3 +395,10 @@ Test(lisp, cond) {
     v = eval_string("(cond (#f) (2))");
     assert_vint_eq(2, v);
 }
+
+Test(lisp, cputime) {
+    Value v;
+    v = eval_string("(_cputime)");
+    cr_assert(value_is_int(v));
+    cr_assert(gt(int, value_to_int(v), 0));
+}

@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -6,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "lisp.h"
 #include "utils.h"
@@ -1161,6 +1163,15 @@ static Value builtin_cdr(Value pair)
     return cdr(pair);
 }
 
+static Value builtin_cputime(void) // in micro sec
+{
+    static const int64_t MICRO = 1000*1000;
+    struct timespec t;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
+    int64_t n = t.tv_sec * MICRO + lround(t.tv_nsec / 1000.0);
+    return value_of_int(n);
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1193,4 +1204,6 @@ static void initialize(void)
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
+
+    define_function(e, "_cputime", builtin_cputime, 0);
 }
