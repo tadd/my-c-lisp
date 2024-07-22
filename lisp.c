@@ -14,8 +14,6 @@
 
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
-#define parse_error(exp, act, ...) \
-    runtime_error("while parsing: expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
 static jmp_buf jmp_runtime_error;
 static char errmsg[BUFSIZ];
@@ -348,12 +346,40 @@ typedef struct {
     Token prev_token;
 } Parser;
 
+#define parse_error(p, exp, act, ...) do { \
+        long line, col; \
+        get_line_column(p, &line, &col); \
+        runtime_error("on %ld:%ld: expected %s but got " act, line, col, \
+                      exp __VA_OPT__(,) __VA_ARGS__); \
+    } while (0)
+
+static void get_line_column(Parser *p, long *line, long *col)
+{
+    FILE *in = p->in;
+    long loc = ftell(in);
+    if (loc < 0) {
+        *line = *col = 0;
+        return;
+    }
+    rewind(in);
+    long nline = 1;
+    long last_newline = 0;
+    for (long i = 0; i < loc; i++) {
+        if (fgetc(in) == '\n') {
+            nline++;
+            last_newline = i;
+        }
+    }
+    *line = nline;
+    *col = loc - last_newline;
+}
+
 static Token get_token_int(Parser *p, int sign)
 {
     int64_t i;
     int n = fscanf(p->in, "%ld", &i);
     if (n != 1)
-        parse_error("integer", "invalid string");
+        parse_error(p, "integer", "invalid string");
     return TOK_INT(sign * i);
 }
 
@@ -422,7 +448,7 @@ static Token get_token_ident(Parser *p)
             break;
         *s++ = c;
         if (s == end)
-            parse_error("identifier", "too long");
+            parse_error(p, "identifier", "too long");
     }
     ungetc(c, p->in);
     *s = '\0';
@@ -485,7 +511,7 @@ static Token get_token(Parser *p)
             return TOK_CONST(Qtrue);
         if (c == 'f')
             return TOK_CONST(Qfalse);
-        parse_error("constants", "#%c", c);
+        parse_error(p, "constants", "#%c", c);
     case EOF:
         return TOK_EOF;
     default:
@@ -501,7 +527,7 @@ static Token get_token(Parser *p)
         ungetc(c, p->in);
         return get_token_ident(p);
     }
-    parse_error("valid char", "'%c'", c);
+    parse_error(p, "valid char", "'%c'", c);
 }
 
 static void unget_token(Parser *p, Token t)
@@ -564,7 +590,7 @@ static Value parse_dotted_pair(Parser *p)
     Value e = parse_expr(p);
     Token t = get_token(p);
     if (t.type != TTYPE_RPAREN)
-        parse_error("')'", "'%s'", token_stringify(t));
+        parse_error(p, "')'", "'%s'", token_stringify(t));
     return e;
 }
 
@@ -577,7 +603,7 @@ static Value parse_list(Parser *p)
     Value car = parse_expr(p), cdr;
     t = get_token(p);
     if (t.type == TTYPE_EOF)
-        parse_error("')'", "'%s'", token_stringify(t));
+        parse_error(p, "')'", "'%s'", token_stringify(t));
     if (t.type == TTYPE_DOT) {
         cdr = parse_dotted_pair(p);
     } else {
@@ -594,9 +620,9 @@ static Value parse_expr(Parser *p)
     case TTYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TTYPE_RPAREN:
-        parse_error("expression", "')'");
+        parse_error(p, "expression", "')'");
     case TTYPE_DOT:
-        parse_error("expression", "'.'");
+        parse_error(p, "expression", "'.'");
     case TTYPE_INT:
     case TTYPE_CONST:
     case TTYPE_IDENT:
