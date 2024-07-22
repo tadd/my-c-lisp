@@ -19,13 +19,19 @@ static jmp_buf jmp_runtime_error;
 static char errmsg[BUFSIZ];
 
 ATTR_NORETURN
+static void runtime_error_v(const char *fmt, va_list ap)
+{
+    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    longjmp(jmp_runtime_error, Qundef);
+}
+
+ATTR_NORETURN
 static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    runtime_error_v(fmt, ap);
     va_end(ap);
-    longjmp(jmp_runtime_error, Qundef);
 }
 
 const char *error_message(void)
@@ -346,12 +352,8 @@ typedef struct {
     Token prev_token;
 } Parser;
 
-#define parse_error(p, exp, act, ...) do { \
-        long line, col; \
-        get_line_column(p, &line, &col); \
-        runtime_error("on %ld:%ld: expected %s but got " act, line, col, \
-                      exp __VA_OPT__(,) __VA_ARGS__); \
-    } while (0)
+#define parse_error(p, exp, act, ...) \
+    parse_error_f(p, "while parsing: expected %s but got " act, exp __VA_OPT__(,) __VA_ARGS__)
 
 static void get_line_column(Parser *p, long *line, long *col)
 {
@@ -372,6 +374,23 @@ static void get_line_column(Parser *p, long *line, long *col)
     }
     *line = nline;
     *col = loc - last_newline;
+}
+
+static void print_location(Parser *p, FILE *out)
+{
+    long line, column;
+    get_line_column(p, &line, &column);
+    fprintf(out, "on %ld:%ld\n", line, column);
+}
+
+ATTR_NORETURN
+static void parse_error_f(Parser *p, const char *fmt, ...)
+{
+    print_location(p, stderr);
+    va_list ap;
+    va_start(ap, fmt);
+    runtime_error_v(fmt, ap);
+    va_end(ap);
 }
 
 static Token get_token_int(Parser *p, int sign)
