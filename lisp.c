@@ -112,7 +112,8 @@ static const long FUNCARG_MAX = 7;
 // runtime-locals (aka global variables)
 
 static Value toplevel_environment = Qnil; // alist of ('ident . <value>)
-static Value symbol_names = Qnil;
+static Value symbol_names = Qnil; // ('ident 'ident2 ...)
+static Value SYM_ELSE = Qundef; // used in cond
 
 // value_is_*: type checks
 
@@ -1132,10 +1133,6 @@ static Value builtin_begin(Value *env, Value body)
 
 static Value builtin_cond(Value *env, Value clauses)
 {
-    static Value ELSE = Qnil;
-    if (ELSE == Qnil)
-        ELSE = value_of_symbol("else");
-
     expect_arity_range("cond", 1, -1, length(clauses));
 
     for (; clauses != Qnil; clauses = cdr(clauses)) {
@@ -1143,7 +1140,7 @@ static Value builtin_cond(Value *env, Value clauses)
         expect_type("cond", TYPE_PAIR, clause);
         Value test = car(clause);
         Value exprs = cdr(clause);
-        if (test == ELSE)
+        if (test == SYM_ELSE)
             return exprs == Qnil ? Qtrue : eval_body(env, exprs);
         Value t = ieval(env, test);
         if (t != Qfalse)
@@ -1155,6 +1152,8 @@ static Value builtin_cond(Value *env, Value clauses)
 ATTR_CTOR
 static void initialize(void)
 {
+    SYM_ELSE = value_of_symbol("else");
+
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
     define_special(e, "define", builtin_define, 2);
