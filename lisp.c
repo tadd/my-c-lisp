@@ -1164,12 +1164,12 @@ static Value builtin_define(Value *env, Value ident, Value expr)
 {
     expect_type("define", TYPE_SYMBOL, ident);
 
-    Value found = Qnil;
-    if (*env == toplevel_environment) // set?
-        found = alist_find(*env, ident);
-    if (found == Qnil) // prepend
-        found = *env = alist_prepend(*env, ident, Qundef);
-    PAIR(car(found))->cdr = ieval(env, expr); // set!
+    Value val = ieval(env, expr), found;
+    if (*env == toplevel_environment &&
+        (found = alist_find(*env, ident)) != Qnil) {
+        PAIR(car(found))->cdr = val; // set!
+    } else
+        *env = alist_prepend(*env, ident, val); // prepend new
     return Qnil;
 }
 
@@ -1211,22 +1211,15 @@ static Value builtin_letrec(Value *env, Value args)
     Value body = cdr(args);
     expect_type_twin("letrec", TYPE_PAIR, bindings, body);
 
-    Value letenv = Qnil, last = Qnil;
-    // collect idents
+    Value letenv = *env;
     for (Value b = bindings; b != Qnil; b = cdr(b)) {
         Value p = car(b);
         expect_type("letrec", TYPE_PAIR, p);
         Value ident = car(p);
         expect_type("letrec", TYPE_SYMBOL, ident);
-        last = append(last, cons(ident, Qundef)); // dummy
-        if (letenv == Qnil)
-            letenv = last;
+        Value val = ieval(&letenv, cadr(p));
+        letenv = cons(cons(ident, val), letenv);
     }
-    PAIR(last)->cdr = *env; // concat
-    // then eval with letenv
-    for (Value b = bindings, p = letenv; b != Qnil; b = cdr(b), p = cdr(p))
-        PAIR(car(p))->cdr = ieval(&letenv, cadar(b)); // set! to dummy
-
     if (body == Qnil)
         runtime_error("letrec: one or more expressions needed in body");
     return eval_body(&letenv, body);
