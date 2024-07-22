@@ -8,7 +8,7 @@
 #define ATTR_UNUSED ATTR(unused)
 #define ATTR_NORETURN ATTR(noreturn)
 #define ATTR_MALLOC ATTR(malloc) ATTR(used)
-#define ATTR_XMALLOC ATTR_MALLOC ATTR(nonnull)
+#define ATTR_XMALLOC ATTR_MALLOC ATTR(returns_nonnull)
 #define ATTR_FORMAT(f, beg, end) ATTR(format(f, beg, end))
 #define ATTR_CTOR ATTR(constructor)
 
