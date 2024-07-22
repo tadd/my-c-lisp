@@ -3,9 +3,10 @@
 
 #include <stdlib.h>
 
-#define ATTR(x) __attribute__((x))
+#define ATTR(x) [[gnu::x]]
 #define UNREACHABLE() error("unreachable"), __builtin_unreachable()
-#define ATTR_MALLOC ATTR(malloc) ATTR(used)
+#define ATTR_MALLOC ATTR(malloc) [[nodiscard]]
+#define ATTR_UNUSED [[maybe_unused]]
 #define ATTR_XMALLOC ATTR_MALLOC ATTR(returns_nonnull)
 
 ATTR(noreturn) ATTR(format(printf, 1, 2)) void error(const char *fmt, ...);
