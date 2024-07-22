@@ -12,6 +12,7 @@ void error(const char *fmt, ...)
     fprintf(stderr, "error: ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
+    va_end(ap);
     exit(2);
 }
 

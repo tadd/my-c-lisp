@@ -26,6 +26,7 @@ static void runtime_error(const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    va_end(ap);
     longjmp(jmp_runtime_error, Qundef);
 }
 
@@ -310,6 +311,7 @@ inline Value list(Value v, ...)
         if (l == Qnil)
             l = last;
     }
+    va_end(ap);
     return l;
 }
 
