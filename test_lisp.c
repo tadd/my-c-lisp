@@ -402,3 +402,15 @@ Test(lisp, cputime) {
     cr_assert(value_is_int(v));
     cr_assert(gt(int, value_to_int(v), 0));
 }
+
+Test(lisp, comment) {
+    Value v;
+    v = eval_string("1 ; foo");
+    assert_vint_eq(1, v);
+
+    v = eval_string("2 ;;bar");
+    assert_vint_eq(2, v);
+
+    v = eval_string("(list 1 ;;; ?? ;;; \n 2)");
+    assert_list_eq(list(V(1), V(2), Qundef), v);
+}

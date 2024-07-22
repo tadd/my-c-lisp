@@ -443,9 +443,20 @@ static Token get_token_after_sign(Parser *p, int csign)
 static void get_token_skip_atmosphere(Parser *p)
 {
     int c;
-    do {
+    for (;;) {
         c = fgetc(p->in);
-    } while (isspace(c));
+        if (isspace(c))
+            continue; // skip
+        if (c == ';') {
+            for (;;) {
+                c = fgetc(p->in);
+                if (c == '\n' || c == EOF)
+                    break;
+            }
+            continue;
+        }
+        break;
+    }
     ungetc(c, p->in);
 }
 
