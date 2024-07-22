@@ -664,7 +664,7 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     case 7:
         return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
     default:
-        UNREACHABLE();
+        error("arity too large: %ld", n);
     }
 }
 
