@@ -1149,6 +1149,18 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
+static Value builtin_car(Value pair)
+{
+    expect_type("car", TYPE_PAIR, pair);
+    return car(pair);
+}
+
+static Value builtin_cdr(Value pair)
+{
+    expect_type("cdr", TYPE_PAIR, pair);
+    return cdr(pair);
+}
+
 ATTR_CTOR
 static void initialize(void)
 {
@@ -1174,8 +1186,8 @@ static void initialize(void)
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
 
-    define_function(e, "car", car, 1);
-    define_function(e, "cdr", cdr, 1);
+    define_function(e, "car", builtin_car, 1);
+    define_function(e, "cdr", builtin_cdr, 1);
     define_function(e, "cons", cons, 2);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "reverse", reverse, 1);
