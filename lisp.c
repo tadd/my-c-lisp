@@ -53,7 +53,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_SYMBOL] = "symbol",
     [TYPE_UNDEF] = "undef",
     [TYPE_PAIR] = "pair",
-    [TYPE_STR] = "internal string",
+    [TYPE_STR] = "string",
     [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
     [TYPE_CLOSURE] = "closure",
@@ -143,6 +143,11 @@ static inline bool tagged_value_is(Value v, ValueTag expected)
     return !is_immediate(v) && VALUE_TAG(v) == expected;
 }
 
+inline bool value_is_string(Value v)
+{
+    return tagged_value_is(v, TAG_STR);
+}
+
 inline bool value_is_cfunc(Value v)
 {
     return tagged_value_is(v, TAG_CFUNC);
@@ -181,7 +186,7 @@ static inline Type value_typeof(Value v)
     }
     switch (VALUE_TAG(v)) {
     case TAG_STR:
-        error("got internal string: %s", value_to_string(v));
+        return TYPE_STR;
     case TAG_PAIR:
         return TYPE_PAIR;
     case TAG_CFUNC:
@@ -236,7 +241,7 @@ static inline void *tagged_new(size_t size, ValueTag t)
     return p;
 }
 
-static inline Value value_of_string(const char *s)
+inline Value value_of_string(const char *s)
 {
     String *str = tagged_new(sizeof(String), TAG_STR);
     str->body = xstrdup(s);
@@ -319,6 +324,7 @@ typedef enum {
     TTYPE_RPAREN,
     TTYPE_INT,
     TTYPE_DOT,
+    TTYPE_STR,
     TTYPE_IDENT,
     TTYPE_CONST,
     TTYPE_EOF
@@ -339,6 +345,7 @@ static const Token
 // and ctor
 #define TOK_V(t, v) ((Token) { .type = TTYPE_ ## t, .value = v })
 #define TOK_INT(i) TOK_V(INT, value_of_int(i))
+#define TOK_STR(s) TOK_V(STR, value_of_string(s))
 #define TOK_IDENT(s) TOK_V(IDENT, value_of_symbol(s))
 #define TOK_CONST(c) TOK_V(CONST, c)
 
@@ -382,6 +389,26 @@ static Token get_token_int(Parser *p, int sign)
     if (n != 1)
         parse_error(p, "integer", "invalid string");
     return TOK_INT(sign * i);
+}
+
+static Token get_token_string(Parser *p)
+{
+    char buf[BUFSIZ], *pbuf = buf, *end = pbuf + sizeof(buf) - 2;
+    for (;;) {
+        int c = fgetc(p->in);
+        if (c == '"')
+            break;
+        if (c == '\\') {
+            c = fgetc(p->in);
+            if (c != '\\' && c != '"')
+                parse_error(p, "'\\' or '\"' in string literal", "'%c'", c);
+        }
+        if (pbuf == end)
+            parse_error(p, "string literal", "too long: \"%s...\"", pbuf);
+        *pbuf++ = c;
+    }
+    *pbuf = '\0';
+    return TOK_STR(buf);
 }
 
 static Symbol intern(const char *name)
@@ -506,6 +533,8 @@ static Token get_token(Parser *p)
         return TOK_RPAREN;
     case '.':
         return TOK_DOT;
+    case '"':
+        return get_token_string(p);
     case '#':
         c = fgetc(p->in);
         if (c == 't')
@@ -578,6 +607,9 @@ static const char *token_stringify(Token t)
         break;
     case TTYPE_IDENT:
         return value_to_string(t.value);
+    case TTYPE_STR:
+        snprintf(buf, sizeof(buf), "\"%s\"", STRING(t.value)->body);
+        break;
     case TTYPE_CONST:
         return t.value == Qtrue ? "#t" : "#f";
     case TTYPE_EOF:
@@ -624,6 +656,7 @@ static Value parse_expr(Parser *p)
         parse_error(p, "expression", "')'");
     case TTYPE_DOT:
         parse_error(p, "expression", "'.'");
+    case TTYPE_STR:
     case TTYPE_INT:
     case TTYPE_CONST:
     case TTYPE_IDENT:
@@ -832,7 +865,7 @@ static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
-    if (v == Qnil || is_immediate(v))
+    if (v == Qnil || value_is_atom(v))
         return v;
     Value func = ieval(env, car(v));
     return apply(env, func, cdr(v));
@@ -889,7 +922,8 @@ static void fdisplay(FILE* f, Value v)
         fprintf(f, ")");
         break;
     case TYPE_STR:
-        error("got internal string: %s", value_to_string(v));
+        fprintf(f, "\"%s\"", value_to_string(v));
+        break;
     case TYPE_CFUNC:
         fprintf(f, "<function>");
         break;

@@ -17,6 +17,7 @@ extern const Value Qnil, Qundef, Qfalse, Qtrue;
 
 bool value_is_int(Value v);
 bool value_is_symbol(Value v);
+bool value_is_string(Value v);
 bool value_is_cfunc(Value v);
 bool value_is_closure(Value v);
 bool value_is_atom(Value v);
@@ -29,6 +30,7 @@ const char *value_to_string(Value v);
 
 Value value_of_int(int64_t i);
 Value value_of_symbol(const char *s);
+Value value_of_string(const char *s);
 
 Value cons(Value car, Value cdr);
 Value list(Value v, ...); // terminate with Qundef

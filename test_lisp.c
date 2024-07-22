@@ -19,13 +19,27 @@
         for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
             assert_vint_eq(value_to_int(car(exp)), car(act)); \
     } while (0)
+#define assert_str_list_eq(expected, actual) do { \
+        Value exp = expected, act = actual; \
+        cr_assert(value_is_pair(act)); \
+        assert_int_eq(length(exp), length(act)); \
+        for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
+            cr_assert_str_eq(value_to_string(car(exp)), value_to_string(car(act))); \
+    } while (0)
+
+static inline Value value_idfunc(Value x) { return x; }
 #define V(x) \
-    _Generic(x, int: value_of_int(x), const char *: value_of_symbol, Value: x)
+    _Generic(x, int: value_of_int, char *: value_of_string, Value: value_idfunc)(x)
 
 #define assert_int_eq(expected, actual) cr_assert(eq(int, expected, actual))
 #define assert_vint_eq(expected, actual) do { \
         cr_assert(value_is_int(actual)); \
         assert_int_eq(expected, value_to_int(actual)); \
+    } while (0)
+
+#define assert_vstr_eq(expected, actual) do { \
+        cr_assert(value_is_string(actual)); \
+        cr_assert_str_eq(expected, value_to_string(actual)); \
     } while (0)
 
 #define assert_vtrue(actual) assert_int_eq(Qtrue, actual)
@@ -79,6 +93,26 @@ Test(lisp, parse_list) {
     assert_vint_eq(1, car(v));
     assert_vint_eq(2, cadr(v));
     cr_assert(value_is_nil(cddr(v)));
+}
+
+Test(lisp, parse_string) {
+    Value v = parse_expr_string("\"abc\"");
+    assert_vstr_eq("abc", v);
+
+    v = parse_expr_string("\"a\\\\b\"");
+    assert_vstr_eq("a\\b", v);
+
+    v = parse_expr_string("\"a\\\"b\"");
+    assert_vstr_eq("a\"b", v);
+}
+
+Test(lisp, parse_string_list) {
+    Value v;
+    v = parse_expr_string("(\"abc\" \"def\")");
+    cr_assert(value_is_pair(v));
+    cr_assert(not(value_is_nil(v)));
+
+    assert_str_list_eq(list(V("abc"), V("def"), Qundef), v);
 }
 
 Test(lisp, cxr) {
