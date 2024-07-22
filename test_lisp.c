@@ -480,3 +480,11 @@ Test(lisp, comment) {
     v = eval_string("(list 1 ;;; ?? ;;; \n 2)");
     assert_list_eq(list(V(1), V(2), Qundef), v);
 }
+
+Test(lisp, define_and_lambda) {
+    Value v;
+    v = eval_string("(define f (lambda () (g)))"
+                    "(define g (lambda () 42))"
+                    "(f)");
+    assert_vint_eq(42, v);
+}

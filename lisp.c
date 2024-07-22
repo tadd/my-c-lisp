@@ -78,7 +78,7 @@ typedef struct {
 } String;
 
 typedef struct {
-    Value env, params, body;
+    Value *env, params, body;
 } Closure;
 
 typedef struct {
@@ -268,7 +268,7 @@ static inline Value value_of_special(CFunc cfunc, long arity)
     return sp;
 }
 
-static inline Closure *closure_new(Value env, Value params, Value body)
+static inline Closure *closure_new(Value *env, Value params, Value body)
 {
     Closure *c = xmalloc(sizeof(Closure));
     c->env = env;
@@ -277,7 +277,7 @@ static inline Closure *closure_new(Value env, Value params, Value body)
     return c;
 }
 
-static inline Value value_of_closure(Value env, Value params, Value body)
+static inline Value value_of_closure(Value *env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = length(params);
@@ -778,7 +778,7 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
         runtime_error("(apply): variadic arguments not supported yet");
 
     Closure *cl = FUNCTION(func)->closure;
-    Value clenv = cl->env, params = cl->params;
+    Value clenv = *cl->env, params = cl->params;
     while (args != Qnil) {
         clenv = cons(cons(car(params), car(args)), clenv);
         args = cdr(args);
@@ -1239,7 +1239,7 @@ static Value builtin_lambda(Value *env, Value args)
     expect_type_twin("let", TYPE_PAIR, params, body);
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
-    return value_of_closure(*env, params, body);
+    return value_of_closure(env, params, body);
 }
 
 static Value builtin_list(Value args)
