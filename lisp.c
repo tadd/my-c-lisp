@@ -440,6 +440,15 @@ static Token get_token_after_sign(Parser *p, int csign)
     return TOK_IDENT(ident);
 }
 
+static void get_token_skip_atmosphere(Parser *p)
+{
+    int c;
+    do {
+        c = fgetc(p->in);
+    } while (isspace(c));
+    ungetc(c, p->in);
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TTYPE_EOF)  {
@@ -448,11 +457,8 @@ static Token get_token(Parser *p)
         return t;
     }
 
-    int c;
-    do {
-        c = fgetc(p->in);
-    } while (isspace(c));
-
+    get_token_skip_atmosphere(p);
+    int c = fgetc(p->in);
     switch (c) {
     case '(':
         return TOK_LPAREN;
