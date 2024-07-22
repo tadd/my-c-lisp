@@ -78,11 +78,15 @@ typedef struct {
 } String;
 
 typedef struct {
+    Value env, params, body;
+} Closure;
+
+typedef struct {
     ValueTag tag;
     long arity;
     union {
         CFunc cfunc;
-        Value closure; // '(env (params . body))
+        Closure *closure;
     };
 } Function;
 
@@ -264,11 +268,20 @@ static inline Value value_of_special(CFunc cfunc, long arity)
     return sp;
 }
 
+static inline Closure *closure_new(Value env, Value params, Value body)
+{
+    Closure *c = xmalloc(sizeof(Closure));
+    c->env = env;
+    c->params = params;
+    c->body = body;
+    return c;
+}
+
 static inline Value value_of_closure(Value env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = length(params);
-    f->closure = cons(env, cons(params, body));
+    f->closure = closure_new(env, params, body);
     return (Value) f;
 }
 
@@ -761,17 +774,17 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
 {
     long arity = FUNCTION(func)->arity;
     expect_arity(arity, length(args));
-
-    Value closure = FUNCTION(func)->closure;
-    Value clenv = car(closure), params = cadr(closure), body = cddr(closure);
     if (arity == -1)
         runtime_error("(apply): variadic arguments not supported yet");
+
+    Closure *cl = FUNCTION(func)->closure;
+    Value clenv = cl->env, params = cl->params;
     while (args != Qnil) {
         clenv = cons(cons(car(params), car(args)), clenv);
         args = cdr(args);
         params = cdr(params);
     }
-    return eval_body(&clenv, body);
+    return eval_body(&clenv, cl->body);
 }
 
 typedef Value (*MapFunc)(Value *common, Value v);
