@@ -222,6 +222,21 @@ Test(lisp, relop) {
     assert_vfalse(v);
 }
 
+Test(lisp, modulo) {
+    Value v;
+    v = eval_string("(modulo 13 4)");
+    assert_vint_eq(1, v);
+    v = eval_string("(modulo -13 4)");
+    assert_vint_eq(3, v);
+    v = eval_string("(modulo 13 -4)");
+    assert_vint_eq(-3, v);
+    v = eval_string("(modulo -13 -4)");
+    assert_vint_eq(-1, v);
+
+    v = eval_string("(modulo 13 0)");
+    assert_runtime_error(v, "divided by zero");
+}
+
 Test(lisp, unbound_variable) {
     Value v = eval_string("x");
     assert_runtime_error(v, "unbound variable: x");

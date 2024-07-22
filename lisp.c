@@ -1135,6 +1135,18 @@ static Value builtin_ge(Value args)
     return Qtrue;
 }
 
+static Value builtin_modulo(Value x, Value y)
+{
+    int64_t b = value_get_int("modulo", y);
+    if (b == 0)
+        runtime_error("modulo: divided by zero");
+    int64_t a = value_get_int("modulo", x);
+    int64_t c = a % b;
+    if ((a < 0 && b > 0) || (a > 0 && b < 0))
+        c += b;
+    return value_of_int(c);
+}
+
 static Value builtin_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, length(args));
@@ -1316,6 +1328,7 @@ static void initialize(void)
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
+    define_function(e, "modulo", builtin_modulo, 2);
 
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
