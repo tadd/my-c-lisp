@@ -440,7 +440,7 @@ static Token get_token_after_sign(Parser *p, int csign)
     return TOK_IDENT(ident);
 }
 
-static void get_token_skip_atmosphere(Parser *p)
+static void skip_token_atmosphere(Parser *p)
 {
     int c;
     for (;;) {
@@ -468,7 +468,7 @@ static Token get_token(Parser *p)
         return t;
     }
 
-    get_token_skip_atmosphere(p);
+    skip_token_atmosphere(p);
     int c = fgetc(p->in);
     switch (c) {
     case '(':
