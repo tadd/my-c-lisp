@@ -433,7 +433,7 @@ static inline bool is_initial(int c)
 static inline bool is_subsequent(int c)
 {
     return isalpha(c) || isdigit(c) ||
-        c == '*' || c == '-' || c == '.' || c == '!' || c == '=';
+        c == '*' || c == '-' || c == '.' || c == '!' || c == '=' || c == '?';
 }
 
 static Token get_token_ident(Parser *p)
