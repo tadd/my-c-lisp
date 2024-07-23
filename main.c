@@ -21,6 +21,7 @@ static void opt_error(const char *fmt, ...)
     va_start(ap, fmt);
     fprintf(stderr, "error: ");
     vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
     va_end(ap);
     usage(stderr);
 }
@@ -50,9 +51,9 @@ static Option parse_opt(int argc, char *const *argv)
     }
     const char *f = argv[optind];
     if (f == NULL && o.in == NULL)
-        opt_error("no program provided\n");
+        opt_error("no program provided");
     if (f != NULL && o.in != NULL)
-        opt_error("filename %s given while option '-e' passed\n", f);
+        opt_error("filename %s given while option '-e' passed", f);
     if (f != NULL) {
         o.in = fopen(f, "r");
         if (o.in == NULL)
