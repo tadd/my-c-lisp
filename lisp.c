@@ -770,6 +770,11 @@ static Value eval_body(Value *env, Value body)
     return last;
 }
 
+static Value alist_prepend(Value list, Value key, Value val)
+{
+    return cons(cons(key, val), list);
+}
+
 static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
 {
     long arity = FUNCTION(func)->arity;
@@ -779,11 +784,8 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
 
     Closure *cl = FUNCTION(func)->closure;
     Value clenv = *cl->env, params = cl->params;
-    while (args != Qnil) {
-        clenv = cons(cons(car(params), car(args)), clenv);
-        args = cdr(args);
-        params = cdr(params);
-    }
+    for (; args != Qnil; args = cdr(args), params = cdr(params))
+        clenv = alist_prepend(clenv, car(params), car(args));
     return eval_body(&clenv, cl->body);
 }
 
@@ -829,11 +831,6 @@ static Value alist_find(Value l, Value key)
             return entry;
     }
     return Qnil;
-}
-
-static Value alist_prepend(Value list, Value key, Value val)
-{
-    return cons(cons(key, val), list);
 }
 
 static void expect_valid_arity(long expected_max, long actual)
@@ -1198,7 +1195,7 @@ static Value builtin_let(Value *env, Value args)
         expect_type("let", TYPE_PAIR, b);
         Value ident = car(b), expr = cadr(b);
         expect_type("let", TYPE_SYMBOL, ident);
-        letenv = cons(cons(ident, ieval(env, expr)), letenv);
+        letenv = alist_prepend(letenv, ident, ieval(env, expr));
     }
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
@@ -1218,7 +1215,7 @@ static Value builtin_letrec(Value *env, Value args)
         Value ident = car(p);
         expect_type("letrec", TYPE_SYMBOL, ident);
         Value val = ieval(&letenv, cadr(p));
-        letenv = cons(cons(ident, val), letenv);
+        letenv = alist_prepend(letenv, ident, val);
     }
     if (body == Qnil)
         runtime_error("letrec: one or more expressions needed in body");
