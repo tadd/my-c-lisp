@@ -578,11 +578,6 @@ static void unget_token(Parser *p, Token t)
     p->prev_token = t;
 }
 
-static inline bool got_eof(Parser *p)
-{
-    return feof(p->in);
-}
-
 inline Value car(Value v)
 {
     return PAIR(v)->car;
@@ -677,7 +672,7 @@ static Value parse_expr(Parser *p)
     case TTYPE_EOF:
         break;
     }
-    return Qnil; // dummy
+    return Qundef;
 }
 
 static Parser *parser_new(FILE *in)
@@ -980,7 +975,7 @@ Value parse(FILE *in)
     Value v = Qnil, last = Qnil;
     for (;;) {
         Value expr = parse_expr(p);
-        if (expr == Qnil && got_eof(p))
+        if (expr == Qundef)
             break;
         last = append(last, expr);
         if (v == Qnil)
