@@ -41,15 +41,16 @@
         cr_assert_not_null(strstr(error_message(), pattern)); \
     } while (0)
 
-#define assert_vx_eq(x, y, z, exp, act) do {      \
-        cr_assert(value_is_##x(act)); \
+#define assert_type(exp, act) assert_str_eq(exp, value_type_to_string(value_type_of(act)))
+#define assert_vx_eq(x, y, z, exp, act) do { \
+        assert_type(#x, act); \
         assert_##y##_eq(exp, value_to_##z(act)); \
     } while (0)
 #define assert_x_parsed(x, exp, act) assert_##x(exp, parse_expr_string(act))
 #define assert_x_evaled(x, exp, act) assert_##x(exp, eval_string(act))
 #define assert_x_evaled1(x, act) assert_##x(eval_string(act))
 
-#define assert_vint_eq(exp, act) assert_vx_eq(int, int, int, exp, act)
+#define assert_vint_eq(exp, act) assert_vx_eq(integer, int, int, exp, act)
 #define assert_vstr_eq(exp, act) assert_vx_eq(string, str, string, exp, act)
 #define assert_vsym_eq(exp, act) assert_vx_eq(symbol, str, string, exp, act)
 #define assert_vtrue(act) assert_int_eq(Qtrue, act)

@@ -7,6 +7,20 @@
 
 #include "utils.h"
 
+typedef enum {
+// immediate
+    TYPE_BOOL,
+    TYPE_INT,
+    TYPE_SYMBOL,
+    TYPE_UNDEF,
+// boxed (tagged)
+    TYPE_PAIR,
+    TYPE_STR,
+    TYPE_CFUNC,
+    TYPE_SPECIAL,
+    TYPE_CLOSURE,
+} Type;
+
 typedef struct Pair Pair;
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
@@ -23,6 +37,8 @@ bool value_is_closure(Value v);
 bool value_is_atom(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);
+Type value_type_of(Value v);
+const char *value_type_to_string(Type t);
 
 int64_t value_to_int(Value v);
 Symbol value_to_symbol(Value v);

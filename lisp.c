@@ -33,20 +33,6 @@ const char *error_message(void)
     return errmsg;
 }
 
-typedef enum {
-// immediate
-    TYPE_BOOL,
-    TYPE_INT,
-    TYPE_SYMBOL,
-    TYPE_UNDEF,
-// boxed (tagged)
-    TYPE_PAIR,
-    TYPE_STR,
-    TYPE_CFUNC,
-    TYPE_SPECIAL,
-    TYPE_CLOSURE,
-} Type;
-
 static const char *TYPE_NAMES[] = {
     [TYPE_BOOL] = "boolean",
     [TYPE_INT] = "integer",
@@ -177,7 +163,7 @@ inline bool value_is_nil(Value v)
     return v == Qnil;
 }
 
-static inline Type value_typeof(Value v)
+inline Type value_type_of(Value v)
 {
     if (is_immediate(v)) {
         if (value_is_int(v))
@@ -201,6 +187,11 @@ static inline Type value_typeof(Value v)
         return TYPE_CLOSURE;
     }
     UNREACHABLE();
+}
+
+const char *value_type_to_string(Type t)
+{
+    return TYPE_NAMES[t];
 }
 
 // value_to_*: convert internal data to external plain C
@@ -298,11 +289,11 @@ inline Value cons(Value car, Value cdr)
 
 static void expect_type(const char *header, Type expected, Value v)
 {
-    Type t = value_typeof(v);
+    Type t = value_type_of(v);
     if (t == expected)
         return;
     runtime_error("type error in %s: expected %s but got %s",
-                  header, TYPE_NAMES[expected], TYPE_NAMES[t]);
+                  header, value_type_to_string(expected), value_type_to_string(t));
 }
 #define expect_type_twin(h, t, x, y) expect_type(h, t, x), expect_type(h, t, y)
 
@@ -815,7 +806,7 @@ static Value apply(Value *env, Value func, Value args)
     }
  unapplicative:
     runtime_error("type error in (eval): expected applicative but got %s",
-                  TYPE_NAMES[value_typeof(func)]);
+                  value_type_to_string(value_type_of(func)));
 }
 
 static Value alist_find(Value l, Value key)
@@ -910,7 +901,7 @@ static void display_list(FILE *f, Value v)
 
 static void fdisplay(FILE* f, Value v)
 {
-    switch (value_typeof(v)) {
+    switch (value_type_of(v)) {
     case TYPE_BOOL:
         fprintf(f, "%s", v == Qtrue ? "#t" : "#f");
         break;
