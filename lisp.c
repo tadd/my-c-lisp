@@ -1246,6 +1246,13 @@ static Value builtin_newline(void)
     return Qnil;
 }
 
+static Value builtin_print(Value obj)
+{
+    display(obj);
+    puts("");
+    return obj;
+}
+
 static Value builtin_begin(Value *env, Value body)
 {
     return eval_body(env, body);
@@ -1324,6 +1331,7 @@ static void initialize(void)
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
+    define_function(e, "print", builtin_print, 1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
