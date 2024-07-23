@@ -306,6 +306,18 @@ Test(lisp, lambda) {
     assert_vint_eq_evaled(42, "(define mul (lambda (x y) (* x y))) (mul 3 14)");
 }
 
+Test(lisp, let_is_lambda) {
+    assert_vint_eq_evaled(42, "((lambda (x) x) 42)");
+    assert_vint_eq_evaled(63, "((lambda (x y) (+ x y)) 42 21)");
+    assert_vint_eq_evaled(63, "((lambda (x) ((lambda (y) (+ x y)) 21)) 42)");
+    assert_vint_eq_evaled(1, "((lambda (x) ((lambda (x) x) 1)) 42)");
+    assert_vint_eq_evaled(42, "((lambda (x) ((lambda (y) y) x)) 42)");
+    assert_vint_eq_evaled(42, "((lambda (x) ((lambda (x) x) x)) 42)");
+    assert_vint_eq_evaled(42, "((lambda (x) ((lambda (x) x) 10) x) 42)");
+    assert_list_eq_evaled(list(V(42), V(10), Qundef),
+                          "((lambda (x) ((lambda (y) (list x y)) 10)) 42)");
+}
+
 Test(lisp, lambda_rec) {
     assert_vint_eq_evaled(1, "(define f (lambda (x) (if (> x 0) x (f (+ x 1))))) (f 0)");
 }
