@@ -1214,9 +1214,9 @@ static Value builtin_lambda(Value *env, Value args)
 {
     Value params = car(args);
     Value body = cdr(args);
-    expect_type_twin("let", TYPE_PAIR, params, body);
+    expect_type_twin("lambda", TYPE_PAIR, params, body);
     if (body == Qnil)
-        runtime_error("let: one or more expressions needed in body");
+        runtime_error("lambda: one or more expressions needed in body");
     return value_of_closure(env, params, body);
 }
 
