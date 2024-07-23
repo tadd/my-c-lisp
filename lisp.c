@@ -977,15 +977,17 @@ Value reverse(Value v)
 Value parse(FILE *in)
 {
     Parser *p = parser_new(in);
-    Value v = Qnil;
+    Value v = Qnil, last = Qnil;
     for (;;) {
         Value expr = parse_expr(p);
         if (expr == Qnil && got_eof(p))
             break;
-        v = cons(expr, v);
+        last = append(last, expr);
+        if (v == Qnil)
+            v = last;
     }
     free(p);
-    return reverse(v);
+    return v;
 }
 
 Value parse_expr_string(const char *in)
