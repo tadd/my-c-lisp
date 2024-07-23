@@ -50,6 +50,23 @@ static inline Value value_idfunc(Value x) { return x; }
         cr_assert_not_null(strstr(error_message(), pattern)); \
     } while (0)
 
+#define assert_vint_eq_parsed(expected, actual) \
+    assert_vint_eq(expected, parse_expr_string(actual))
+#define assert_vstr_eq_parsed(expected, actual) \
+    assert_vstr_eq(expected, parse_expr_string(actual))
+
+#define assert_int_eq_evaled(expected, actual) \
+    assert_int_eq(expected, eval_string(actual))
+#define assert_vint_eq_evaled(expected, actual) \
+    assert_vint_eq(expected, eval_string(actual))
+#define assert_runtime_error_evaled(expected, actual) \
+    assert_runtime_error(eval_string(actual), expected)
+#define assert_vtrue_evaled(actual) assert_vtrue(eval_string(actual))
+#define assert_vfalse_evaled(actual) assert_vfalse(eval_string(actual))
+#define assert_list_eq_evaled(expected, actual) \
+    assert_list_eq(expected, eval_string(actual))
+
+
 Test(lisp, nil) {
     Value a = Qnil;
     cr_assert(value_is_nil(a));
@@ -67,48 +84,32 @@ Test(lisp, printing) {
 
     assert_stringify("'foo", value_of_symbol("foo"));
 
-    //assert_stringify("<function>", value_of_cfunc(value_of_cfunc, 1));
-
     assert_stringify("(1)", cons(V(1), Qnil));
     assert_stringify("(1 . 2)", cons(V(1), V(2)));
     assert_stringify("(1 2)", list(V(1), V(2), Qundef));
 }
 
 Test(lisp, parse_int) {
-    Value v = parse_expr_string("42");
-    assert_vint_eq(42, v);
-
-    v = parse_expr_string("-42");
-    assert_vint_eq(-42, v);
-    cr_assert_str_eq("-42", stringify(v));
+    assert_vint_eq_parsed(42, "42");
+    assert_vint_eq_parsed(-42, "-42");
 }
 
 Test(lisp, parse_nil) {
-    Value v = parse_expr_string("()");
-    cr_assert(value_is_nil(v));
+    cr_assert(value_is_nil(parse_expr_string("()")));
 }
 
 Test(lisp, parse_list) {
-    Value v = parse_expr_string("(1 2)");
-    assert_vint_eq(1, car(v));
-    assert_vint_eq(2, cadr(v));
-    cr_assert(value_is_nil(cddr(v)));
+    assert_list_eq(list(V(1), V(2), Qundef), parse_expr_string("(1 2)"));
 }
 
 Test(lisp, parse_string) {
-    Value v = parse_expr_string("\"abc\"");
-    assert_vstr_eq("abc", v);
-
-    v = parse_expr_string("\"a\\\\b\"");
-    assert_vstr_eq("a\\b", v);
-
-    v = parse_expr_string("\"a\\\"b\"");
-    assert_vstr_eq("a\"b", v);
+    assert_vstr_eq_parsed("abc", "\"abc\"");
+    assert_vstr_eq_parsed("a\\b", "\"a\\\\b\"");
+    assert_vstr_eq_parsed("a\"b", "\"a\\\"b\"");
 }
 
 Test(lisp, parse_string_list) {
-    Value v;
-    v = parse_expr_string("(\"abc\" \"def\")");
+    Value v = parse_expr_string("(\"abc\" \"def\")");
     cr_assert(value_is_pair(v));
     cr_assert(not(value_is_nil(v)));
 
@@ -116,9 +117,7 @@ Test(lisp, parse_string_list) {
 }
 
 Test(lisp, cxr) {
-    Value v = parse_expr_string("((((42))))");
-    Value i = caaaar(v);
-    assert_vint_eq(42, i);
+    assert_vint_eq(42, caaaar(parse_expr_string("((((42))))")));
 }
 
 Test(lisp, parse_ident) {
@@ -135,271 +134,160 @@ Test(lisp, parse_dot) {
 }
 
 Test(lisp, parse_peculiar) {
-    Value v = parse_expr_string("+42");
-    cr_assert(value_is_int(v));
+    assert_vint_eq_parsed(42, "+42");
 
-    v = parse_expr_string("+");
-    cr_assert(value_is_symbol(v));
+    cr_assert(value_is_symbol(parse_expr_string("+")));
 }
 
 Test(lisp, eval_arithmetic_literal) {
-    Value v = eval_string("(+ 42 21)");
-    assert_vint_eq(63, v);
-
-    v = eval_string("(- 42 21)");
-    assert_vint_eq(21, v);
-
-    v = eval_string("(* 4 2)");
-    assert_vint_eq(8, v);
-
-    v = eval_string("(/ 4 2)");
-    assert_vint_eq(2, v);
+    assert_vint_eq_evaled(63, "(+ 42 21)");
+    assert_vint_eq_evaled(21, "(- 42 21)");
+    assert_vint_eq_evaled(8, "(* 4 2)");
+    assert_vint_eq_evaled(2, "(/ 4 2)");
 }
 
 Test(lisp, eval_arithmetic_expr) {
-    Value v = eval_string("(+ (+ 40 2) 21)");
-    assert_vint_eq(63, v);
-
-    v = eval_string("(+ (- 40 4) (* 3 (/ 100 50)))");
-    assert_vint_eq(42, v);
+    assert_vint_eq_evaled(63, "(+ (+ 40 2) 21)");
+    assert_vint_eq_evaled(42, "(+ (- 40 4) (* 3 (/ 100 50)))");
 }
 
 Test(lisp, div0) {
-    Value v = eval_string("(/ 42 0)");
-    assert_runtime_error(v, "divided by zero");
+    assert_runtime_error_evaled("divided by zero", "(/ 42 0)");
 }
 
 Test(lisp, relop) {
-    Value v;
-    v = eval_string("(= 42 42)");
-    assert_vtrue(v);
-    v = eval_string("(= 0 0 0 0 0)");
-    assert_vtrue(v);
+    assert_vtrue_evaled("(= 42 42)");
+    assert_vtrue_evaled("(= 0 0 0 0 0)");
 
-    v = eval_string("(= 42 0)");
-    assert_vfalse(v);
-    v = eval_string("(= 0 0 0 0 42)");
-    assert_vfalse(v);
+    assert_vfalse_evaled("(= 42 0)");
+    assert_vfalse_evaled("(= 0 0 0 0 42)");
 
-    v = eval_string("(< 2 4)");
-    assert_vtrue(v);
-    v = eval_string("(< 2 3 4 5)");
-    assert_vtrue(v);
+    assert_vtrue_evaled("(< 2 4)");
+    assert_vtrue_evaled("(< 2 3 4 5)");
 
-    v = eval_string("(< 2 0)");
-    assert_vfalse(v);
-    v = eval_string("(< 2 3 4 4)");
-    assert_vfalse(v);
+    assert_vfalse_evaled("(< 2 0)");
+    assert_vfalse_evaled("(< 2 3 4 4)");
 
-    v = eval_string("(<= 2 4)");
-    assert_vtrue(v);
-    v = eval_string("(<= 2 3 4 4)");
-    assert_vtrue(v);
+    assert_vtrue_evaled("(<= 2 4)");
+    assert_vtrue_evaled("(<= 2 3 4 4)");
 
-    v = eval_string("(<= 2 0)");
-    assert_vfalse(v);
-    v = eval_string("(<= 2 3 4 3)");
-    assert_vfalse(v);
+    assert_vfalse_evaled("(<= 2 0)");
+    assert_vfalse_evaled("(<= 2 3 4 3)");
 
-    v = eval_string("(> 3 2)");
-    assert_vtrue(v);
-    v = eval_string("(> 4 3 2 1)");
-    assert_vtrue(v);
+    assert_vtrue_evaled("(> 3 2)");
+    assert_vtrue_evaled("(> 4 3 2 1)");
 
-    v = eval_string("(> 0 1)");
-    assert_vfalse(v);
-    v = eval_string("(> 4 3 2 2)");
-    assert_vfalse(v);
+    assert_vfalse_evaled("(> 0 1)");
+    assert_vfalse_evaled("(> 4 3 2 2)");
 
-    v = eval_string("(>= 3 2)");
-    assert_vtrue(v);
-    v = eval_string("(>= 4 3 2 2)");
-    assert_vtrue(v);
+    assert_vtrue_evaled("(>= 3 2)");
+    assert_vtrue_evaled("(>= 4 3 2 2)");
 
-    v = eval_string("(>= 0 1)");
-    assert_vfalse(v);
-    v = eval_string("(>= 4 3 2 3)");
-    assert_vfalse(v);
+    assert_vfalse_evaled("(>= 0 1)");
+    assert_vfalse_evaled("(>= 4 3 2 3)");
 }
 
 Test(lisp, modulo) {
-    Value v;
-    v = eval_string("(modulo 13 4)");
-    assert_vint_eq(1, v);
-    v = eval_string("(modulo -13 4)");
-    assert_vint_eq(3, v);
-    v = eval_string("(modulo 13 -4)");
-    assert_vint_eq(-3, v);
-    v = eval_string("(modulo -13 -4)");
-    assert_vint_eq(-1, v);
+    assert_vint_eq_evaled(1, "(modulo 13 4)");
+    assert_vint_eq_evaled(3, "(modulo -13 4)");
+    assert_vint_eq_evaled(-3, "(modulo 13 -4)");
+    assert_vint_eq_evaled(-1, "(modulo -13 -4)");
 
-    v = eval_string("(modulo 13 0)");
-    assert_runtime_error(v, "divided by zero");
+    assert_runtime_error_evaled("divided by zero", "(modulo 13 0)");
 }
 
 Test(lisp, unbound_variable) {
-    Value v = eval_string("x");
-    assert_runtime_error(v, "unbound variable: x");
-
-    v = eval_string("(+ x 2)");
-    assert_runtime_error(v, "unbound variable: x");
+    assert_runtime_error_evaled("unbound variable: x", "x");
+    assert_runtime_error_evaled("unbound variable: x", "(+ x 2)");
 }
 
 Test(lisp, true_false) {
-    Value v = eval_string("#t");
-    assert_int_eq(v, Qtrue);
-    v = eval_string("#f");
-    assert_int_eq(v, Qfalse);
+    assert_int_eq_evaled(Qtrue, "#t");
+    assert_int_eq_evaled(Qfalse, "#f");
 }
 
 Test(lisp, if) {
-    Value v;
-    v = eval_string("(if #t 1)");
-    assert_vint_eq(1, v);
+    assert_vint_eq_evaled(1, "(if #t 1)");
+    assert_vint_eq_evaled(1, "(if #t 1 2)");
+    assert_vint_eq_evaled(2, "(if #f 1 2)");
 
-    v = eval_string("(if #t 1 2)");
-    assert_vint_eq(1, v);
-
-    v = eval_string("(if #f 1 2)");
-    assert_vint_eq(2, v);
-
-    v = eval_string("(if #f)");
-    assert_runtime_error(v, "2..3 but got 1");
-
-    v = eval_string("(if #f 1 2 3)");
-    assert_runtime_error(v, "2..3 but got 4");
+    assert_runtime_error_evaled("2..3 but got 1", "(if #f)");
+    assert_runtime_error_evaled("2..3 but got 4", "(if #f 1 2 3)");
 }
 
 Test(lisp, if_composed) {
-    Value v;
-    v = eval_string("(if (if #t 1 #f) (if #t 3 4) (if #t 5 6))");
-    assert_vint_eq(3, v);
-
-    v = eval_string("(if (if #f 1 #f) (if #f 3 4) (if #f 5 6))");
-    assert_vint_eq(6, v);
+    assert_vint_eq_evaled(3, "(if (if #t 1 #f) (if #t 3 4) (if #t 5 6))");
+    assert_vint_eq_evaled(6, "(if (if #f 1 #f) (if #f 3 4) (if #f 5 6))");
 }
 
 Test(lisp, list) {
-    Value v;
-    v = eval_string("(list)");
-    assert_int_eq(v, Qnil);
+    assert_int_eq_evaled(Qnil, "()");
+    assert_int_eq_evaled(Qnil, "(list)");
 
-    v = eval_string("(list 42)");
-    cr_assert(value_is_pair(v));
-    assert_int_eq(1, length(v));
-    assert_vint_eq(42, car(v));
+    assert_list_eq_evaled(list(V(42), Qundef), "(list 42)");
 
-    v = list(value_of_int(42),
-             value_of_symbol("foo"),
-             Qundef);
+    Value v = list(V(42), V("foo"), Qundef);
     cr_assert(value_is_pair(v));
     assert_int_eq(2, length(v));
-    Value v0 = car(v);
-    assert_vint_eq(42, v0);
-    Value v1 = cadr(v);
-    cr_assert(value_is_symbol(v1));
-    cr_assert_str_eq("foo", value_to_string(v1));
+    assert_vint_eq(42, car(v));
+    assert_vstr_eq("foo", cadr(v));
 }
 
 
 Test(lisp, reverse) {
-    Value v;
-    v = eval_string("()");
-    assert_list_eq(Qnil, v);
-    v = eval_string("(reverse (list 1))");
-    assert_list_eq(list(V(1), Qundef), v);
-    v = eval_string("(reverse (list 1 2))");
-    assert_list_eq(list(V(2), V(1), Qundef), v);
-    v = eval_string("(reverse (list 1 2 3))");
-    assert_list_eq(list(V(3), V(2), V(1), Qundef), v);
+    assert_list_eq_evaled(Qnil, "()");
+    assert_list_eq_evaled(list(V(1), Qundef), "(reverse (list 1))");
+    assert_list_eq_evaled(list(V(2), V(1), Qundef), "(reverse (list 1 2))");
+    assert_list_eq_evaled(list(V(3), V(2), V(1), Qundef), "(reverse (list 1 2 3))");
 }
 
 Test(lisp, cons_etc) {
-    Value v;
-    v = eval_string("(cons 1 2)");
+    Value v = eval_string("(cons 1 2)");
     cr_assert(value_is_pair(v));
     assert_vint_eq(1, car(v));
     assert_vint_eq(2, cdr(v));
 
-    v = eval_string("(car (cons 1 2))");
-    assert_vint_eq(1, v);
-
-    v = eval_string("(cdr (cons 1 2))");
-    assert_vint_eq(2, v);
+    assert_vint_eq_evaled(1, "(car (cons 1 2))");
+    assert_vint_eq_evaled(2, "(cdr (cons 1 2))");
 }
 
 Test(lisp, define_variable) {
-    Value v;
-    v = eval_string("(define x 42) x");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(define x (* -1 42)) x");
-    assert_vint_eq(-42, v);
+    assert_vint_eq_evaled(42, "(define x 42) x");
+    assert_vint_eq_evaled(-42, "(define x (* -1 42)) x");
 }
 
 Test(lisp, set) {
-    Value v;
-    v = eval_string("(define x 1) (set! x 42) x");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(set! x 42) x");
-    assert_runtime_error(v, "unbound variable: x");
+    assert_vint_eq_evaled(42, "(define x 1) (set! x 42) x");
+    assert_runtime_error_evaled("unbound variable: x", "(set! x 42) x");
 }
 
 Test(lisp, let) {
-    Value v;
-    v = eval_string("(let ((x 42)) x)");
-    assert_vint_eq(42, v);
+    assert_vint_eq_evaled(42, "(let ((x 42)) x)");
+    assert_vint_eq_evaled(63, "(let ((x 42) (y 21)) (+ x y))");
+    assert_vint_eq_evaled(63, "(let ((x 42)) (let ((y 21)) (+ x y)))");
+    assert_vint_eq_evaled(1, "(let ((x 42)) (let ((x 1)) x))");
+    assert_vint_eq_evaled(42, "(let ((x 42)) (let ((y x)) y))");
+    assert_vint_eq_evaled(42, "(let ((x 42)) (let ((x x)) x))");
+    assert_vint_eq_evaled(42, "(let ((x 42)) (let ((x 10)) x) x)");
+    assert_list_eq_evaled(list(V(42), V(10), Qundef), "(let ((x 42) (y 10)) (list x y))");
 
-    v = eval_string("(let ((x 42) (y 21)) (+ x y))");
-    assert_vint_eq(63, v);
-
-    v = eval_string("(let ((x 42)) (let ((y 21)) (+ x y)))");
-    assert_vint_eq(63, v);
-
-    v = eval_string("(let ((x 42)) (let ((x 1)) x))");
-    assert_vint_eq(1, v);
-
-    v = eval_string("(let ((x 42)) (let ((y x)) y))");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(let ((x 42)) (let ((x x)) x))");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(let ((x 42)) (let ((x 10)) x) x)");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(let ((x 42) (y 10)) (list x y))");
-    assert_list_eq(list(V(42), V(10), Qundef), v);
-
-    v = eval_string("(let ((x 42)))");
-    assert_runtime_error(v, "one or more expressions");
-
-    v = eval_string("(let ((x 42) (y 100)))");
-    assert_runtime_error(v, "one or more expressions");
+    assert_runtime_error_evaled("one or more expressions", "(let ((x 42)))");
+    assert_runtime_error_evaled("one or more expressions", "(let ((x 42) (y 100)))");
 }
 
 Test(lisp, let_body_define) {
-    Value v;
-    v = eval_string("(let ((x 42)) (define x 2) x)");
-    assert_vint_eq(2, v);
-
-    v = eval_string("(define x 1) (let ((x 42)) (define x 2) x)");
-    assert_vint_eq(2, v);
-
-    v = eval_string("(define x 1) (let () (define x 2) x) x");
-    assert_vint_eq(1, v);
+    assert_vint_eq_evaled(2, "(let ((x 42)) (define x 2) x)");
+    assert_vint_eq_evaled(2, "(define x 1) (let ((x 42)) (define x 2) x)");
+    assert_vint_eq_evaled(1, "(define x 1) (let () (define x 2) x) x");
 }
 
 Test(lisp, let_star) {
-    Value v;
-    v = eval_string("(let* ((x 42) (y 10)) (list x y))");
-    assert_list_eq(list(V(42), V(10), Qundef), v);
+    assert_list_eq_evaled(list(V(42), V(10), Qundef),
+                          "(let* ((x 42) (y 10)) (list x y))");
 }
 
 Test(lisp, letrec) {
-    Value v;
-    v = eval_string(
+    assert_vtrue_evaled(
 "(letrec ((myeven?\n"
 "          (lambda (n)\n"
 "            (if (= n 0)\n"
@@ -411,80 +299,51 @@ Test(lisp, letrec) {
 "                #f\n"
 "                (myeven? (- n 1))))))\n"
 "   (myeven? 8888))");
-    assert_vtrue(v);
 }
 
 Test(lisp, applicable) {
-    Value v;
-    v = eval_string("(1 1)");
-    assert_runtime_error(v, "expected applicative");
+    assert_runtime_error_evaled("expected applicative", "(1 1)");
+    assert_runtime_error_evaled("expected applicative", "(() 1)");
 }
 
 Test(lisp, lambda) {
-    Value v;
-    v = eval_string("(lambda () 1)");
-    cr_assert(value_is_closure(v));
+    cr_assert(value_is_closure(eval_string("(lambda () 1)")));
 
-    v = eval_string("((lambda () 1))");
-    assert_vint_eq(1, v);
-
-    v = eval_string("((lambda (x) (* 2 x)) 21)");
-    assert_vint_eq(42, v);
-
-    v = eval_string("((lambda (x y) (* x y)) 3 14)");
-    assert_vint_eq(42, v);
-
-    v = eval_string("(define mul (lambda (x y) (* x y))) (mul 3 14)");
-    assert_vint_eq(42, v);
+    assert_vint_eq_evaled(1, "((lambda () 1))");
+    assert_vint_eq_evaled(42, "((lambda (x) (* 2 x)) 21)");
+    assert_vint_eq_evaled(42, "((lambda (x y) (* x y)) 3 14)");
+    assert_vint_eq_evaled(42, "(define mul (lambda (x y) (* x y))) (mul 3 14)");
 }
 
 Test(lisp, lambda_rec) {
-    Value v;
-    v = eval_string("(define f (lambda (x) (if (> x 0) x (f (+ x 1))))) (f 0)");
-    assert_vint_eq(1, v);
+    assert_vint_eq_evaled(1, "(define f (lambda (x) (if (> x 0) x (f (+ x 1))))) (f 0)");
 }
 
 Test(lisp, begin) {
-    Value v;
-    v = eval_string("(begin 1 2 3)");
-    assert_vint_eq(3, v);
+    assert_vint_eq_evaled(3, "(begin 1 2 3)");
 }
 
 Test(lisp, cond) {
-    Value v;
-    v = eval_string("(cond (#f 1) (#t 2) (else 3))");
-    assert_vint_eq(2, v);
-
-    v = eval_string("(cond (#f 1) (else 3))");
-    assert_vint_eq(3, v);
-
-    v = eval_string("(cond (#f) (2))");
-    assert_vint_eq(2, v);
+    assert_vint_eq_evaled(2, "(cond (#f 1) (#t 2) (else 3))");
+    assert_vint_eq_evaled(3, "(cond (#f 1) (else 3))");
+    assert_vint_eq_evaled(2, "(cond (#f) (2))");
 }
 
 Test(lisp, cputime) {
-    Value v;
-    v = eval_string("(_cputime)");
+    Value v = eval_string("(_cputime)");
     cr_assert(value_is_int(v));
     cr_assert(gt(int, value_to_int(v), 0));
 }
 
 Test(lisp, comment) {
-    Value v;
-    v = eval_string("1 ; foo");
-    assert_vint_eq(1, v);
-
-    v = eval_string("2 ;;bar");
-    assert_vint_eq(2, v);
-
-    v = eval_string("(list 1 ;;; ?? ;;; \n 2)");
-    assert_list_eq(list(V(1), V(2), Qundef), v);
+    assert_vint_eq_evaled(1, "1 ; foo");
+    assert_vint_eq_evaled(2, "2 ;;bar");
+    assert_list_eq_evaled(list(V(1), V(2), Qundef), "(list 1 ;;; ?? ;;; \n 2)");
 }
 
 Test(lisp, define_and_lambda) {
-    Value v;
-    v = eval_string("(define f (lambda () (g)))"
-                    "(define g (lambda () 42))"
-                    "(f)");
-    assert_vint_eq(42, v);
+    assert_vint_eq_evaled(42,
+"(define f (lambda () (g)))"
+"(define g (lambda () 42))"
+"(f)");
 }
