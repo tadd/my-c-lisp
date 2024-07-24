@@ -1,8 +1,10 @@
-SRC=main.c lisp.c utils.c
-OBJ=$(SRC:.c=.o)
+CC=gcc
 CFLAGS=-std=gnu17 -O0 -ggdb3 -Wall -Wextra $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
+
+SRC=main.c lisp.c utils.c
+OBJ=$(SRC:.c=.o)
 
 all: lisp test
 
