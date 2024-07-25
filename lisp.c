@@ -108,60 +108,20 @@ static Value SYM_ELSE = Qundef; // used in cond
 
 // value_is_*: type checks
 
-static inline uintptr_t flags(Value v)
-{
-    return v & MASK_IMMEDIATE;
-}
-
-inline bool value_is_int(Value v)
-{
-    return v & 1U;
-}
-
-inline bool value_is_symbol(Value v)
-{
-    return flags(v) == FLAG_SYMBOL;
-}
-
-static inline bool is_immediate(Value v)
-{
-    return !!flags(v);
-}
-
+static inline uintptr_t flags(Value v)   { return v & MASK_IMMEDIATE; }
+inline bool value_is_int(Value v)        { return v & 1U; }
+inline bool value_is_symbol(Value v)     { return flags(v) == FLAG_SYMBOL; }
+static inline bool is_immediate(Value v) { return !!flags(v); }
 static inline bool tagged_value_is(Value v, ValueTag expected)
 {
     return !is_immediate(v) && VALUE_TAG(v) == expected;
 }
-
-inline bool value_is_string(Value v)
-{
-    return tagged_value_is(v, TAG_STR);
-}
-
-inline bool value_is_cfunc(Value v)
-{
-    return tagged_value_is(v, TAG_CFUNC);
-}
-
-inline bool value_is_closure(Value v)
-{
-    return tagged_value_is(v, TAG_CLOSURE);
-}
-
-inline bool value_is_pair(Value v)
-{
-    return tagged_value_is(v, TAG_PAIR);
-}
-
-inline bool value_is_atom(Value v)
-{
-    return !value_is_pair(v);
-}
-
-inline bool value_is_nil(Value v)
-{
-    return v == Qnil;
-}
+inline bool value_is_string(Value v)  { return tagged_value_is(v, TAG_STR); }
+inline bool value_is_cfunc(Value v)   { return tagged_value_is(v, TAG_CFUNC); }
+inline bool value_is_closure(Value v) { return tagged_value_is(v, TAG_CLOSURE); }
+inline bool value_is_pair(Value v)    { return tagged_value_is(v, TAG_PAIR); }
+inline bool value_is_atom(Value v)    { return !value_is_pair(v); }
+inline bool value_is_nil(Value v)     { return v == Qnil; }
 
 inline Type value_type_of(Value v)
 {
@@ -189,22 +149,12 @@ inline Type value_type_of(Value v)
     UNREACHABLE();
 }
 
-inline const char *value_type_to_string(Type t)
-{
-    return TYPE_NAMES[t];
-}
+inline const char *value_type_to_string(Type t) { return TYPE_NAMES[t]; }
 
 // value_to_*: convert internal data to external plain C
 
-inline int64_t value_to_int(Value v)
-{
-    return (int64_t) v >> 1U;
-}
-
-inline Symbol value_to_symbol(Value v)
-{
-    return (Symbol) (v >> FLAG_NBIT);
-}
+inline int64_t value_to_int(Value v) { return (int64_t) v >> 1U; }
+inline Symbol value_to_symbol(Value v) { return (Symbol) (v >> FLAG_NBIT); }
 
 static Symbol intern(const char *s);
 static const char *unintern(Symbol sym);
@@ -218,10 +168,7 @@ inline const char *value_to_string(Value v)
 
 // value_of_*: convert external plain C data to internal
 
-inline Value value_of_int(int64_t i)
-{
-    return (Value) i << 1U | 1U;
-}
+inline Value value_of_int(int64_t i) { return (Value) i << 1U | 1U; }
 
 inline Value value_of_symbol(const char *s)
 {
@@ -564,20 +511,9 @@ static Token get_token(Parser *p)
     parse_error(p, "valid char", "'%c'", c);
 }
 
-static void unget_token(Parser *p, Token t)
-{
-    p->prev_token = t;
-}
-
-inline Value car(Value v)
-{
-    return PAIR(v)->car;
-}
-
-inline Value cdr(Value v)
-{
-    return PAIR(v)->cdr;
-}
+inline static void unget_token(Parser *p, Token t) { p->prev_token = t; }
+inline Value car(Value v) { return PAIR(v)->car; }
+inline Value cdr(Value v) { return PAIR(v)->cdr; }
 
 #define DEF_CXR(x, y) Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
 #define DEF_CXR1(x) DEF_CXR(a, x) DEF_CXR(d, x)
