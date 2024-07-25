@@ -189,7 +189,7 @@ inline Type value_type_of(Value v)
     UNREACHABLE();
 }
 
-const char *value_type_to_string(Type t)
+inline const char *value_type_to_string(Type t)
 {
     return TYPE_NAMES[t];
 }
@@ -756,7 +756,7 @@ static Value eval_body(Value *env, Value body)
     return last;
 }
 
-static Value alist_prepend(Value list, Value key, Value val)
+inline static Value alist_prepend(Value list, Value key, Value val)
 {
     return cons(cons(key, val), list);
 }
