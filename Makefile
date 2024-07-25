@@ -9,13 +9,13 @@ OBJ=$(SRC:.c=.o)
 all: lisp test
 
 lisp: $(OBJ)
-	gcc $(CFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 test_lisp: lisp.o utils.o test_lisp.o
-	gcc $(CFLAGS) -o $@ $^ $(LIBS) -lcriterion
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) -lcriterion
 
 %.o: %.c lisp.h utils.h
-	gcc $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 test: test_lisp
 	./$<
