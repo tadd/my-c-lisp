@@ -96,4 +96,6 @@ Value parse_expr_string(const char *in);
 
 const char *error_message(void);
 
+void reset_environment(void); // for testing
+
 #endif

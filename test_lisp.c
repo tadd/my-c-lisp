@@ -70,6 +70,7 @@
 #define assert_vtrue_evaled(act) assert_x_evaled1(vtrue, act)
 #define assert_vfalse_evaled(act) assert_x_evaled1(vfalse, act)
 
+TestSuite(lisp, .init = reset_environment);
 
 Test(lisp, nil) {
     cr_assert(value_is_nil(Qnil));
