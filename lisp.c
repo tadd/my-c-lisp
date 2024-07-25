@@ -869,7 +869,8 @@ static Value ieval(Value *env, Value v)
 
 Value eval(Value v)
 {
-    return ieval(&toplevel_environment, v);
+    Value env = toplevel_environment;
+    return ieval(&env, v);
 }
 
 Value load(FILE *in)
