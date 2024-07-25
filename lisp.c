@@ -124,35 +124,15 @@ static const char *load_basedir = NULL;
 static Value call_stack = Qnil;
 static Value source_data = Qnil;
 
-//
 // value_is_*: Type Checks
-//
-
-inline bool value_is_int(Value v)
-{
-    return v & FLAG_MASK_INT;
-}
-
-inline bool value_is_symbol(Value v)
-{
-    return (v & FLAG_MASK_SYM) == FLAG_SYM;
-}
-
-static inline bool is_immediate(Value v)
-{
-    return v & FLAG_MASK;
-}
-
-static inline bool value_tag_is(Value v, ValueTag expected)
-{
-    return !is_immediate(v) && VALUE_TAG(v) == expected;
-}
-
-inline bool value_is_string(Value v)
-{
-    return value_tag_is(v, TAG_STR);
-}
-
+inline bool value_is_int(Value v)        { return v & FLAG_MASK_INT; }
+inline bool value_is_symbol(Value v)     { return (v & FLAG_MASK_SYM) == FLAG_SYM; }
+static inline bool is_immediate(Value v) { return v & FLAG_MASK; }
+static inline bool value_tag_is(Value v, ValueTag expected) {
+    return !is_immediate(v) && VALUE_TAG(v) == expected; }
+inline bool value_is_string(Value v)     { return value_tag_is(v, TAG_STR); }
+inline bool value_is_pair(Value v)       { return value_tag_is(v, TAG_PAIR); }
+inline bool value_is_nil(Value v)        { return v == Qnil; }
 static inline bool value_is_procedure(Value v)
 {
     if (is_immediate(v))
@@ -166,16 +146,6 @@ static inline bool value_is_procedure(Value v)
     default:
         return false;
     }
-}
-
-inline bool value_is_pair(Value v)
-{
-    return value_tag_is(v, TAG_PAIR);
-}
-
-inline bool value_is_nil(Value v)
-{
-    return v == Qnil;
 }
 
 static Type immediate_type_of(Value v)
@@ -209,10 +179,7 @@ Type value_type_of(Value v)
     UNREACHABLE();
 }
 
-static inline const char *value_type_to_string(Type t)
-{
-    return TYPE_NAMES[t];
-}
+static inline const char *value_type_to_string(Type t) { return TYPE_NAMES[t]; }
 
 // value_to_*: Convert internal data to external plain C
 
@@ -226,10 +193,7 @@ inline int64_t value_to_int(Value x)
 #endif
 }
 
-inline Symbol value_to_symbol(Value v)
-{
-    return (Symbol) v >> FLAG_NBIT_SYM;
-}
+inline Symbol value_to_symbol(Value v) { return (Symbol) v >> FLAG_NBIT_SYM; }
 
 static const char *name_nth(Value list, int64_t n)
 {
@@ -250,25 +214,13 @@ static const char *unintern(Symbol sym)
     return name;
 }
 
-inline const char *value_to_string(Value v)
-{
-    if (value_is_symbol(v))
-        return unintern(value_to_symbol(v));
-    return STRING(v)->body;
-}
+inline const char *value_to_string(Value v) {
+    return value_is_symbol(v) ? unintern(value_to_symbol(v)) : STRING(v)->body; }
 
 // value_of_*: Convert external plain C data to internal
 
-inline Value value_of_int(int64_t i)
-{
-    Value v = i;
-    return v << FLAG_NBIT_INT | FLAG_INT;
-}
-
-static inline Value list1(Value x)
-{
-    return cons(x, Qnil);
-}
+inline Value value_of_int(int64_t i) { Value v = i; return (v << FLAG_NBIT_INT) | FLAG_INT; }
+static inline Value list1(Value x) { return cons(x, Qnil); }
 
 static Symbol intern(const char *name)
 {
@@ -657,10 +609,7 @@ static Token get_token(Parser *p)
     parse_error(p, "valid char", "'%c'", c);
 }
 
-static void unget_token(Parser *p, Token t)
-{
-    p->prev_token = t;
-}
+inline static void unget_token(Parser *p, Token t) { p->prev_token = t; }
 
 #define CXR1(f, x) f(a, x); f(d, x);
 #define CXR2(f, x) CXR1(f, a ## x) CXR1(f, d ## x)
@@ -1938,15 +1887,8 @@ Value cons(Value car, Value cdr)
     return (Value) p;
 }
 
-inline Value car(Value v)
-{
-    return PAIR(v)->car;
-}
-
-inline Value cdr(Value v)
-{
-    return PAIR(v)->cdr;
-}
+inline Value car(Value v) { return PAIR(v)->car; }
+inline Value cdr(Value v) { return PAIR(v)->cdr; }
 
 static Value proc_cons(UNUSED Value *env, Value car, Value cdr)
 {
