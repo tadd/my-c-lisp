@@ -8,7 +8,7 @@
 
 #define assert_stringify(exp, v) do { \
         char *s = stringify(v); \
-        cr_assert_str_eq(exp, s); \
+        cr_assert_str_eq(s, exp);   \
         free(s); \
     } while (0)
 
@@ -35,7 +35,7 @@
     } while (0)
 
 #define assert_int_eq(exp, act) cr_assert(eq(int, exp, act))
-#define assert_str_eq(exp, act) cr_assert_str_eq(exp, act)
+#define assert_str_eq(exp, act) cr_assert_str_eq(act, exp)
 #define assert_runtime_error(pattern, v) do { \
         assert_int_eq(Qundef, v); \
         cr_assert_not_null(strstr(error_message(), pattern)); \
