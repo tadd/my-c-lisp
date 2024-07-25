@@ -11,17 +11,17 @@ all: lisp test
 lisp: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-test_lisp: lisp.o utils.o test_lisp.o
+test-lisp: lisp.o utils.o test-lisp.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) -lcriterion
 
 %.o: %.c lisp.h utils.h
 	$(CC) $(CFLAGS) -c $<
 
-test: test_lisp
+test: test-lisp
 	./$<
 
 clean:
-	rm -f *.o lisp test_lisp
+	rm -f *.o lisp test-lisp
 
 %.analyzer: %.c
 	$(CC) $(CFLAGS) $(ANALYZER) -c $< -o /dev/null
