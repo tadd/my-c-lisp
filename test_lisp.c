@@ -300,10 +300,13 @@ Test(lisp, applicable) {
 Test(lisp, lambda) {
     cr_assert(value_is_closure(eval_string("(lambda () 1)")));
 
-    assert_vint_eq_evaled(1, "((lambda () 1))");
+    assert_vint_eq_evaled(42, "((lambda () 42))");
     assert_vint_eq_evaled(42, "((lambda (x) (* 2 x)) 21)");
     assert_vint_eq_evaled(42, "((lambda (x y) (* x y)) 3 14)");
     assert_vint_eq_evaled(42, "(define mul (lambda (x y) (* x y))) (mul 3 14)");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda () a))");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda () ((lambda () a))))");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda (a) a) 10) a");
 }
 
 Test(lisp, let_is_lambda) {
