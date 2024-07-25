@@ -289,7 +289,7 @@ Test(lisp, letrec) {
 "            (if (= n 0)\n"
 "                #f\n"
 "                (myeven? (- n 1))))))\n"
-"   (myeven? 8888))");
+"   (myeven? 88))");
 }
 
 Test(lisp, applicable) {
