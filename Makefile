@@ -2,6 +2,7 @@ CC=gcc
 CFLAGS=-std=gnu17 -O0 -ggdb3 -Wall -Wextra $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
+SANITIZER=-fsanitize=undefined #,address
 
 SRC_COMMON=lisp.c utils.c
 SRC=$(SRC_COMMON) main.c
@@ -21,9 +22,18 @@ test: test-lisp
 	./$<
 
 clean:
-	rm -f *.o lisp test-lisp
+	rm -f *.o lisp test-lisp *-san
 
 analyze: $(OBJ:.o=.analyzer)
+
+sanitize: test-lisp-san lisp-san
+	./$<
+
+lisp-san: $(OBJ:.o=.san.o)
+	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS)
+
+test-lisp-san: $(OBJ_TEST:.o=.san.o)
+	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS) -lcriterion
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
@@ -31,8 +41,11 @@ analyze: $(OBJ:.o=.analyzer)
 %.analyzer: %.c
 	$(CC) $(CFLAGS) $(ANALYZER) -c $< -o /dev/null
 
+%.san.o: %.c
+	$(CC) $(CFLAGS) $(SANITIZER) -c $< -o $@
+
 utils.o: utils.h
 lisp.o main.o: lisp.h utils.h
 test-lisp.o: lisp.h
 
-.PHONY: all clean test analyze
+.PHONY: all clean test analyze sanitize
