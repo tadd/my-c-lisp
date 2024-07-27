@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 #include <setjmp.h>
@@ -1155,7 +1156,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     Value val = ieval(env, expr), found;
     if (*env == toplevel_environment &&
         (found = alist_find(*env, ident)) != Qnil) {
-        PAIR(car(found))->cdr = val; // set!
+        PAIR(found)->cdr = val; // set!
     } else
         *env = alist_prepend(*env, ident, val); // prepend new
     return Qnil;
