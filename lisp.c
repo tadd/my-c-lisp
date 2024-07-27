@@ -870,6 +870,8 @@ static Value ieval(Value *env, Value v)
 Value eval(Value v)
 {
     Value env = toplevel_environment;
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
     return ieval(&env, v);
 }
 
