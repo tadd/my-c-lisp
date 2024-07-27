@@ -310,6 +310,18 @@ Test(lisp, lambda) {
     assert_vint_eq_evaled(42, "(define a 42) ((lambda (a) a) 10) a");
 }
 
+Test(lisp, lambda2) {
+    assert_vint_eq_evaled(42,
+    "(define a 42)"
+    "(define f (lambda () a))"
+    "(define g (lambda () f))"
+    "((g))");
+    assert_vint_eq_evaled(42,
+    "(define a 42)"
+    "(define f (lambda () a))"
+    "(((lambda () f)))");
+}
+
 Test(lisp, lambda_failure, .disabled = 1) {
     assert_vint_eq_evaled(42, "(define a 42) (((lambda () (lambda () a))))");
     assert_vint_eq_evaled(42, 
