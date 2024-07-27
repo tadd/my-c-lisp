@@ -313,6 +313,7 @@ Test(lisp, lambda) {
 Test(lisp, lambda_failure, .disabled = 1) {
     assert_vint_eq_evaled(42, "(define a 42) (((lambda () (lambda () a))))");
     assert_vint_eq_evaled(42, 
+"(define a 42)"
 "(define h (lambda () (lambda () a)))"
 "(define i (h))"
 "((h))");
