@@ -1,7 +1,7 @@
-CC=gcc
+CC=clang #gcc
 CFLAGS=-std=gnu17 -O0 -ggdb3 -Wall -Wextra $(XCFLAGS)
 LIBS=-lm
-ANALYZER=-fanalyzer
+ANALYZER=--analyze #-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 
 SRC_COMMON=lisp.c utils.c

@@ -189,6 +189,7 @@ inline Type value_type_of(Value v)
     case TAG_CLOSURE:
         return TYPE_CLOSURE;
     }
+    error("unexpected tag 0x%X (value: 0x%lX)", VALUE_TAG(v), v);
     UNREACHABLE();
 }
 
@@ -262,20 +263,36 @@ static inline Value value_of_special(CFunc cfunc, long arity)
     return sp;
 }
 
+#if 0
+#define assert_alist(x) /*void*/
+#else
+static inline void assert_alist(Value l)
+{
+    assert(value_type_of(l) == TYPE_PAIR);
+    for (Value e = l; e != Qnil; e = cdr(e)) {
+        assert(value_type_of(car(e)) == TYPE_PAIR);
+    }
+}
+#endif
+
 static inline Closure *closure_new(Value *env, Value params, Value body)
 {
+    assert_alist(*env);
     Closure *c = xmalloc(sizeof(Closure));
     c->env = *env;
     c->params = params;
     c->body = body;
+    assert_alist(c->env);
     return c;
 }
 
 static inline Value value_of_closure(Value *env, Value params, Value body)
 {
+    assert_alist(*env);
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = length(params);
     f->closure = closure_new(env, params, body);
+    assert_alist(f->closure->env);
     return (Value) f;
 }
 
@@ -796,9 +813,15 @@ static Value apply_closure(Value *env, Value func, Value args)
         runtime_error("(apply): variadic arguments not supported yet");
 
     Closure *cl = FUNCTION(func)->closure;
-    Value clenv = append(cl->env, *env), params = cl->params;
+    assert_alist(cl->env);
+    Value clenv = cl->env;
+    assert_alist(clenv);
+    clenv = append(clenv, *env);
+    assert_alist(clenv);
+    Value params = cl->params;
     for (; args != Qnil; args = cdr(args), params = cdr(params))
         clenv = alist_prepend(clenv, car(params), car(args));
+    assert_alist(clenv);
     return eval_body(&clenv, cl->body);
 }
 
@@ -1240,6 +1263,7 @@ static Value builtin_letrec(Value *env, Value args)
 
 static Value builtin_lambda(Value *env, Value args)
 {
+    assert_alist(*env);
     Value params = car(args);
     Value body = cdr(args);
     expect_type_twin("lambda", TYPE_PAIR, params, body);
