@@ -762,6 +762,11 @@ inline static Value alist_prepend(Value list, Value key, Value val)
     return cons(cons(key, val), list);
 }
 
+static Value dup_pair(Value p)
+{
+    return cons(car(p), cdr(p));
+}
+
 static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
 {
     long arity = FUNCTION(func)->arity;
@@ -770,7 +775,7 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
         runtime_error("(apply): variadic arguments not supported yet");
 
     Closure *cl = FUNCTION(func)->closure;
-    Value clenv = *cl->env, params = cl->params;
+    Value clenv = dup_pair(*cl->env), params = cl->params;
     for (; args != Qnil; args = cdr(args), params = cdr(params))
         clenv = alist_prepend(clenv, car(params), car(args));
     return eval_body(&clenv, cl->body);
@@ -1177,7 +1182,7 @@ static Value builtin_let(Value *env, Value args)
     Value body = cdr(args);
     expect_type_twin("let", TYPE_PAIR, bindings, body);
 
-    Value letenv = *env;
+    Value letenv = dup_pair(*env);
     for (; bindings != Qnil; bindings = cdr(bindings)) {
         Value b = car(bindings);
         if (b == Qnil)
@@ -1198,7 +1203,7 @@ static Value builtin_letrec(Value *env, Value args)
     Value body = cdr(args);
     expect_type_twin("letrec", TYPE_PAIR, bindings, body);
 
-    Value letenv = *env;
+    Value letenv = dup_pair(*env);
     for (Value b = bindings; b != Qnil; b = cdr(b)) {
         Value p = car(b);
         expect_type("letrec", TYPE_PAIR, p);

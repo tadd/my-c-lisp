@@ -313,6 +313,11 @@ Test(lisp, lambda) {
 Test(lisp, lambda2) {
     assert_vint_eq_evaled(42,
     "(define a 42)"
+    "(define f (lambda () (lambda () a)))"
+    "(define g (f))"
+    "(g)");
+    assert_vint_eq_evaled(42,
+    "(define a 42)"
     "(define f (lambda () a))"
     "(define g (lambda () f))"
     "((g))");
