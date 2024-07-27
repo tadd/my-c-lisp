@@ -870,18 +870,16 @@ static Value ieval(Value *env, Value v)
 
 Value eval(Value v)
 {
-    Value env = toplevel_environment;
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    return ieval(&env, v);
+    return ieval(&toplevel_environment, v);
 }
 
 Value load(FILE *in)
 {
-    Value env = toplevel_environment;
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    return eval_body(&env, parse(in));
+    return eval_body(&toplevel_environment, parse(in));
 }
 
 static void fdisplay(FILE* f, Value v);
@@ -1154,7 +1152,7 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     expect_type("define", TYPE_SYMBOL, ident);
 
     Value val = ieval(env, expr), found;
-    if (*env == toplevel_environment &&
+    if (env == &toplevel_environment &&
         (found = alist_find(*env, ident)) != Qnil) {
         PAIR(found)->cdr = val; // set!
     } else
