@@ -126,7 +126,7 @@ inline bool value_is_symbol(Value v)
 
 static inline bool is_immediate(Value v)
 {
-    return !!flags(v);
+    return v & 0b111U; // for 64 bit machine
 }
 
 static inline bool tagged_value_is(Value v, ValueTag expected)
