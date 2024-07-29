@@ -103,8 +103,8 @@ static const long FUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
-static Value toplevel_environment = Qnil; // alist of ('ident . <value>)
-static Value symbol_names = Qnil; // ('ident 'ident2 ...)
+static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
+static Value symbol_names = Qnil; // ("name0" "name1" ...)
 static Value SYM_ELSE = Qundef; // used in cond
 
 // value_is_*: type checks
