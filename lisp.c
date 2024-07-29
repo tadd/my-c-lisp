@@ -618,32 +618,36 @@ static const char *token_stringify(Token t)
     return buf;
 }
 
-static Value parse_dotted_pair(Parser *p)
+static Value parse_dotted_pair(Parser *p, Value l, Value last)
 {
+    if (l == Qnil)
+        parse_error(p, "expression'", "'.'");
     Value e = parse_expr(p);
     Token t = get_token(p);
     if (t.type != TTYPE_RPAREN)
         parse_error(p, "')'", "'%s'", token_stringify(t));
-    return e;
+    PAIR(last)->cdr = e;
+    return l;
 }
 
 static Value parse_list(Parser *p)
 {
-    Token t = get_token(p);
-    if (t.type == TTYPE_RPAREN)
-        return Qnil;
-    unget_token(p, t);
-    Value car = parse_expr(p), cdr;
-    t = get_token(p);
-    if (t.type == TTYPE_EOF)
-        parse_error(p, "')'", "'%s'", token_stringify(t));
-    if (t.type == TTYPE_DOT) {
-        cdr = parse_dotted_pair(p);
-    } else {
+    Value l = Qnil, last = Qnil;
+    for (;;) {
+        Token t = get_token(p);
+        if (t.type == TTYPE_RPAREN)
+            break;
+        if (t.type == TTYPE_EOF)
+            parse_error(p, "')'", "'%s'", token_stringify(t));
+        if (t.type == TTYPE_DOT)
+            return parse_dotted_pair(p, l, last);
         unget_token(p, t);
-        cdr = parse_list(p);
+        Value e = parse_expr(p);
+        last = append(last, e);
+        if (l == Qnil)
+            l = last;
     }
-    return cons(car, cdr);
+    return l;
 }
 
 static Value parse_expr(Parser *p)
