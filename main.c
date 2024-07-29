@@ -29,19 +29,23 @@ static void opt_error(const char *fmt, ...)
 typedef struct {
     FILE *in;
     bool print;
+    bool parse_only;
 } Option;
 
 static Option parse_opt(int argc, char *const *argv)
 {
-    Option o = { .in = NULL, .print = false };
+    Option o = { .in = NULL, .print = false, .parse_only = false };
     int opt;
-    while ((opt = getopt(argc, argv, "e:hp")) != -1) {
+    while ((opt = getopt(argc, argv, "e:hPp")) != -1) {
         switch (opt) {
         case 'e':
             o.in = fmemopen(optarg, strlen(optarg), "r");
             break;
         case 'h':
             usage(stdout);
+        case 'P':
+            o.parse_only = true;
+            break;
         case 'p':
             o.print = true;
             break;
@@ -65,6 +69,12 @@ static Option parse_opt(int argc, char *const *argv)
 int main(int argc, char **argv)
 {
     Option opt = parse_opt(argc, argv);
+    if (opt.parse_only) {
+        display(parse(opt.in));
+        fclose(opt.in);
+        printf("\n");
+        return 0;
+    }
     Value v = load(opt.in);
     fclose(opt.in);
     if (v == Qundef)
