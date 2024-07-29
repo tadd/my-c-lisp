@@ -85,9 +85,9 @@ typedef struct {
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 // Value (uintptr_t):
-//   0b....000 Pointer
+//   0b....000 Pointer (Unchangeable pattern!)
 //   0b......1 Integer
-//   0b...1110 symbol
+//   0b...1110 Symbol
 //   0b0..0010 #f
 //   0b0..0100 #t
 //   0b0..0110 <undef>
