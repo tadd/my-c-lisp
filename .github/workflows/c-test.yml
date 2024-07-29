@@ -15,9 +15,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: install criterion
+    - name: Install criterion
       run: sudo apt install --no-install-recommends libcriterion-dev
-    - name: make binaries
+    - name: Make binaries
       run: make lisp test-lisp
-    - name: test
+    - name: Test
       run: make test
+    - name: Make binaries for Clang
+      run: make clean lisp test-lisp CC=clang
+    - name: Test for Clang
+      run: make test CC=clang
