@@ -301,7 +301,7 @@ static void expect_type(const char *header, Type expected, Value v)
 // for parsing
 
 // l: last pair
-static Value append(Value l, Value elem)
+static Value append_at(Value l, Value elem)
 {
     Value p = cons(elem, Qnil);
     if (l == Qnil)
@@ -316,7 +316,7 @@ inline Value list(Value v, ...)
     va_list ap;
     va_start(ap, v);
     for (; v != Qundef; v = va_arg(ap, Value)) {
-        last = append(last, v);
+        last = append_at(last, v);
         if (l == Qnil)
             l = last;
     }
@@ -643,7 +643,7 @@ static Value parse_list(Parser *p)
             return parse_dotted_pair(p, l, last);
         unget_token(p, t);
         Value e = parse_expr(p);
-        last = append(last, e);
+        last = append_at(last, e);
         if (l == Qnil)
             l = last;
     }
@@ -785,7 +785,7 @@ static Value map2(MapFunc f, Value *common, Value l)
 {
     Value mapped = Qnil, last = Qnil;
     for (; l != Qnil; l = cdr(l)) {
-        last = append(last, f(common, car(l)));
+        last = append_at(last, f(common, car(l)));
         if (mapped == Qnil)
             mapped = last;
     }
@@ -974,7 +974,7 @@ Value parse(FILE *in)
         Value expr = parse_expr(p);
         if (expr == Qundef)
             break;
-        last = append(last, expr);
+        last = append_at(last, expr);
         if (v == Qnil)
             v = last;
     }
