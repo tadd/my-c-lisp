@@ -685,7 +685,7 @@ long length(Value list)
 
 static void expect_arity_range(const char *func, long min, long max, long actual)
 {
-    if (min <= actual && (max == - 1 || actual <= max))
+    if (min <= actual && (max == -1 || actual <= max))
         return;
     runtime_error("%s: wrong number of arguments: expected %ld..%ld but got %ld",
                   func, min, max, actual);
