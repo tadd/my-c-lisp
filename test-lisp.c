@@ -41,8 +41,11 @@
         cr_assert_not_null(strstr(error_message(), pattern)); \
     } while (0)
 
+#define assert_no_error(v) \
+    cr_assert_neq(v, Qundef, "got error with a message: '%s'", error_message())
 #define assert_type(exp, act) assert_str_eq(exp, value_type_to_string(value_type_of(act)))
 #define assert_vx_eq(x, y, z, exp, act) do { \
+        assert_no_error(act); \
         assert_type(#x, act); \
         assert_##y##_eq(exp, value_to_##z(act)); \
     } while (0)
