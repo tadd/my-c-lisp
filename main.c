@@ -44,7 +44,7 @@ static Option parse_opt(int argc, char *const *argv)
         case 'h':
             usage(stdout);
         case 'P':
-            o.parse_only = true;
+            o.parse_only = o.print = true;
             break;
         case 'p':
             o.print = true;
@@ -69,13 +69,11 @@ static Option parse_opt(int argc, char *const *argv)
 int main(int argc, char **argv)
 {
     Option opt = parse_opt(argc, argv);
-    if (opt.parse_only) {
-        display(parse(opt.in));
-        fclose(opt.in);
-        printf("\n");
-        return 0;
-    }
-    Value v = load(opt.in);
+    Value v;
+    if (opt.parse_only)
+        v = parse(opt.in);
+    else
+        v = load(opt.in);
     fclose(opt.in);
     if (v == Qundef)
         error("%s", error_message());
