@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: install criterion
       run: sudo apt install --no-install-recommends libcriterion-dev
-    - name: make
-      run: make
+    - name: make binaries
+      run: make lisp test-lisp
     - name: test
       run: make test
