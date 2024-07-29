@@ -15,6 +15,7 @@
 #define value_idfunc list
 #define V(x) \
     _Generic(x, int: value_of_int, char *: value_of_string, Value: value_idfunc)(x)
+#define Vsym(x) value_of_symbol(x)
 #define assert_v_eq(exp, act)  do { \
         if (value_is_int(exp)) \
             assert_int_eq(exp, act); \
@@ -136,6 +137,11 @@ Test(lisp, parse_peculiar) {
     assert_vint_eq_parsed(42, "+42");
 
     cr_assert(value_is_symbol(parse_expr_string("+")));
+}
+
+Test(lisp, parse_lambda) {
+    assert_list_eq_parsed(list(Vsym("lambda"), Qnil, V(42), Qundef),
+                          "(lambda () 42)");
 }
 
 Test(lisp, eval_arithmetic_literal) {
