@@ -36,6 +36,8 @@ class PP (gdb.Command):
 PP()
 
 def my_c_lisp_pp(val):
-    return ValuePrinter(val)
+    if val.type == ValuePrinter.TYPE:
+        return ValuePrinter(val)
+    return None
 
-#gdb.pretty_printers.append(my_c_lisp_pp) # gdb dumps core!!
+gdb.pretty_printers.append(my_c_lisp_pp)
