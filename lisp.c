@@ -65,7 +65,9 @@ typedef struct {
 } String;
 
 typedef struct {
-    Value *env, params, body;
+    Value env;
+    Value params;
+    Value body;
 } Closure;
 
 typedef struct {
@@ -263,7 +265,7 @@ static inline Value value_of_special(CFunc cfunc, long arity)
 static inline Closure *closure_new(Value *env, Value params, Value body)
 {
     Closure *c = xmalloc(sizeof(Closure));
-    c->env = env;
+    c->env = *env;
     c->params = params;
     c->body = body;
     return c;
@@ -794,7 +796,7 @@ static Value apply_closure(Value *env, Value func, Value args)
         runtime_error("(apply): variadic arguments not supported yet");
 
     Closure *cl = FUNCTION(func)->closure;
-    Value clenv = append(*cl->env, *env), params = cl->params;
+    Value clenv = append(cl->env, *env), params = cl->params;
     for (; args != Qnil; args = cdr(args), params = cdr(params))
         clenv = alist_prepend(clenv, car(params), car(args));
     return eval_body(&clenv, cl->body);
