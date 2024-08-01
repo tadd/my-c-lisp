@@ -766,7 +766,27 @@ inline static Value alist_prepend(Value list, Value key, Value val)
     return cons(cons(key, val), list);
 }
 
-static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
+static Value append(Value l1, Value l2)
+{
+    if (l2 == Qnil)
+        return l1;
+    if (l1 == Qnil)
+        return l2;
+
+    Value ret = Qnil, prev = Qnil;
+    for (Value h = l1; h != Qnil; h = cdr(h)) {
+        Value curr = cons(car(h), Qnil);
+        if (ret == Qnil)
+            ret = curr;
+        if (prev != Qnil)
+            PAIR(prev)->cdr = curr;
+        prev = curr;
+    }
+    PAIR(prev)->cdr = l2;
+    return ret;
+}
+
+static Value apply_closure(Value *env, Value func, Value args)
 {
     long arity = FUNCTION(func)->arity;
     expect_arity(arity, length(args));
@@ -774,7 +794,7 @@ static Value apply_closure(ATTR_UNUSED Value *env, Value func, Value args)
         runtime_error("(apply): variadic arguments not supported yet");
 
     Closure *cl = FUNCTION(func)->closure;
-    Value clenv = *cl->env, params = cl->params;
+    Value clenv = append(*cl->env, *env), params = cl->params;
     for (; args != Qnil; args = cdr(args), params = cdr(params))
         clenv = alist_prepend(clenv, car(params), car(args));
     return eval_body(&clenv, cl->body);
