@@ -341,6 +341,8 @@ Test(lisp, lambda2) {
     "(define a 42)"
     "(define f (lambda () a))"
     "((((lambda () (lambda () f)))))");
+    assert_vint_eq_evaled(42,
+    "(((lambda () (lambda () 42))))");
 }
 
 Test(lisp, let_is_lambda) {
