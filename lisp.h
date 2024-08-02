@@ -19,6 +19,7 @@ typedef enum {
     TYPE_CFUNC,
     TYPE_SPECIAL,
     TYPE_CLOSURE,
+    TYPE_CONT,
 } Type;
 
 typedef struct Pair Pair;

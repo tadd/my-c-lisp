@@ -44,6 +44,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
     [TYPE_CLOSURE] = "closure",
+    [TYPE_CONT] = "continuation",
 };
 
 typedef enum {
@@ -52,6 +53,7 @@ typedef enum {
     TAG_CFUNC,
     TAG_SPECIAL, // almost a C Function
     TAG_CLOSURE,
+    TAG_CONT,
 } ValueTag;
 
 typedef struct Pair {
@@ -71,11 +73,19 @@ typedef struct {
 } Closure;
 
 typedef struct {
+  void *sp;
+  void *stack;
+  int64_t stack_len;
+  jmp_buf state;
+} Continuation;
+
+typedef struct {
     ValueTag tag;
     int64_t arity;
     union {
         CFunc cfunc;
         Closure *closure;
+        Continuation *cont;
     };
 } Function;
 
@@ -188,6 +198,8 @@ inline Type value_type_of(Value v)
         return TYPE_SPECIAL;
     case TAG_CLOSURE:
         return TYPE_CLOSURE;
+    case TAG_CONT:
+        return TYPE_CONT;
     }
     UNREACHABLE();
 }
@@ -277,6 +289,47 @@ static inline Value value_of_closure(Value *env, Value params, Value body)
     f->arity = length(params);
     f->closure = closure_new(env, params, body);
     return (Value) f;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+static inline ATTR(always_inline) // forced!
+void *inline_memcpy(void *restrict dst, const void *restrict src, size_t len)
+{
+    uint8_t *d = dst;
+    const uint8_t *s = src;
+    ssize_t n = (len + 7) / 8;
+    switch (len % 8) {
+    case 0: do { *d++ = *s++;
+    case 7:      *d++ = *s++;
+    case 6:      *d++ = *s++;
+    case 5:      *d++ = *s++;
+    case 4:      *d++ = *s++;
+    case 3:      *d++ = *s++;
+    case 2:      *d++ = *s++;
+    case 1:      *d++ = *s++;
+            } while (--n > 0);
+    }
+    return d;
+}
+#pragma GCC diagnostic pop
+
+static inline Continuation *cont_new(void *sp)
+{
+    Continuation *cont = xmalloc(sizeof(Continuation));
+    extern void *bp;
+    cont->sp = sp;
+    cont->stack_len = bp - sp + 1;
+    cont->stack = xmalloc(cont->stack_len);
+    inline_memcpy(cont->stack, cont->sp, cont->stack_len);
+    return cont;
+}
+
+static inline Value value_of_cont(void)
+{
+    Function *c = tagged_new(sizeof(Function), TAG_CONT);
+    c->cont = cont_new(NULL);
+    return (Value) c;
 }
 
 // `cons` is well-known name than "value_of_pair"
@@ -961,6 +1014,9 @@ static void fdisplay(FILE* f, Value v)
     case TYPE_CLOSURE:
         fprintf(f, "<closure>");
         break;
+    case TYPE_CONT:
+        fprintf(f, "<continuation>");
+        break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
         break;
@@ -1252,6 +1308,11 @@ static Value builtin_lambda(Value *env, Value args)
     return value_of_closure(env, params, body);
 }
 
+static Value builtin_callcc(Value *env, Value args)
+{
+    return args;
+}
+
 static Value builtin_list(Value args)
 {
     return args;
@@ -1335,6 +1396,7 @@ static void initialize(void)
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "letrec", builtin_letrec, -1);
+    define_special(e, "call/cc", builtin_callcc, -1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
