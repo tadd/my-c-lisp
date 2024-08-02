@@ -50,7 +50,7 @@ typedef enum {
     TAG_PAIR,
     TAG_STR,
     TAG_CFUNC,
-    TAG_SPECIAL, // almost a Function
+    TAG_SPECIAL, // almost a C Function
     TAG_CLOSURE,
 } ValueTag;
 
