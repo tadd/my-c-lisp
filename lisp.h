@@ -50,7 +50,7 @@ Value value_of_string(const char *s);
 
 Value cons(Value car, Value cdr);
 Value list(Value v, ...); // terminate with Qundef
-long length(Value list);
+int64_t length(Value list);
 Value reverse(Value v);
 
 Value car(Value v);

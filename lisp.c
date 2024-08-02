@@ -72,7 +72,7 @@ typedef struct {
 
 typedef struct {
     ValueTag tag;
-    long arity;
+    int64_t arity;
     union {
         CFunc cfunc;
         Closure *closure;
@@ -101,7 +101,7 @@ const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
-static const long FUNCARG_MAX = 7;
+static const int64_t FUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
@@ -246,7 +246,7 @@ inline Value value_of_string(const char *s)
     return (Value) str;
 }
 
-static inline Value value_of_cfunc(CFunc cfunc, long arity)
+static inline Value value_of_cfunc(CFunc cfunc, int64_t arity)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;
@@ -254,7 +254,7 @@ static inline Value value_of_cfunc(CFunc cfunc, long arity)
     return (Value) f;
 }
 
-static inline Value value_of_special(CFunc cfunc, long arity)
+static inline Value value_of_special(CFunc cfunc, int64_t arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
@@ -362,24 +362,24 @@ typedef struct {
 } Parser;
 
 #define parse_error(p, exp, act, ...) do { \
-        long line, col; \
+        int64_t line, col; \
         get_line_column(p, &line, &col); \
         runtime_error("on %ld:%ld: expected %s but got " act, line, col, \
                       exp __VA_OPT__(,) __VA_ARGS__); \
     } while (0)
 
-static void get_line_column(Parser *p, long *line, long *col)
+static void get_line_column(Parser *p, int64_t *line, int64_t *col)
 {
     FILE *in = p->in;
-    long loc = ftell(in);
+    int64_t loc = ftell(in);
     if (loc < 0) {
         *line = *col = 0;
         return;
     }
     rewind(in);
-    long nline = 1;
-    long last_newline = 0;
-    for (long i = 0; i < loc; i++) {
+    int64_t nline = 1;
+    int64_t last_newline = 0;
+    for (int64_t i = 0; i < loc; i++) {
         if (fgetc(in) == '\n') {
             nline++;
             last_newline = i;
@@ -420,7 +420,7 @@ static Token get_token_string(Parser *p)
 
 static Symbol intern(const char *name)
 {
-    long i;
+    int64_t i;
     Value l = symbol_names;
     Value last = Qnil;
     // find
@@ -440,9 +440,9 @@ static Symbol intern(const char *name)
     return i;
 }
 
-static const char *name_nth(Value list, long n)
+static const char *name_nth(Value list, int64_t n)
 {
-    for (long i = 0; i < n; i++) {
+    for (int64_t i = 0; i < n; i++) {
         list = cdr(list);
         if (list == Qnil)
             return NULL;
@@ -453,7 +453,7 @@ static const char *name_nth(Value list, long n)
 
 static const char *unintern(Symbol sym)
 {
-    const char *name = name_nth(symbol_names, (long) sym);
+    const char *name = name_nth(symbol_names, (int64_t) sym);
     if (name == NULL) // fatal; known symbol should have name
         error("symbol %lu not found", sym);
     return name;
@@ -681,15 +681,15 @@ static Parser *parser_new(FILE *in)
     return p;
 }
 
-long length(Value list)
+int64_t length(Value list)
 {
-    long l = 0;
+    int64_t l = 0;
     for (; list != Qnil; list = cdr(list))
         l++;
     return l;
 }
 
-static void expect_arity_range(const char *func, long min, long max, long actual)
+static void expect_arity_range(const char *func, int64_t min, int64_t max, int64_t actual)
 {
     if (min <= actual && (max == -1 || actual <= max))
         return;
@@ -697,7 +697,7 @@ static void expect_arity_range(const char *func, long min, long max, long actual
                   func, min, max, actual);
 }
 
-static void expect_arity(long arity, long n)
+static void expect_arity(int64_t arity, int64_t n)
 {
     if (arity < 0 || arity == n)
         return;
@@ -705,9 +705,9 @@ static void expect_arity(long arity, long n)
                   arity, n);
 }
 
-static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
+static void scan_args(Value ary[FUNCARG_MAX], int64_t arity, Value args)
 {
-    long i;
+    int64_t i;
     Value a = args;
     for (i = 0; i < arity; i++) {
         if (a == Qnil)
@@ -722,7 +722,7 @@ static void scan_args(Value ary[FUNCARG_MAX], long arity, Value args)
 static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
     Value a[FUNCARG_MAX];
-    long n = FUNCTION(func)->arity;
+    int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
 
     scan_args(a, n, vargs);
@@ -790,7 +790,7 @@ static Value append(Value l1, Value l2)
 
 static Value apply_closure(Value *env, Value func, Value args)
 {
-    long arity = FUNCTION(func)->arity;
+    int64_t arity = FUNCTION(func)->arity;
     expect_arity(arity, length(args));
     if (arity == -1)
         runtime_error("(apply): variadic arguments not supported yet");
@@ -846,7 +846,7 @@ static Value alist_find(Value l, Value key)
     return Qnil;
 }
 
-static void expect_valid_arity(long expected_max, long actual)
+static void expect_valid_arity(int64_t expected_max, int64_t actual)
 {
     if (actual <= expected_max)
         return;
@@ -854,14 +854,14 @@ static void expect_valid_arity(long expected_max, long actual)
           expected_max, actual);
 }
 
-static Value define_special(Value *env, const char *name, CFunc cfunc, long arity)
+static Value define_special(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
     expect_valid_arity(FUNCARG_MAX - 1, arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
 
-static Value define_function(Value *env, const char *name, CFunc cfunc, long arity)
+static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
     expect_valid_arity(FUNCARG_MAX, arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
