@@ -952,7 +952,7 @@ static void fdisplay(FILE* f, Value v)
         fprintf(f, "%s", value_to_string(v));
         break;
     case TYPE_CFUNC:
-        fprintf(f, "<function>");
+        fprintf(f, "<c-function>");
         break;
     case TYPE_SPECIAL:
         fprintf(f, "<special>");
