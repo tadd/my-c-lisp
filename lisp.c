@@ -342,13 +342,13 @@ typedef struct {
     Value value;
 } Token;
 
-#define TOKEN(t) { .type = TTYPE_ ## t }
+#define TOK(t) { .type = TTYPE_ ## t }
 // singletons
 static const Token
-    TOK_LPAREN = TOKEN(LPAREN),
-    TOK_RPAREN = TOKEN(RPAREN),
-    TOK_DOT = TOKEN(DOT),
-    TOK_EOF = TOKEN(EOF);
+    TOK_LPAREN = TOK(LPAREN),
+    TOK_RPAREN = TOK(RPAREN),
+    TOK_DOT = TOK(DOT),
+    TOK_EOF = TOK(EOF);
 // and ctor
 #define TOK_V(t, v) ((Token) { .type = TTYPE_ ## t, .value = v })
 #define TOK_INT(i) TOK_V(INT, value_of_int(i))
