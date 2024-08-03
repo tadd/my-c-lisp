@@ -878,7 +878,7 @@ static Value lookup(Value env, Value name)
 
 Value eval_string(const char *in)
 {
-    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    FILE *f = fmemopen((char *) in, strlen(in), "r");
     Value v = load(f);
     fclose(f);
     return v;
@@ -1009,7 +1009,7 @@ Value parse(FILE *in)
 
 Value parse_expr_string(const char *in)
 {
-    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    FILE *f = fmemopen((char *) in, strlen(in), "r");
     Parser *p = parser_new(f);
     Value v = parse_expr(p);
     free(p);
@@ -1019,7 +1019,7 @@ Value parse_expr_string(const char *in)
 
 Value parse_string(const char *in)
 {
-    FILE *f = fmemopen((char *)in, strlen(in), "r");
+    FILE *f = fmemopen((char *) in, strlen(in), "r");
     Value v = parse(f);
     fclose(f);
     return v;
