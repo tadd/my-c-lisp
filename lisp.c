@@ -728,6 +728,8 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
 
     scan_args(a, n, vargs);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-non-prototype"
     switch (n) {
     case -2:
         return (*f)(env, cdr(vargs)); // special form
@@ -752,6 +754,7 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     default:
         error("arity too large: %ld", n);
     }
+#pragma clang diagnostic pop
 }
 
 static Value ieval(Value *env, Value v); // internal
