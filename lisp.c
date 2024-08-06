@@ -826,16 +826,15 @@ static Value apply(Value *env, Value func, Value args)
 {
     if (is_immediate(func))
         goto unapplicative;
-    switch (VALUE_TAG(func)) {
-    case TAG_SPECIAL:
-        args = cons((Value) env, args);
-        return apply_cfunc(env, func, args);
+    ValueTag tag = VALUE_TAG(func);
+    if (tag == TAG_SPECIAL)
+        return apply_cfunc(env, func, cons((Value) env, args));
+    Value vargs = map2(ieval, env, args);
+    switch (tag) {
     case TAG_CFUNC:
-        args = map2(ieval, env, args);
-        return apply_cfunc(env, func, args);
+        return apply_cfunc(env, func, vargs);
     case TAG_CLOSURE:
-        args = map2(ieval, env, args);
-        return apply_closure(env, func, args);
+        return apply_closure(env, func, vargs);
     default:
         break;
     }
