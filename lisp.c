@@ -44,6 +44,7 @@ static const char *TYPE_NAMES[] = {
     [TYPE_CFUNC] = "C function",
     [TYPE_SPECIAL] = "special form",
     [TYPE_CLOSURE] = "closure",
+    [TYPE_CONTINUATION] = "continuation",
 };
 
 typedef enum { // has the same values as Type
@@ -52,6 +53,7 @@ typedef enum { // has the same values as Type
     TAG_CFUNC   = TYPE_CFUNC,
     TAG_SPECIAL = TYPE_SPECIAL, // almost a C Function
     TAG_CLOSURE = TYPE_CLOSURE,
+    TAG_CONTINUATION = TYPE_CONTINUATION,
 } ValueTag;
 
 typedef struct Pair {
@@ -71,11 +73,20 @@ typedef struct {
 } Closure;
 
 typedef struct {
+    volatile void *sp;
+    void *shelter;
+    size_t shelter_len;
+    jmp_buf state;
+    Value retval;
+} Continuation;
+
+typedef struct {
     ValueTag tag;
     int64_t arity;
     union {
         CFunc cfunc;
         Closure *closure;
+        Continuation *cont;
     };
 } Function;
 
@@ -108,6 +119,8 @@ static const int64_t FUNCARG_MAX = 7;
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
 static Value SYM_ELSE = Qundef; // used in cond
+static const volatile void *stack_base = NULL;
+#define INIT_STACK() void *basis; stack_base = &basis
 
 // value_is_*: type checks
 
@@ -184,6 +197,7 @@ inline Type value_type_of(Value v)
     case TAG_CFUNC:
     case TAG_SPECIAL:
     case TAG_CLOSURE:
+    case TAG_CONTINUATION:
         return (Type) t;
     }
     UNREACHABLE();
@@ -274,6 +288,16 @@ static inline Value value_of_closure(Value env, Value params, Value body)
     f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
     f->closure = closure_new(env, params, body);
     return (Value) f;
+}
+
+static inline ATTR(always_inline) // forced!
+void *inline_memcpy(void *restrict dst, const void *restrict src, size_t len)
+{
+    uint8_t *d = dst;
+    const uint8_t *s = src;
+    while (len--)
+        *d++ = *s++;
+    return dst;
 }
 
 // `cons` is well-known name than "value_of_pair"
@@ -831,6 +855,29 @@ static Value map2(MapFunc f, Value *common, Value l)
     return mapped;
 }
 
+ATTR_NORETURN ATTR(noinline)
+static void jump(Continuation *cont)
+{
+    inline_memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
+    longjmp(cont->state, 1);
+}
+
+#define GET_SP(p) uint16_t basis = 0; volatile void *p = &basis
+
+static void apply_continuation(Value f, Value args)
+{
+    GET_SP(sp);
+    expect_arity(FUNCTION(f)->arity, length(args));
+    Continuation *cont = FUNCTION(f)->cont;
+    cont->retval = car(args);
+    int64_t d = sp - cont->sp;
+    if (d < 1)
+        d = 1;
+    volatile uint8_t pad[d];
+    pad[0] = pad[d-1] = 0; // avoid unused
+    jump(cont);
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
     if (is_immediate(func))
@@ -844,6 +891,8 @@ static Value apply(Value *env, Value func, Value args)
         return apply_cfunc(env, func, vargs);
     case TAG_CLOSURE:
         return apply_closure(env, func, vargs);
+    case TAG_CONTINUATION:
+        apply_continuation(func, vargs); // no return!
     default:
         break;
     }
@@ -913,6 +962,7 @@ static Value ieval(Value *env, Value v)
 
 static Value eval_top(Value v)
 {
+    INIT_STACK();
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
     return eval_body(&toplevel_environment, v);
@@ -979,6 +1029,9 @@ static void fdisplay(FILE* f, Value v)
         break;
     case TYPE_CLOSURE:
         fprintf(f, "<closure>");
+        break;
+    case TYPE_CONTINUATION:
+        fprintf(f, "<continuation>");
         break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
@@ -1304,6 +1357,35 @@ static Value builtin_lambda(Value *env, Value args)
     return lambda(env, car(args), cdr(args));
 }
 
+static Value value_of_continuation(void)
+{
+    Function *c = tagged_new(sizeof(Function), TAG_CONTINUATION);
+    c->arity = 1; // by spec
+    c->cont = xmalloc(sizeof(Continuation));
+    return (Value) c;
+}
+
+static bool continuation_set(Value c)
+{
+    GET_SP(sp); // must be the first!
+    Continuation *cont = FUNCTION(c)->cont;
+    cont->sp = sp;
+    cont->shelter_len = stack_base - sp;
+    cont->shelter = xmalloc(cont->shelter_len);
+    inline_memcpy(cont->shelter, (void *) sp, cont->shelter_len);
+    return setjmp(cont->state);
+}
+
+static Value builtin_callcc(Value *env, Value f)
+{
+    Value cl = ieval(env, f);
+    expect_type("call/cc", TYPE_CLOSURE, cl);
+    Value c = value_of_continuation();
+    if (continuation_set(c) != 0)
+        return FUNCTION(c)->cont->retval;
+    return apply_closure(env, cl, cons(c, Qnil));
+}
+
 static Value builtin_list(Value args)
 {
     return args;
@@ -1392,6 +1474,7 @@ static void initialize(void)
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "letrec", builtin_letrec, -1);
+    define_special(e, "call/cc", builtin_callcc, 1);
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
