@@ -247,6 +247,13 @@ Test(lisp, list) {
     assert_vstr_eq("foo", cadr(v));
 }
 
+Test(lisp, null) {
+    assert_vtrue_evaled("(null? ())");
+    assert_vtrue_evaled("(null? (list))");
+    assert_vfalse_evaled("(null? (list 1))");
+    assert_vfalse_evaled("(null? 1)");
+}
+
 Test(lisp, reverse) {
     assert_list_eq_evaled(Qnil, "()");
     assert_list_eq_evaled(list(V(1), Qundef), "(reverse (list 1))");

@@ -1262,6 +1262,11 @@ static Value builtin_list(Value args)
     return args;
 }
 
+static Value builtin_null(Value list)
+{
+    return list == Qnil ? Qtrue : Qfalse;
+}
+
 static Value builtin_display(Value obj)
 {
     display(obj);
@@ -1356,6 +1361,7 @@ static void initialize(void)
     define_function(e, "cdr", builtin_cdr, 1);
     define_function(e, "cons", cons, 2);
     define_function(e, "list", builtin_list, -1);
+    define_function(e, "null?", builtin_null, 1);
     define_function(e, "reverse", reverse, 1);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
