@@ -26,7 +26,7 @@ static void runtime_error(const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
     va_end(ap);
-    longjmp(jmp_runtime_error, Qundef);
+    longjmp(jmp_runtime_error, 1);
 }
 
 const char *error_message(void)
