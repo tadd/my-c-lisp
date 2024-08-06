@@ -14,7 +14,7 @@ static void usage(FILE *out)
     fprintf(out, "  -h\t\tprint this help\n");
     fprintf(out, "  -e <source>\tevaluate <source> directly instead of <file>\n");
     fprintf(out, "  -p\t\tprint last expression in the input\n");
-    fprintf(out, "  -P\t\tonly parse then exit before evaluation\n");
+    fprintf(out, "  -P\t\tonly parse then exit before evaluation. implies -p\n");
     exit(out == stdout ? 0 : 2);
 }
 
