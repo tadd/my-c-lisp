@@ -901,21 +901,18 @@ static Value ieval(Value *env, Value v)
     return apply(env, func, cdr(v));
 }
 
-static Value top_eval(Value v)
+Value eval(Value v)
 {
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    return eval_body(&toplevel_environment, v);
-}
-
-Value eval(Value v)
-{
-    return top_eval(list(v));
+    return ieval(&toplevel_environment, v);
 }
 
 Value load(FILE *in)
 {
-    return top_eval(parse(in));
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
+    return eval_body(&toplevel_environment, parse(in));
 }
 
 static void fdisplay(FILE* f, Value v);
@@ -1016,6 +1013,8 @@ Value parse(FILE *in)
 
 Value parse_expr_string(const char *in)
 {
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
     FILE *f = fmemopen((char *) in, strlen(in), "r");
     Parser *p = parser_new(f);
     Value v = parse_expr(p);

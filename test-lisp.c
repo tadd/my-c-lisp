@@ -68,6 +68,7 @@
 #define assert_vsym_eq_parsed(exp, act) assert_x_parsed(vsym_eq, exp, act)
 #define assert_list_eq_parsed(exp, act) assert_x_parsed(list_eq, exp, act)
 #define assert_pair_eq_parsed(ecar, ecdr, act) assert_pair_eq(ecar, ecdr, parse_expr_string(act))
+#define assert_runtime_error_parsed(exp, act) assert_x_parsed(runtime_error, exp, act)
 
 #define assert_int_eq_evaled(exp, act) assert_x_evaled(int_eq, exp, act)
 #define assert_vint_eq_evaled(exp, act) assert_x_evaled(vint_eq, exp, act)
@@ -145,6 +146,11 @@ Test(lisp, parse_peculiar) {
 Test(lisp, parse_lambda) {
     assert_list_eq_parsed(list(Vsym("lambda"), Qnil, V(42), Qundef),
                           "(lambda () 42)");
+}
+
+Test(lisp, parse_broken) {
+    assert_runtime_error_parsed("got 'EOF'", "(");
+    assert_runtime_error_parsed("got '''", "'");
 }
 
 Test(lisp, eval_arithmetic_literal) {
