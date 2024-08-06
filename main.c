@@ -10,8 +10,11 @@
 ATTR_NORETURN
 static void usage(FILE *out)
 {
-    fprintf(out, "Usage: lisp <file.scm>\n");
-    fprintf(out, "   or: lisp -e '(direct (program (here)))'\n");
+    fprintf(out, "Usage: lisp [-hepP] <file>\n");
+    fprintf(out, "  -h\t\tprint this help\n");
+    fprintf(out, "  -e <source>\tevaluate <source> directly instead of <file>\n");
+    fprintf(out, "  -p\t\tprint last expression in the input\n");
+    fprintf(out, "  -P\t\tonly parse then exit before evaluation\n");
     exit(out == stdout ? 0 : 2);
 }
 
