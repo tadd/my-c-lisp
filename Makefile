@@ -12,6 +12,9 @@ OBJ_TEST=$(SRC_TEST:.c=.o)
 
 all: lisp test
 
+mymemcpy.s: mymemcpy.c
+	$(CC) $(CFLAGS) -fno-builtin -O3 -march=native -S -fverbose-asm -o $@ $<
+
 lisp: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
@@ -22,7 +25,7 @@ test: test-lisp
 	./$<
 
 clean:
-	rm -f *.o lisp test-lisp *-san
+	rm -f *.o lisp test-lisp *-san *.s
 
 analyze: $(OBJ:.o=.analyzer)
 

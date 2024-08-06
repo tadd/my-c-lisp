@@ -181,10 +181,11 @@ static void *xaalloc(size_t alignment, size_t size)
     return p;
 }
 
-typedef volatile uint8_t vector64 __attribute__((vector_size(64)));
-typedef volatile uint8_t vector32 __attribute__((vector_size(32)));
-typedef volatile uint8_t vector16 __attribute__((vector_size(16)));
-typedef volatile uint8_t vector8 __attribute__((vector_size(8)));
+typedef uint8_t v8;
+typedef v8 vector64 __attribute__((vector_size(64)));
+typedef v8 vector32 __attribute__((vector_size(32)));
+typedef v8 vector16 __attribute__((vector_size(16)));
+typedef v8 vector8 __attribute__((vector_size(8)));
 
 void *memdup_a64(const void *src, size_t n)
 {
@@ -192,7 +193,6 @@ void *memdup_a64(const void *src, size_t n)
     uint8_t *d = dst;
     const uint8_t *s = src;
     if (n % 64 == 0) {
-        assert((intptr_t)s % 64 == 0);
         const size_t b = 64;
         size_t c = n / b;
         while (c--) {
