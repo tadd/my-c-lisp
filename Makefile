@@ -22,7 +22,7 @@ test: test-lisp
 	./$<
 
 clean:
-	rm -f *.o lisp test-lisp *-san
+	rm -f lisp test-lisp *-san *.o *.s
 
 analyze: $(OBJ:.o=.analyzer)
 
@@ -37,6 +37,9 @@ test-lisp-san: $(OBJ_TEST:.o=.san.o)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
+
+%.s: %.c
+	$(CC) $(CFLAGS) -S -fverbose-asm -c $<
 
 %.analyzer: %.c
 	$(CC) $(CFLAGS) $(ANALYZER) -c $< -o /dev/null
