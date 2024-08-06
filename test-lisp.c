@@ -17,10 +17,11 @@
     _Generic(x, int: value_of_int, char *: value_of_string, Value: value_idfunc)(x)
 #define Vsym(x) value_of_symbol(x)
 #define assert_v_eq(exp, act)  do { \
-        if (value_is_int(exp)) \
-            assert_int_eq(exp, act); \
-        else if (value_is_string(exp)) \
-            assert_vstr_eq(value_to_string(exp), act); \
+        Value tmpe = exp, tmpa = act; \
+        if (value_is_int(tmpe)) \
+            assert_int_eq(tmpe, tmpa); \
+        else if (value_is_string(tmpe)) \
+            assert_vstr_eq(value_to_string(tmpe), tmpa); \
     } while (0)
 #define assert_list_eq(expected, actual) do { \
         Value exp = expected, act = actual; \
@@ -30,9 +31,10 @@
             assert_v_eq(car(exp), car(act)); \
     } while (0)
 #define assert_pair_eq(expcar, expcdr, act) do { \
-        cr_assert(value_is_pair(act)); \
-        assert_v_eq(V(expcar), car(act)); \
-        assert_v_eq(V(expcdr), cdr(act)); \
+        Value a = act; \
+        cr_assert(value_is_pair(a)); \
+        assert_v_eq(V(expcar), car(a)); \
+        assert_v_eq(V(expcdr), cdr(a)); \
     } while (0)
 
 #define assert_int_eq(exp, act) cr_assert(eq(int, exp, act))
@@ -46,9 +48,10 @@
     cr_assert_neq(v, Qundef, "got error with a message: '%s'", error_message())
 #define assert_type(exp, act) assert_str_eq(exp, value_type_to_string(value_type_of(act)))
 #define assert_vx_eq(x, y, z, exp, act) do { \
-        assert_no_error(act); \
-        assert_type(#x, act); \
-        assert_##y##_eq(exp, value_to_##z(act)); \
+        Value a = act; \
+        assert_no_error(a); \
+        assert_type(#x, a); \
+        assert_##y##_eq(exp, value_to_##z(a)); \
     } while (0)
 #define assert_x_parsed(x, exp, act) assert_##x(exp, parse_expr_string(act))
 #define assert_x_evaled(x, exp, act) assert_##x(exp, eval_string(act))
