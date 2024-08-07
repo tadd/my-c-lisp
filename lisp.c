@@ -16,7 +16,7 @@
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
-static jmp_buf jmp_runtime_error;
+static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
 ATTR_NORETURN
@@ -361,6 +361,7 @@ typedef struct {
 #define parse_error(p, exp, act, ...) do { \
         int64_t line, col; \
         get_line_column(p, &line, &col); \
+        memcpy(jmp_runtime_error, jmp_parse_error, sizeof(jmp_buf)); \
         runtime_error("on %ld:%ld: expected %s but got " act, line, col, \
                       exp __VA_OPT__(,) __VA_ARGS__); \
     } while (0)
@@ -907,9 +908,10 @@ Value eval(Value v)
 
 Value load(FILE *in)
 {
-    if (setjmp(jmp_runtime_error) != 0)
+    Value l = parse(in);
+    if (l == Qundef || setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    return eval_body(&toplevel_environment, parse(in));
+    return eval_body(&toplevel_environment, l);
 }
 
 static void fdisplay(FILE* f, Value v);
@@ -994,6 +996,8 @@ Value reverse(Value v)
 
 Value parse(FILE *in)
 {
+    if (setjmp(jmp_parse_error) != 0)
+        return Qundef;
     Parser *p = parser_new(in);
     Value v = Qnil, last = Qnil;
     for (;;) {
@@ -1010,7 +1014,7 @@ Value parse(FILE *in)
 
 Value parse_expr_string(const char *in)
 {
-    if (setjmp(jmp_runtime_error) != 0)
+    if (setjmp(jmp_parse_error) != 0)
         return Qundef;
     FILE *f = fmemopen((char *) in, strlen(in), "r");
     Parser *p = parser_new(f);
