@@ -11,12 +11,17 @@ on:
 jobs:
   build:
     if: ${{ ! startsWith(github.event.head_commit.message, 'WIP') }}
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install criterion
+    - if: runner.os == 'Linux'
       run: sudo apt install --no-install-recommends libcriterion-dev
+    - if: runner.os == 'macOS'
+      run: brew install criterion
     - name: Make binaries
       run: make -j2 lisp test-lisp
     - name: Test
