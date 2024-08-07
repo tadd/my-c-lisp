@@ -862,7 +862,7 @@ static void jump(Continuation *cont)
     longjmp(cont->state, 1);
 }
 
-#define GET_SP(p) uint16_t basis = 0; volatile void *p = &basis
+#define GET_SP(p) volatile void *p = &p
 
 static void apply_continuation(Value f, Value args)
 {
