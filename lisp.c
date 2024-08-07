@@ -621,7 +621,7 @@ static const char *token_stringify(Token t)
 static Value parse_dotted_pair(Parser *p, Value l, Value last)
 {
     if (l == Qnil)
-        parse_error(p, "expression'", "'.'");
+        parse_error(p, "expression", "'.'");
     Value e = parse_expr(p);
     Token t = get_token(p);
     if (t.type != TOK_TYPE_RPAREN)
