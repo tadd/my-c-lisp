@@ -67,12 +67,22 @@ typedef struct {
 } String;
 
 typedef struct {
+    ValueTag tag;
+    int64_t arity;
+    CFunc cfunc;
+} CFunction;
+
+typedef struct {
+    ValueTag tag;
+    int64_t arity;
     Value env;
     Value params;
     Value body;
 } Closure;
 
 typedef struct {
+    ValueTag tag;
+    int64_t arity;
     volatile void *sp;
     void *shelter;
     size_t shelter_len;
@@ -80,20 +90,12 @@ typedef struct {
     Value retval;
 } Continuation;
 
-typedef struct {
-    ValueTag tag;
-    int64_t arity;
-    union {
-        CFunc cfunc;
-        Closure *closure;
-        Continuation *cont;
-    };
-} Function;
-
 #define VALUE_TAG(v) (*(ValueTag*)(v))
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
-#define FUNCTION(v) ((Function *) v)
+#define CFUNC(v) ((CFunction *) v)
+#define CLOSURE(v) ((Closure *) v)
+#define CONTINUATION(v) ((Continuation *) v)
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
@@ -259,9 +261,9 @@ inline Value value_of_string(const char *s)
 
 static inline Value value_of_cfunc(CFunc cfunc, int64_t arity)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
-    f->cfunc = cfunc;
+    CFunction *f = tagged_new(sizeof(CFunction), TAG_CFUNC);
     f->arity = arity;
+    f->cfunc = cfunc;
     return (Value) f;
 }
 
@@ -269,24 +271,17 @@ static inline Value value_of_special(CFunc cfunc, int64_t arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
-    FUNCTION(sp)->tag = TAG_SPECIAL;
+    CFUNC(sp)->tag = TAG_SPECIAL;
     return sp;
-}
-
-static inline Closure *closure_new(Value env, Value params, Value body)
-{
-    Closure *c = xmalloc(sizeof(Closure));
-    c->env = env;
-    c->params = params;
-    c->body = body;
-    return c;
 }
 
 static inline Value value_of_closure(Value env, Value params, Value body)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
+    Closure *f = tagged_new(sizeof(Closure), TAG_CLOSURE);
     f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
-    f->closure = closure_new(env, params, body);
+    f->env = env;
+    f->params = params;
+    f->body = body;
     return (Value) f;
 }
 
@@ -745,8 +740,8 @@ static void scan_args(Value ary[FUNCARG_MAX], int64_t arity, Value args)
 static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
     Value a[FUNCARG_MAX];
-    int64_t n = FUNCTION(func)->arity;
-    CFunc f = FUNCTION(func)->cfunc;
+    int64_t n = CFUNC(func)->arity;
+    CFunc f = CFUNC(func)->cfunc;
 
     scan_args(a, n, vargs);
 
@@ -820,9 +815,9 @@ static Value append(Value l1, Value l2)
 
 static Value apply_closure(Value *env, Value func, Value args)
 {
-    int64_t arity = FUNCTION(func)->arity;
+    int64_t arity = CLOSURE(func)->arity;
     expect_arity(arity, length(args));
-    Closure *cl = FUNCTION(func)->closure;
+    Closure *cl = CLOSURE(func);
     Value clenv = append(cl->env, *env), params = cl->params;
     if (arity == -1)
         clenv = alist_prepend(clenv, params, args);
@@ -857,8 +852,8 @@ static void jump(Continuation *cont)
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
-    expect_arity(FUNCTION(f)->arity, length(args));
-    Continuation *cont = FUNCTION(f)->cont;
+    expect_arity(CONTINUATION(f)->arity, length(args));
+    Continuation *cont = CONTINUATION(f);
     cont->retval = car(args);
     int64_t d = sp - cont->sp;
     if (d < 1)
@@ -1349,16 +1344,15 @@ static Value builtin_lambda(Value *env, Value args)
 
 static Value value_of_continuation(void)
 {
-    Function *c = tagged_new(sizeof(Function), TAG_CONTINUATION);
+    Continuation *c = tagged_new(sizeof(Continuation), TAG_CONTINUATION);
     c->arity = 1; // by spec
-    c->cont = xmalloc(sizeof(Continuation));
     return (Value) c;
 }
 
 static bool continuation_set(Value c)
 {
     GET_SP(sp); // must be the first!
-    Continuation *cont = FUNCTION(c)->cont;
+    Continuation *cont = CONTINUATION(c);
     cont->sp = sp;
     cont->shelter_len = stack_base - sp;
     cont->shelter = xmalloc(cont->shelter_len);
@@ -1372,7 +1366,7 @@ static Value builtin_callcc(Value *env, Value f)
     expect_type("call/cc", TYPE_CLOSURE, cl);
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
-        return FUNCTION(c)->cont->retval;
+        return CONTINUATION(c)->retval;
     return apply_closure(env, cl, cons(c, Qnil));
 }
 
