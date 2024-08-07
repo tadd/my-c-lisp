@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <inttypes.h>
 #include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
@@ -371,7 +372,7 @@ typedef struct {
         int64_t line, col; \
         get_line_column(p, &line, &col); \
         memcpy(jmp_runtime_error, jmp_parse_error, sizeof(jmp_buf)); \
-        runtime_error("on %ld:%ld: expected %s but got " act, line, col, \
+        runtime_error("on %"PRId64":%"PRId64": expected %s but got " act, line, col, \
                       exp __VA_OPT__(,) __VA_ARGS__); \
     } while (0)
 
@@ -399,7 +400,7 @@ static void get_line_column(Parser *p, int64_t *line, int64_t *col)
 static Token get_token_int(Parser *p, int sign)
 {
     int64_t i;
-    int n = fscanf(p->in, "%ld", &i);
+    int n = fscanf(p->in, "%"SCNd64, &i);
     if (n != 1)
         parse_error(p, "integer", "invalid string");
     return TOK_INT(sign * i);
@@ -613,7 +614,7 @@ static const char *token_stringify(Token t)
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
-        snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
+        snprintf(buf, sizeof(buf), "%"PRId64, value_to_int(t.value));
         break;
     case TOK_TYPE_IDENT:
         return value_to_string(t.value);
@@ -701,7 +702,7 @@ static void expect_arity_range(const char *func, int64_t min, int64_t max, int64
 {
     if (min <= actual && (max == -1 || actual <= max))
         return;
-    runtime_error("%s: wrong number of arguments: expected %ld..%ld but got %ld",
+    runtime_error("%s: wrong number of arguments: expected %"PRId64"..%"PRId64" but got %"PRId64,
                   func, min, max, actual);
 }
 
@@ -709,7 +710,7 @@ static void expect_arity(int64_t arity, int64_t n)
 {
     if (arity < 0 || arity == n)
         return;
-    runtime_error("wrong number of arguments: expected %ld but got %ld",
+    runtime_error("wrong number of arguments: expected %"PRId64" but got %"PRId64,
                   arity, n);
 }
 
@@ -761,7 +762,7 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     case 7:
         return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
     default:
-        error("arity too large: %ld", n);
+        error("arity too large: %"PRId64, n);
     }
 #ifdef __clang__
 #pragma clang diagnostic pop
@@ -865,7 +866,7 @@ static void expect_valid_arity(int64_t expected_max, int64_t actual)
 {
     if (actual <= expected_max)
         return;
-    error("arity too large: expected ..%ld but got %ld",
+    error("arity too large: expected ..%"PRId64" but got %"PRId64,
           expected_max, actual);
 }
 
@@ -956,7 +957,7 @@ static void fdisplay(FILE* f, Value v)
         fprintf(f, "%s", v == Qtrue ? "#t" : "#f");
         break;
     case TYPE_INT:
-        fprintf(f, "%ld", value_to_int(v));
+        fprintf(f, "%"PRId64, value_to_int(v));
         break;
     case TYPE_SYMBOL:
         fprintf(f, "'%s", value_to_string(v));
