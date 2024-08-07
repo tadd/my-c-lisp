@@ -324,14 +324,14 @@ inline Value list(Value v, ...)
 }
 
 typedef enum {
-    TTYPE_LPAREN,
-    TTYPE_RPAREN,
-    TTYPE_INT,
-    TTYPE_DOT,
-    TTYPE_STR,
-    TTYPE_IDENT,
-    TTYPE_CONST,
-    TTYPE_EOF
+    TOK_TYPE_LPAREN,
+    TOK_TYPE_RPAREN,
+    TOK_TYPE_INT,
+    TOK_TYPE_DOT,
+    TOK_TYPE_STR,
+    TOK_TYPE_IDENT,
+    TOK_TYPE_CONST,
+    TOK_TYPE_EOF
 } TokenType;
 
 typedef struct {
@@ -339,7 +339,7 @@ typedef struct {
     Value value;
 } Token;
 
-#define TOK(t) { .type = TTYPE_ ## t }
+#define TOK(t) { .type = TOK_TYPE_ ## t }
 // singletons
 static const Token
     TOK_LPAREN = TOK(LPAREN),
@@ -347,7 +347,7 @@ static const Token
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
-#define TOK_V(t, v) ((Token) { .type = TTYPE_ ## t, .value = v })
+#define TOK_V(t, v) ((Token) { .type = TOK_TYPE_ ## t, .value = v })
 #define TOK_INT(i) TOK_V(INT, value_of_int(i))
 #define TOK_STR(s) TOK_V(STR, value_of_string(s))
 #define TOK_IDENT(s) TOK_V(IDENT, value_of_symbol(s))
@@ -523,7 +523,7 @@ static void skip_token_atmosphere(Parser *p)
 
 static Token get_token(Parser *p)
 {
-    if (p->prev_token.type != TTYPE_EOF)  {
+    if (p->prev_token.type != TOK_TYPE_EOF)  {
         Token t = p->prev_token;
         p->prev_token = TOK_EOF;
         return t;
@@ -596,23 +596,23 @@ static const char *token_stringify(Token t)
     static char buf[BUFSIZ];
 
     switch (t.type) {
-    case TTYPE_LPAREN:
+    case TOK_TYPE_LPAREN:
         return "(";
-    case TTYPE_RPAREN:
+    case TOK_TYPE_RPAREN:
         return ")";
-    case TTYPE_DOT:
+    case TOK_TYPE_DOT:
         return ".";
-    case TTYPE_INT:
+    case TOK_TYPE_INT:
         snprintf(buf, sizeof(buf), "%ld", value_to_int(t.value));
         break;
-    case TTYPE_IDENT:
+    case TOK_TYPE_IDENT:
         return value_to_string(t.value);
-    case TTYPE_STR:
+    case TOK_TYPE_STR:
         snprintf(buf, sizeof(buf), "\"%s\"", STRING(t.value)->body);
         break;
-    case TTYPE_CONST:
+    case TOK_TYPE_CONST:
         return t.value == Qtrue ? "#t" : "#f";
-    case TTYPE_EOF:
+    case TOK_TYPE_EOF:
         return "EOF";
     }
     return buf;
@@ -624,7 +624,7 @@ static Value parse_dotted_pair(Parser *p, Value l, Value last)
         parse_error(p, "expression'", "'.'");
     Value e = parse_expr(p);
     Token t = get_token(p);
-    if (t.type != TTYPE_RPAREN)
+    if (t.type != TOK_TYPE_RPAREN)
         parse_error(p, "')'", "'%s'", token_stringify(t));
     PAIR(last)->cdr = e;
     return l;
@@ -635,11 +635,11 @@ static Value parse_list(Parser *p)
     Value l = Qnil, last = Qnil;
     for (;;) {
         Token t = get_token(p);
-        if (t.type == TTYPE_RPAREN)
+        if (t.type == TOK_TYPE_RPAREN)
             break;
-        if (t.type == TTYPE_EOF)
+        if (t.type == TOK_TYPE_EOF)
             parse_error(p, "')'", "'%s'", token_stringify(t));
-        if (t.type == TTYPE_DOT)
+        if (t.type == TOK_TYPE_DOT)
             return parse_dotted_pair(p, l, last);
         unget_token(p, t);
         Value e = parse_expr(p);
@@ -654,18 +654,18 @@ static Value parse_expr(Parser *p)
 {
     Token t = get_token(p);
     switch (t.type) {
-    case TTYPE_LPAREN:
+    case TOK_TYPE_LPAREN:
         return parse_list(p); // parse til ')'
-    case TTYPE_RPAREN:
+    case TOK_TYPE_RPAREN:
         parse_error(p, "expression", "')'");
-    case TTYPE_DOT:
+    case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
-    case TTYPE_STR:
-    case TTYPE_INT:
-    case TTYPE_CONST:
-    case TTYPE_IDENT:
+    case TOK_TYPE_STR:
+    case TOK_TYPE_INT:
+    case TOK_TYPE_CONST:
+    case TOK_TYPE_IDENT:
         return t.value;
-    case TTYPE_EOF:
+    case TOK_TYPE_EOF:
         break;
     }
     return Qundef;
