@@ -18,14 +18,14 @@ jobs:
     - name: Install criterion
       run: sudo apt install --no-install-recommends libcriterion-dev
     - name: Make binaries
-      run: make lisp test-lisp
+      run: make -j2 lisp test-lisp
     - name: Test
       run: make test
     - name: Make binaries for Clang
-      run: make clean lisp test-lisp CC=clang
+      run: make clean && make -j2 lisp test-lisp CC=clang
     - name: Test for Clang
       run: make test CC=clang
     - name: Test -O3
-      run: make clean all XCFLAGS=-O3
+      run: make clean && make -j2 XCFLAGS=-O3
     - name: Test Clang -O3
-      run: make clean all CC=clang XCFLAGS=-O3
+      run: make clean && make -j2 CC=clang XCFLAGS=-O3
