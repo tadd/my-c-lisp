@@ -278,6 +278,11 @@ Test(lisp, define_function) {
     assert_vint_eq_evaled(-42, "(define (f x) (* -1 x)) (f 42)");
 }
 
+Test(lisp, define_function_variadic) {
+    assert_vint_eq_evaled(42, "(define (f . a) 42) (f)");
+    assert_vint_eq_evaled(-42, "(define (f . a) (* -1 (car a))) (f 42)");
+}
+
 Test(lisp, set) {
     assert_runtime_error_evaled("unbound variable: x", "(set! x 42) x");
     assert_vint_eq_evaled(42, "(define x 1) (set! x 42) x");
@@ -382,6 +387,18 @@ Test(lisp, let_is_lambda) {
 
 Test(lisp, lambda_rec) {
     assert_vint_eq_evaled(1, "(define f (lambda (x) (if (> x 0) x (f (+ x 1))))) (f 0)");
+}
+
+Test(lisp, lambda_variadic) {
+    cr_assert(value_is_closure(eval_string("(lambda x 1)")));
+
+    assert_vint_eq_evaled(42, "((lambda x 42))");
+    assert_vint_eq_evaled(42, "((lambda x (* 2 (car x))) 21)");
+    assert_vint_eq_evaled(42, "((lambda x (* (car x) (car (cdr x)))) 3 14)");
+    assert_vint_eq_evaled(42, "(define mul (lambda x (* (car x) (car (cdr x))))) (mul 3 14)");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda x a))");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda x ((lambda x a))))");
+    assert_vint_eq_evaled(42, "(define a 42) ((lambda a (car a)) 10) a");
 }
 
 Test(lisp, begin) {

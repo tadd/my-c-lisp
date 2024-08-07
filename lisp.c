@@ -270,7 +270,7 @@ static inline Closure *closure_new(Value env, Value params, Value body)
 static inline Value value_of_closure(Value env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
-    f->arity = length(params);
+    f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
     f->closure = closure_new(env, params, body);
     return (Value) f;
 }
@@ -295,6 +295,16 @@ static void expect_type(const char *header, Type expected, Value v)
                   header, value_type_to_string(expected), value_type_to_string(t));
 }
 #define expect_type_twin(h, t, x, y) expect_type(h, t, x), expect_type(h, t, y)
+
+static void expect_type_or(const char *header, Type e1, Type e2, Value v)
+{
+    Type t = value_type_of(v);
+    if (t == e1 || t == e2)
+        return;
+    runtime_error("type error in %s: expected %s or %s but got %s",
+                  header, value_type_to_string(e1), value_type_to_string(e2),
+                  value_type_to_string(t));
+}
 
 // for parsing
 
@@ -797,13 +807,14 @@ static Value apply_closure(Value *env, Value func, Value args)
 {
     int64_t arity = FUNCTION(func)->arity;
     expect_arity(arity, length(args));
-    if (arity == -1)
-        runtime_error("(apply): variadic arguments not supported yet");
-
     Closure *cl = FUNCTION(func)->closure;
     Value clenv = append(cl->env, *env), params = cl->params;
-    for (; args != Qnil; args = cdr(args), params = cdr(params))
-        clenv = alist_prepend(clenv, car(params), car(args));
+    if (arity == -1)
+        clenv = alist_prepend(clenv, params, args);
+    else {
+        for (; args != Qnil; args = cdr(args), params = cdr(params))
+            clenv = alist_prepend(clenv, car(params), car(args));
+    }
     return eval_body(&clenv, cl->body);
 }
 
@@ -1203,7 +1214,8 @@ static Value define_variable(Value *env, Value ident, Value expr)
 
 static Value lambda(Value *env, Value params, Value body)
 {
-    expect_type_twin("lambda", TYPE_PAIR, params, body);
+    expect_type_or("lambda", TYPE_PAIR, TYPE_SYMBOL, params);
+    expect_type("lambda", TYPE_PAIR, body);
     if (body == Qnil)
         runtime_error("lambda: one or more expressions needed in body");
     return value_of_closure(*env, params, body);
