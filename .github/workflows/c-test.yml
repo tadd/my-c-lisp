@@ -19,9 +19,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - if: runner.os == 'Linux'
-      run: sudo apt install --no-install-recommends libcriterion-dev
+      run: |
+        sudo apt update
+        sudo apt install --no-install-recommends libcriterion-dev
     - if: runner.os == 'macOS'
       run: |
+        brew update
         brew install criterion
         echo CPATH="/opt/homebrew/include:$CPATH" >> "$GITHUB_ENV"
         echo LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH" >> "$GITHUB_ENV"
