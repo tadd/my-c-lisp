@@ -46,12 +46,12 @@ static const char *TYPE_NAMES[] = {
     [TYPE_CLOSURE] = "closure",
 };
 
-typedef enum {
-    TAG_PAIR,
-    TAG_STR,
-    TAG_CFUNC,
-    TAG_SPECIAL, // almost a C Function
-    TAG_CLOSURE,
+typedef enum { // has the same values as Type
+    TAG_PAIR    = TYPE_PAIR,
+    TAG_STR     = TYPE_STR,
+    TAG_CFUNC   = TYPE_CFUNC,
+    TAG_SPECIAL = TYPE_SPECIAL, // almost a C Function
+    TAG_CLOSURE = TYPE_CLOSURE,
 } ValueTag;
 
 typedef struct Pair {
@@ -177,17 +177,14 @@ inline Type value_type_of(Value v)
             return TYPE_BOOL;
         return TYPE_UNDEF;
     }
-    switch (VALUE_TAG(v)) {
+    ValueTag t = VALUE_TAG(v);
+    switch (t) {
     case TAG_STR:
-        return TYPE_STR;
     case TAG_PAIR:
-        return TYPE_PAIR;
     case TAG_CFUNC:
-        return TYPE_CFUNC;
     case TAG_SPECIAL:
-        return TYPE_SPECIAL;
     case TAG_CLOSURE:
-        return TYPE_CLOSURE;
+        return (Type) t;
     }
     UNREACHABLE();
 }
