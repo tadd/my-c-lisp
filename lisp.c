@@ -258,16 +258,16 @@ static inline Value value_of_special(CFunc cfunc, int64_t arity)
     return sp;
 }
 
-static inline Closure *closure_new(Value *env, Value params, Value body)
+static inline Closure *closure_new(Value env, Value params, Value body)
 {
     Closure *c = xmalloc(sizeof(Closure));
-    c->env = *env;
+    c->env = env;
     c->params = params;
     c->body = body;
     return c;
 }
 
-static inline Value value_of_closure(Value *env, Value params, Value body)
+static inline Value value_of_closure(Value env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = length(params);
@@ -1206,7 +1206,7 @@ static Value lambda(Value *env, Value params, Value body)
     expect_type_twin("lambda", TYPE_PAIR, params, body);
     if (body == Qnil)
         runtime_error("lambda: one or more expressions needed in body");
-    return value_of_closure(env, params, body);
+    return value_of_closure(*env, params, body);
 }
 
 static Value define_func_internal(Value *env, Value heads, Value body)
