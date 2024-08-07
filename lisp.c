@@ -894,6 +894,7 @@ static Value ieval(Value *env, Value v)
         return lookup(*env, v);
     if (v == Qnil || value_is_atom(v))
         return v;
+    // else: function application
     Value func = ieval(env, car(v));
     return apply(env, func, cdr(v));
 }
