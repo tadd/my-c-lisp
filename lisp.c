@@ -1188,7 +1188,7 @@ static Value builtin_if(Value *env, Value args)
     return ieval(env, car(els));
 }
 
-static Value builtin_define(Value *env, Value ident, Value expr)
+static Value define_variable(Value *env, Value ident, Value expr)
 {
     expect_type("define", TYPE_SYMBOL, ident);
 
@@ -1199,6 +1199,39 @@ static Value builtin_define(Value *env, Value ident, Value expr)
     } else
         *env = alist_prepend(*env, ident, val); // prepend new
     return Qnil;
+}
+
+static Value lambda(Value *env, Value params, Value body)
+{
+    expect_type_twin("lambda", TYPE_PAIR, params, body);
+    if (body == Qnil)
+        runtime_error("lambda: one or more expressions needed in body");
+    return value_of_closure(env, params, body);
+}
+
+static Value define_func_internal(Value *env, Value heads, Value body)
+{
+    Value ident = car(heads), params = cdr(heads);
+    Value val = lambda(env, params, body);
+    return define_variable(env, ident, val);
+}
+
+static Value builtin_define(Value *env, Value args)
+{
+    int64_t l = length(args);
+    expect_arity_range("define", 1, -1, l);
+    Value head = car(args);
+    Type t = value_type_of(head);
+    switch (t) {
+    case TYPE_SYMBOL:
+        expect_arity(2, l);
+        return define_variable(env, head, cadr(args));
+    case TYPE_PAIR:
+        return define_func_internal(env, head, cdr(args));
+    default:
+        runtime_error("define: expected first argument symbol or pair but got: %s",
+                      value_type_to_string(t));
+    }
 }
 
 static Value builtin_set(Value *env, Value ident, Value expr)
@@ -1255,12 +1288,7 @@ static Value builtin_letrec(Value *env, Value args)
 
 static Value builtin_lambda(Value *env, Value args)
 {
-    Value params = car(args);
-    Value body = cdr(args);
-    expect_type_twin("lambda", TYPE_PAIR, params, body);
-    if (body == Qnil)
-        runtime_error("lambda: one or more expressions needed in body");
-    return value_of_closure(env, params, body);
+    return lambda(env, car(args), cdr(args));
 }
 
 static Value builtin_list(Value args)
@@ -1343,7 +1371,7 @@ static void initialize(void)
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
-    define_special(e, "define", builtin_define, 2);
+    define_special(e, "define", builtin_define, -1);
     define_special(e, "set!", builtin_set, 2);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias

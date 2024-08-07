@@ -273,6 +273,11 @@ Test(lisp, define_variable) {
     assert_vint_eq_evaled(-42, "(define x (* -1 42)) x");
 }
 
+Test(lisp, define_function) {
+    assert_vint_eq_evaled(42, "(define (f) 42) (f)");
+    assert_vint_eq_evaled(-42, "(define (f x) (* -1 x)) (f 42)");
+}
+
 Test(lisp, set) {
     assert_runtime_error_evaled("unbound variable: x", "(set! x 42) x");
     assert_vint_eq_evaled(42, "(define x 1) (set! x 42) x");
