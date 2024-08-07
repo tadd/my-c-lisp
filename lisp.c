@@ -899,19 +899,24 @@ static Value ieval(Value *env, Value v)
     return apply(env, func, cdr(v));
 }
 
-Value eval(Value v)
+static Value eval_top(Value v)
 {
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
-    return ieval(&toplevel_environment, v);
+    return eval_body(&toplevel_environment, v);
+}
+
+Value eval(Value v)
+{
+    return eval_top(list(v));
 }
 
 Value load(FILE *in)
 {
     Value l = parse(in);
-    if (l == Qundef || setjmp(jmp_runtime_error) != 0)
+    if (l == Qundef)
         return Qundef;
-    return eval_body(&toplevel_environment, l);
+    return eval_top(l);
 }
 
 static void fdisplay(FILE* f, Value v);
