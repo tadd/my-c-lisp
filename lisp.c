@@ -736,7 +736,7 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
 
     scan_args(a, n, vargs);
 
-#ifdef __clang__
+#if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-non-prototype"
 #endif
@@ -764,7 +764,7 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     default:
         error("arity too large: %"PRId64, n);
     }
-#ifdef __clang__
+#if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic pop
 #endif
 }
