@@ -290,16 +290,6 @@ static inline Value value_of_closure(Value env, Value params, Value body)
     return (Value) f;
 }
 
-static inline ATTR(always_inline) // forced!
-void *inline_memcpy(void *restrict dst, const void *restrict src, size_t len)
-{
-    uint8_t *d = dst;
-    const uint8_t *s = src;
-    while (len--)
-        *d++ = *s++;
-    return dst;
-}
-
 // `cons` is well-known name than "value_of_pair"
 inline Value cons(Value car, Value cdr)
 {
@@ -858,7 +848,7 @@ static Value map2(MapFunc f, Value *common, Value l)
 ATTR_NORETURN ATTR(noinline)
 static void jump(Continuation *cont)
 {
-    inline_memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
+    memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
     longjmp(cont->state, 1);
 }
 
@@ -1372,7 +1362,7 @@ static bool continuation_set(Value c)
     cont->sp = sp;
     cont->shelter_len = stack_base - sp;
     cont->shelter = xmalloc(cont->shelter_len);
-    inline_memcpy(cont->shelter, (void *) sp, cont->shelter_len);
+    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
     return setjmp(cont->state);
 }
 
