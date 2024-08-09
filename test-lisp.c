@@ -41,7 +41,10 @@
 #define assert_str_eq(exp, act) cr_assert_str_eq(act, exp)
 #define assert_runtime_error(pattern, v) do { \
         assert_int_eq(Qundef, v); \
-        cr_assert_not_null(strstr(error_message(), pattern)); \
+        char *m = strstr(error_message(), pattern); \
+        cr_assert_not_null(m, \
+                           "expected \"%s\" includes \"%s\" but not", \
+                           error_message(), pattern); \
     } while (0)
 
 #define assert_no_error(v) \
