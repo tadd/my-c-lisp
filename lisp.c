@@ -34,6 +34,10 @@ const char *error_message(void)
     return errmsg;
 }
 
+enum {
+    TYPE_ANY = -1,
+};
+
 static const char *TYPE_NAMES[] = {
     [TYPE_BOOL] = "boolean",
     [TYPE_INT] = "integer",
@@ -71,8 +75,13 @@ typedef struct {
     int64_t arity;
 } Function;
 
+enum {
+    CFUNCARG_MAX = 7,
+};
 typedef struct {
     Function func;
+    bool typed;
+    int8_t types[CFUNCARG_MAX];
     cfunc_t cfunc;
 } CFunc;
 
@@ -116,8 +125,6 @@ const Value Qnil = (Value) &PAIR_NIL;
 const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
-
-static const int64_t CFUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
@@ -267,7 +274,20 @@ static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
     CFunc *f = obj_new(sizeof(CFunc), TAG_CFUNC);
     f->func.arity = arity;
     f->cfunc = cfunc;
+    f->typed = false;
     return (Value) f;
+}
+
+static Value value_of_cfunc_typed(cfunc_t cfunc, int64_t arity, int8_t types[])
+{
+    Value func = value_of_cfunc(cfunc, arity);
+    CFunc *f = CFUNC(func);
+    f->typed = true;
+    if (arity > 0)
+        memcpy(f->types, types, sizeof(int8_t) * arity);
+    else if (arity < 0)
+        f->types[0] = types[0];
+    return func;
 }
 
 static Value value_of_special(cfunc_t cfunc, int64_t arity)
@@ -275,6 +295,14 @@ static Value value_of_special(cfunc_t cfunc, int64_t arity)
     arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
     VALUE_TAG(sp) = TAG_SPECIAL;
+    return sp;
+}
+
+static Value value_of_special_typed(cfunc_t cfunc, int64_t arity, int8_t types[])
+{
+    arity += (arity == -1) ? -1 : 1; // for *env
+    Value sp = value_of_cfunc_typed(cfunc, arity, types);
+    FUNCTION(sp)->tag = TAG_SPECIAL;
     return sp;
 }
 
@@ -299,10 +327,10 @@ Value cons(Value car, Value cdr)
 
 // utilities for errors
 
-static void expect_type(const char *header, Type expected, Value v)
+static void expect_type(const char *header, int8_t expected, Value v)
 {
-    Type t = value_type_of(v);
-    if (t == expected)
+    int8_t t = value_type_of(v);
+    if (expected == TYPE_ANY || t == expected)
         return;
     runtime_error("type error in %s: expected %s but got %s",
                   header, value_type_to_string(expected), value_type_to_string(t));
@@ -869,13 +897,36 @@ static Value map_eval(Value *env, Value l)
     return mapped;
 }
 
+static void expect_arg_types(int64_t arity, int8_t *types, Value args)
+{
+    if (arity == 0)
+        return;
+    if (arity < 0) {
+        for (; args != Qnil; args = cdr(args))
+            expect_type("apply", *types, car(args));
+    } else {
+        for (; args != Qnil; args = cdr(args))
+            expect_type("apply", *types++, car(args));
+    }
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
-    Value eargs = (tag == TAG_SPECIAL) ?
-        cons((Value) env, args) : map_eval(env, args);
-    expect_arity(FUNCTION(func)->arity, eargs);
+    Value eargs;
+    if (tag == TAG_SPECIAL) {
+        int farity = FUNCTION(func)->arity - 1;
+        expect_arity(farity, args);
+        if (CFUNC(func)->typed)
+            expect_arg_types(farity, CFUNC(func)->types, args);
+        eargs = cons((Value) env, args);
+    } else {
+        expect_arity(FUNCTION(func)->arity, args);
+        eargs = map_eval(env, args);
+        if (tag == TAG_CFUNC && CFUNC(func)->typed)
+            expect_arg_types(FUNCTION(func)->arity, CFUNC(func)->types, eargs);
+    }
     switch (tag) {
     case TAG_SPECIAL:
     case TAG_CFUNC:
@@ -903,7 +954,7 @@ static void expect_cfunc_arity(int64_t actual)
 {
     if (actual <= CFUNCARG_MAX)
         return;
-    error("arity too large: expected ..%"PRId64" but got %"PRId64,
+    error("arity too large: expected ..%d but got %"PRId64,
           CFUNCARG_MAX, actual);
 }
 
@@ -922,6 +973,38 @@ static void define_function(Value *env, const char *name, cfunc_t cfunc, int64_t
 {
     expect_cfunc_arity(arity);
     env_put(env, name, value_of_cfunc(cfunc, arity));
+}
+
+static void decode_types(int64_t arity, va_list ap, int8_t types[])
+{
+    if (arity < 0)
+        arity = 1;
+    for (int i = 0; i < arity; i++)
+        types[i] = va_arg(ap, Type);
+}
+
+static void define_function_typed(Value *env, const char *name, cfunc_t cfunc,
+                                  int64_t arity, ...)
+{
+    expect_cfunc_arity(arity);
+    int8_t types[CFUNCARG_MAX];
+    va_list ap;
+    va_start(ap, arity);
+    decode_types(arity, ap, types);
+    va_end(ap);
+    env_put(env, name, value_of_cfunc_typed(cfunc, arity, types));
+}
+
+static void define_special_typed(Value *env, const char *name, cfunc_t cfunc,
+                                 int64_t arity, ...)
+{
+    expect_cfunc_arity(arity);
+    int8_t types[CFUNCARG_MAX];
+    va_list ap;
+    va_start(ap, arity);
+    decode_types(arity, ap, types);
+    va_end(ap);
+    env_put(env, name, value_of_special_typed(cfunc, arity, types));
 }
 
 static Value lookup(Value env, Value name)
@@ -1093,17 +1176,11 @@ Value parse_string(const char *in)
     return v;
 }
 
-static int64_t value_get_int(const char *header, Value v)
-{
-    expect_type(header, TYPE_INT, v);
-    return value_to_int(v);
-}
-
 static Value builtin_add(Value args)
 {
     int64_t y = 0;
     for (Value l = args; l != Qnil; l = cdr(l))
-        y += value_get_int("+", car(l));
+        y += value_to_int(car(l));
     return value_of_int(y);
 }
 
@@ -1116,10 +1193,10 @@ static Value builtin_sub(Value args)
     if (rest == Qnil)
         rest = args;
     else {
-        y = value_get_int("-", car(args));
+        y = value_to_int(car(args));
     }
     for (Value l = rest; l != Qnil; l = cdr(l))
-        y -= value_get_int("-", car(l));
+        y -= value_to_int(car(l));
     return value_of_int(y);
 }
 
@@ -1127,7 +1204,7 @@ static Value builtin_mul(Value args)
 {
     int64_t y = 1;
     for (Value l = args; l != Qnil; l = cdr(l))
-        y *= value_get_int("*", car(l));
+        y *= value_to_int(car(l));
     return value_of_int(y);
 }
 
@@ -1140,9 +1217,9 @@ static Value builtin_div(Value args)
     if (rest == Qnil)
         rest = args;
     else
-        y = value_get_int("/", car(args));
+        y = value_to_int(car(args));
     for (Value l = rest; l != Qnil; l = cdr(l)) {
-        int64_t x = value_get_int("/", car(l));
+        int64_t x = value_to_int(car(l));
         if (x == 0)
             runtime_error("/: divided by zero");
         y /= x;
@@ -1154,9 +1231,9 @@ static Value builtin_numeq(Value args)
 {
     expect_arity_range("=", 2, -1, args);
 
-    int64_t x = value_get_int("=", car(args));
+    int64_t x = value_to_int(car(args));
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("=", car(args));
+        int64_t y = value_to_int(car(args));
         if (x != y)
             return Qfalse;
     }
@@ -1167,9 +1244,9 @@ static Value builtin_lt(Value args)
 {
     expect_arity_range("<", 2, -1, args);
 
-    int64_t x = value_get_int("<", car(args));
+    int64_t x = value_to_int(car(args));
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<", car(args));
+        int64_t y = value_to_int(car(args));
         if (x >= y)
             return Qfalse;
         x = y;
@@ -1181,9 +1258,9 @@ static Value builtin_gt(Value args)
 {
     expect_arity_range(">", 2, -1, args);
 
-    int64_t x = value_get_int(">", car(args));
+    int64_t x = value_to_int(car(args));
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">", car(args));
+        int64_t y = value_to_int(car(args));
         if (x <= y)
             return Qfalse;
         x = y;
@@ -1195,9 +1272,9 @@ static Value builtin_le(Value args)
 {
     expect_arity_range("<=", 2, -1, args);
 
-    int64_t x = value_get_int("<=", car(args));
+    int64_t x = value_to_int(car(args));
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<=", car(args));
+        int64_t y = value_to_int(car(args));
         if (x > y)
             return Qfalse;
         x = y;
@@ -1209,9 +1286,9 @@ static Value builtin_ge(Value args)
 {
     expect_arity_range(">=", 2, -1, args);
 
-    int64_t x = value_get_int(">=", car(args));
+    int64_t x = value_to_int(car(args));
     while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">=", car(args));
+        int64_t y = value_to_int(car(args));
         if (x < y)
             return Qfalse;
         x = y;
@@ -1221,10 +1298,10 @@ static Value builtin_ge(Value args)
 
 static Value builtin_modulo(Value x, Value y)
 {
-    int64_t b = value_get_int("modulo", y);
+    int64_t b = value_to_int(y);
     if (b == 0)
         runtime_error("modulo: divided by zero");
-    int64_t a = value_get_int("modulo", x);
+    int64_t a = value_to_int(x);
     int64_t c = a % b;
     if ((a < 0 && b > 0) || (a > 0 && b < 0))
         c += b;
@@ -1293,8 +1370,6 @@ static Value builtin_define(Value *env, Value args)
 
 static Value builtin_set(Value *env, Value ident, Value expr)
 {
-    expect_type("set!", TYPE_SYMBOL, ident);
-
     Value found = alist_find(*env, ident);
     if (found == Qnil)
         runtime_error("set!: unbound variable: %s", value_to_string(ident));
@@ -1428,18 +1503,6 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
-static Value builtin_car(Value pair)
-{
-    expect_type("car", TYPE_PAIR, pair);
-    return car(pair);
-}
-
-static Value builtin_cdr(Value pair)
-{
-    expect_type("cdr", TYPE_PAIR, pair);
-    return cdr(pair);
-}
-
 static Value builtin_eq(Value x, Value y)
 {
     return x == y ? Qtrue : Qfalse;
@@ -1486,7 +1549,7 @@ static void initialize(void)
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
     define_special(e, "define", builtin_define, -1);
-    define_special(e, "set!", builtin_set, 2);
+    define_special_typed(e, "set!", builtin_set, 2, TYPE_SYMBOL, TYPE_ANY);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "lambda", builtin_lambda, -1);
@@ -1495,23 +1558,23 @@ static void initialize(void)
     define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "call/cc", builtin_callcc, 1);
 
-    define_function(e, "+", builtin_add, -1);
-    define_function(e, "-", builtin_sub, -1);
-    define_function(e, "*", builtin_mul, -1);
-    define_function(e, "/", builtin_div, -1);
-    define_function(e, "=", builtin_numeq, -1);
-    define_function(e, "<", builtin_lt, -1);
-    define_function(e, ">", builtin_gt, -1);
-    define_function(e, "<=", builtin_le, -1);
-    define_function(e, ">=", builtin_ge, -1);
-    define_function(e, "modulo", builtin_modulo, 2);
+    define_function_typed(e, "+", builtin_add, -1, TYPE_INT);
+    define_function_typed(e, "-", builtin_sub, -1, TYPE_INT);
+    define_function_typed(e, "*", builtin_mul, -1, TYPE_INT);
+    define_function_typed(e, "/", builtin_div, -1, TYPE_INT);
+    define_function_typed(e, "=", builtin_numeq, -1, TYPE_INT);
+    define_function_typed(e, "<", builtin_lt, -1, TYPE_INT);
+    define_function_typed(e, ">", builtin_gt, -1, TYPE_INT);
+    define_function_typed(e, "<=", builtin_le, -1, TYPE_INT);
+    define_function_typed(e, ">=", builtin_ge, -1, TYPE_INT);
+    define_function_typed(e, "modulo", builtin_modulo, 2, TYPE_INT, TYPE_INT);
 
-    define_function(e, "car", builtin_car, 1);
-    define_function(e, "cdr", builtin_cdr, 1);
+    define_function_typed(e, "car", car, 1, TYPE_PAIR);
+    define_function_typed(e, "cdr", cdr, 1, TYPE_PAIR);
     define_function(e, "cons", cons, 2);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "null?", builtin_null, 1);
-    define_function(e, "reverse", reverse, 1);
+    define_function_typed(e, "reverse", reverse, 1, TYPE_PAIR);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);
