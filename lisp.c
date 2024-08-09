@@ -818,18 +818,6 @@ static Value apply_closure(Value *env, Value func, Value args)
     return eval_body(&clenv, cl->body);
 }
 
-typedef Value (*MapFunc)(Value *common, Value v);
-static Value map2(MapFunc f, Value *common, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append_at(last, f(common, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 ATTR_NORETURN ATTR(noinline)
 static void jump(Continuation *cont)
 {
@@ -868,6 +856,17 @@ static void expect_applicative(Value v)
     }
 }
 
+static Value map_eval(Value *env, Value l)
+{
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append_at(last, ieval(env, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
+    }
+    return mapped;
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
@@ -878,7 +877,7 @@ static Value apply(Value *env, Value func, Value args)
         return apply_cfunc(env, func, eargs);
     }
     expect_arity(FUNCTION(func)->arity, length(args));
-    Value vargs = map2(ieval, env, args);
+    Value vargs = map_eval(env, args);
     switch (tag) {
     case TAG_CFUNC:
         return apply_cfunc(env, func, vargs);
