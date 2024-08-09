@@ -854,6 +854,7 @@ static void jump(Continuation *cont)
 
 #define GET_SP(p) volatile void *p = &p
 
+ATTR_NORETURN
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
@@ -868,10 +869,24 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
+static void expect_applicative(Value v)
+{
+    Type t = value_type_of(v);
+    switch (t) {
+    case TYPE_SPECIAL:
+    case TYPE_CFUNC:
+    case TYPE_CLOSURE:
+    case TYPE_CONTINUATION:
+        return;
+    default:
+        runtime_error("type error in (eval): expected applicative but got %s",
+                      value_type_to_string(t));
+    }
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
-    if (is_immediate(func))
-        goto unapplicative;
+    expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
     if (tag == TAG_SPECIAL)
         return apply_cfunc(env, func, cons((Value) env, args));
@@ -884,11 +899,8 @@ static Value apply(Value *env, Value func, Value args)
     case TAG_CONTINUATION:
         apply_continuation(func, vargs); // no return!
     default:
-        break;
+        UNREACHABLE();
     }
- unapplicative:
-    runtime_error("type error in (eval): expected applicative but got %s",
-                  value_type_to_string(value_type_of(func)));
 }
 
 static Value alist_find(Value l, Value key)
