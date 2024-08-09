@@ -429,3 +429,26 @@ Test(lisp, define_and_lambda) {
 "(define g (lambda () 42))"
 "(f)");
 }
+
+Test(lisp, callcc) {
+    // From Kawa's test suite under the MIT license:
+    // https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
+    assert_list_eq_evaled(list(V(5), V(4), V(3), V(2), V(1), V(0), Qundef),
+"(let ((x ())"
+"      (y 0))"
+"  (call/cc "
+"   (lambda (escape)"
+"     (let* ((in ((lambda (foo) "
+"                   (set! x (cons y x))"
+"                   (if (= y 5)"
+"                       (escape x)"
+"                       (begin"
+"                         (set! y 0)"
+"                         foo)))"
+"                 (call/cc (lambda (bar) bar))))"
+"            (yo ((lambda (foo) "
+"                   (set! y (+ y 1))"
+"                   foo)"
+"                 (call/cc (lambda (baz) baz)))))"
+"       (in yo)))))");
+}
