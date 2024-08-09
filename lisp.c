@@ -821,7 +821,6 @@ static Value append(Value l1, Value l2)
 static Value apply_closure(Value *env, Value func, Value args)
 {
     int64_t arity = FUNCTION(func)->arity;
-    expect_arity(arity, length(args));
     Closure *cl = FUNCTION(func)->closure;
     Value clenv = append(cl->env, *env), params = cl->params;
     if (arity == -1)
@@ -858,7 +857,6 @@ ATTR_NORETURN
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
-    expect_arity(FUNCTION(f)->arity, length(args));
     Continuation *cont = FUNCTION(f)->cont;
     cont->retval = car(args);
     int64_t d = sp - cont->sp;
@@ -888,8 +886,12 @@ static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
-    if (tag == TAG_SPECIAL)
-        return apply_cfunc(env, func, cons((Value) env, args));
+    if (tag == TAG_SPECIAL) {
+        Value eargs = cons((Value) env, args);
+        expect_arity(FUNCTION(func)->arity, length(eargs));
+        return apply_cfunc(env, func, eargs);
+    }
+    expect_arity(FUNCTION(func)->arity, length(args));
     Value vargs = map2(ieval, env, args);
     switch (tag) {
     case TAG_CFUNC:
