@@ -112,7 +112,7 @@ const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
-static const int64_t FUNCARG_MAX = 7;
+static const int64_t CFUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
@@ -730,7 +730,7 @@ static void expect_arity(int64_t expected, int64_t actual)
 
 static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
-    Value a[FUNCARG_MAX];
+    Value a[CFUNCARG_MAX];
     int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
     for (Value arg = vargs, *p = a; arg != Qnil; arg = cdr(arg))
@@ -901,24 +901,24 @@ static Value alist_find(Value l, Value key)
     return Qnil;
 }
 
-static void expect_valid_arity(int64_t expected_max, int64_t actual)
+static void expect_cfunc_arity(int64_t actual)
 {
-    if (actual <= expected_max)
+    if (actual <= CFUNCARG_MAX)
         return;
     error("arity too large: expected ..%"PRId64" but got %"PRId64,
-          expected_max, actual);
+          CFUNCARG_MAX, actual);
 }
 
 static Value define_special(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
-    expect_valid_arity(FUNCARG_MAX - 1, arity);
+    expect_cfunc_arity(arity + 1);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
 
 static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
-    expect_valid_arity(FUNCARG_MAX, arity);
+    expect_cfunc_arity(arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
     return Qnil;
 }
