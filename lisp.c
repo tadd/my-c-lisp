@@ -888,11 +888,14 @@ static void expect_arg_types(Value func, Value args)
 {
     Function *f = FUNCTION(func);
     int arity = f->arity;
-    if (arity <= 0 || f->types[0] < 0)
+    if (arity == 0 || f->types[0] < 0)
         return;
-    for (int i = 0; i < arity; i++, args = cdr(args)) {
-        Value a = car(args);
-        expect_type("apply", f->types[i], a);
+    if (arity == -1) {
+        for (; args != Qnil; args = cdr(args))
+            expect_type("apply", f->types[0], car(args));
+    } else {
+        for (int i = 0; args != Qnil; args = cdr(args), i++)
+            expect_type("apply", f->types[i], car(args));
     }
 }
 
@@ -1155,8 +1158,10 @@ static int64_t value_get_int(const char *header, Value v)
 static Value builtin_add(Value args)
 {
     int64_t y = 0;
-    for (Value l = args; l != Qnil; l = cdr(l))
+    for (Value l = args; l != Qnil; l = cdr(l)) {
         y += value_get_int("+", car(l));
+        //y += value_to_int(car(l));
+    }
     return value_of_int(y);
 }
 
@@ -1509,7 +1514,7 @@ static void initialize(void)
     define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "call/cc", builtin_callcc, 1);
 
-    define_function(e, "+", builtin_add, -1);
+    define_function_typed(e, "+", builtin_add, -1, TYPE_INT);
     define_function(e, "-", builtin_sub, -1);
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "/", builtin_div, -1);
