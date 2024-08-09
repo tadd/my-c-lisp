@@ -728,27 +728,13 @@ static void expect_arity(int64_t expected, int64_t actual)
                   expected, actual);
 }
 
-static void scan_args(Value ary[FUNCARG_MAX], int64_t arity, Value args)
-{
-    int64_t i;
-    Value a = args;
-    for (i = 0; i < arity; i++) {
-        if (a == Qnil)
-            break;
-        ary[i] = car(a);
-        a = cdr(a);
-    }
-    i += length(a);
-    expect_arity(arity, i);
-}
-
 static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
     Value a[FUNCARG_MAX];
     int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
-
-    scan_args(a, n, vargs);
+    for (Value arg = vargs, *p = a; arg != Qnil; arg = cdr(arg))
+        *p++ = car(arg);
 
 #if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic push
