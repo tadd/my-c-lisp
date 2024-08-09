@@ -720,12 +720,12 @@ static void expect_arity_range(const char *func, int64_t min, int64_t max, int64
                   func, min, max, actual);
 }
 
-static void expect_arity(int64_t arity, int64_t n)
+static void expect_arity(int64_t expected, int64_t actual)
 {
-    if (arity < 0 || arity == n)
+    if (expected < 0 || expected == actual)
         return;
     runtime_error("wrong number of arguments: expected %"PRId64" but got %"PRId64,
-                  arity, n);
+                  expected, actual);
 }
 
 static void scan_args(Value ary[FUNCARG_MAX], int64_t arity, Value args)
