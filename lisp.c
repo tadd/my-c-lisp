@@ -80,9 +80,14 @@ typedef struct {
     Value retval;
 } Continuation;
 
+enum {
+    CFUNCARG_MAX = 7,
+};
+
 typedef struct {
     ValueTag tag;
     int64_t arity;
+    int8_t types[CFUNCARG_MAX];
     union {
         CFunc cfunc;
         Closure *closure;
@@ -111,8 +116,6 @@ const Value Qnil = (Value) &PAIR_NIL;
 const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
-
-static const int64_t CFUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
@@ -262,6 +265,19 @@ static inline Value value_of_cfunc(CFunc cfunc, int64_t arity)
     Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;
     f->arity = arity;
+    f->types[0] = -1;
+    return (Value) f;
+}
+
+static inline Value value_of_cfunc_typed(CFunc cfunc, int64_t arity, int8_t types[CFUNCARG_MAX])
+{
+    Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
+    f->cfunc = cfunc;
+    f->arity = arity;
+    if (arity > 0)
+        memcpy(f->types, types, sizeof(int8_t) * arity);
+    else
+        f->types[0] = -1;
     return (Value) f;
 }
 
@@ -286,6 +302,7 @@ static inline Value value_of_closure(Value env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
+    f->types[0] = -1;
     f->closure = closure_new(env, params, body);
     return (Value) f;
 }
@@ -867,6 +884,18 @@ static Value map_eval(Value *env, Value l)
     return mapped;
 }
 
+static void expect_arg_types(Value func, Value args)
+{
+    Function *f = FUNCTION(func);
+    int arity = f->arity;
+    if (arity <= 0 || f->types[0] < 0)
+        return;
+    for (int i = 0; i < arity; i++, args = cdr(args)) {
+        Value a = car(args);
+        expect_type("apply", f->types[i], a);
+    }
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
@@ -874,10 +903,12 @@ static Value apply(Value *env, Value func, Value args)
     if (tag == TAG_SPECIAL) {
         Value eargs = cons((Value) env, args);
         expect_arity(FUNCTION(func)->arity, length(eargs));
+        //expect_arg_types(func, eargs);
         return apply_cfunc(env, func, eargs);
     }
-    expect_arity(FUNCTION(func)->arity, length(args));
     Value vargs = map_eval(env, args);
+    expect_arity(FUNCTION(func)->arity, length(vargs));
+    expect_arg_types(func, vargs);
     switch (tag) {
     case TAG_CFUNC:
         return apply_cfunc(env, func, vargs);
@@ -904,7 +935,7 @@ static void expect_cfunc_arity(int64_t actual)
 {
     if (actual <= CFUNCARG_MAX)
         return;
-    error("arity too large: expected ..%"PRId64" but got %"PRId64,
+    error("arity too large: expected ..%d but got %"PRId64,
           CFUNCARG_MAX, actual);
 }
 
@@ -919,6 +950,30 @@ static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t 
 {
     expect_cfunc_arity(arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
+    return Qnil;
+}
+
+static void decode_types(int64_t arity, va_list ap, int8_t types[CFUNCARG_MAX])
+{
+    if (arity < 0)
+        return;
+    for (int i = 0; i < arity; i++)
+        types[i] = va_arg(ap, Type);
+}
+
+static Value define_function_typed(Value *env, const char *name, CFunc cfunc,
+                                   int64_t arity, ...)
+{
+    expect_cfunc_arity(arity);
+    int8_t types[CFUNCARG_MAX];
+    if (arity > 0) {
+        va_list ap;
+        va_start(ap, arity);
+        decode_types(arity, ap, types);
+        va_end(ap);
+    }
+    *env = alist_prepend(*env, value_of_symbol(name),
+                         value_of_cfunc_typed(cfunc, arity, types));
     return Qnil;
 }
 
@@ -1219,10 +1274,10 @@ static Value builtin_ge(Value args)
 
 static Value builtin_modulo(Value x, Value y)
 {
-    int64_t b = value_get_int("modulo", y);
+    int64_t b = value_to_int(y);
     if (b == 0)
         runtime_error("modulo: divided by zero");
-    int64_t a = value_get_int("modulo", x);
+    int64_t a = value_to_int(x);
     int64_t c = a % b;
     if ((a < 0 && b > 0) || (a > 0 && b < 0))
         c += b;
@@ -1350,6 +1405,7 @@ static Value value_of_continuation(void)
 {
     Function *c = tagged_new(sizeof(Function), TAG_CONTINUATION);
     c->arity = 1; // by spec
+    c->types[0] = -1;
     c->cont = xmalloc(sizeof(Continuation));
     return (Value) c;
 }
@@ -1427,18 +1483,6 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
-static Value builtin_car(Value pair)
-{
-    expect_type("car", TYPE_PAIR, pair);
-    return car(pair);
-}
-
-static Value builtin_cdr(Value pair)
-{
-    expect_type("cdr", TYPE_PAIR, pair);
-    return cdr(pair);
-}
-
 static Value builtin_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
@@ -1474,14 +1518,15 @@ static void initialize(void)
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
-    define_function(e, "modulo", builtin_modulo, 2);
+    define_function_typed(e, "modulo", builtin_modulo,
+                          2, TYPE_INT, TYPE_INT);
 
-    define_function(e, "car", builtin_car, 1);
-    define_function(e, "cdr", builtin_cdr, 1);
+    define_function_typed(e, "car", car, 1, TYPE_PAIR);
+    define_function_typed(e, "cdr", cdr, 1, TYPE_PAIR);
     define_function(e, "cons", cons, 2);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "null?", builtin_null, 1);
-    define_function(e, "reverse", reverse, 1);
+    define_function_typed(e, "reverse", reverse, 1, TYPE_PAIR);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);
