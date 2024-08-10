@@ -1284,7 +1284,7 @@ static Value builtin_define(Value *env, Value args)
     case TYPE_PAIR:
         return define_func_internal(env, head, cdr(args));
     default:
-        runtime_error("define: expected first argument symbol or pair but got: %s",
+        runtime_error("define: expected first argument symbol or pair but got %s",
                       value_type_to_string(t));
     }
 }
