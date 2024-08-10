@@ -534,11 +534,9 @@ static void skip_token_atmosphere(Parser *p)
         if (isspace(c))
             continue; // skip
         if (c == ';') {
-            for (;;) {
+            do {
                 c = fgetc(p->in);
-                if (c == '\n' || c == EOF)
-                    break;
-            }
+            } while (c != '\n' && c != EOF);
             continue;
         }
         break;
