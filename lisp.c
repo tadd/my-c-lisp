@@ -728,12 +728,12 @@ static void expect_arity(int64_t expected, int64_t actual)
                   expected, actual);
 }
 
-static Value apply_cfunc(Value *env, Value func, Value vargs)
+static Value apply_cfunc(Value *env, Value func, Value args)
 {
     Value a[CFUNCARG_MAX];
     int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
-    Value arg = vargs;
+    Value arg = args;
     for (int i = 0; i < n; i++) {
         a[i] = car(arg);
         arg = cdr(arg);
@@ -745,9 +745,9 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
 #endif
     switch (n) {
     case -2:
-        return (*f)(env, cdr(vargs)); // special form
+        return (*f)(env, cdr(args)); // special form
     case -1:
-        return (*f)(vargs); // non-special
+        return (*f)(args); // non-special
     case 0:
         return (*f)();
     case 1:
