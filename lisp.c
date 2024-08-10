@@ -112,7 +112,7 @@ const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
 const Value Qundef = 0b0110U; // may be an error or something
 
-static const int64_t FUNCARG_MAX = 7;
+static const int64_t CFUNCARG_MAX = 7;
 
 // runtime-locals (aka global variables)
 
@@ -720,35 +720,21 @@ static void expect_arity_range(const char *func, int64_t min, int64_t max, int64
                   func, min, max, actual);
 }
 
-static void expect_arity(int64_t arity, int64_t n)
+static void expect_arity(int64_t expected, int64_t actual)
 {
-    if (arity < 0 || arity == n)
+    if (expected < 0 || expected == actual)
         return;
     runtime_error("wrong number of arguments: expected %"PRId64" but got %"PRId64,
-                  arity, n);
-}
-
-static void scan_args(Value ary[FUNCARG_MAX], int64_t arity, Value args)
-{
-    int64_t i;
-    Value a = args;
-    for (i = 0; i < arity; i++) {
-        if (a == Qnil)
-            break;
-        ary[i] = car(a);
-        a = cdr(a);
-    }
-    i += length(a);
-    expect_arity(arity, i);
+                  expected, actual);
 }
 
 static Value apply_cfunc(Value *env, Value func, Value vargs)
 {
-    Value a[FUNCARG_MAX];
+    Value a[CFUNCARG_MAX];
     int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
-
-    scan_args(a, n, vargs);
+    for (Value arg = vargs, *p = a; arg != Qnil; arg = cdr(arg))
+        *p++ = car(arg);
 
 #if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic push
@@ -821,7 +807,6 @@ static Value append(Value l1, Value l2)
 static Value apply_closure(Value *env, Value func, Value args)
 {
     int64_t arity = FUNCTION(func)->arity;
-    expect_arity(arity, length(args));
     Closure *cl = FUNCTION(func)->closure;
     Value clenv = append(cl->env, *env), params = cl->params;
     if (arity == -1)
@@ -833,18 +818,6 @@ static Value apply_closure(Value *env, Value func, Value args)
     return eval_body(&clenv, cl->body);
 }
 
-typedef Value (*MapFunc)(Value *common, Value v);
-static Value map2(MapFunc f, Value *common, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append_at(last, f(common, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 ATTR_NORETURN ATTR(noinline)
 static void jump(Continuation *cont)
 {
@@ -854,10 +827,10 @@ static void jump(Continuation *cont)
 
 #define GET_SP(p) volatile void *p = &p
 
+ATTR_NORETURN
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
-    expect_arity(FUNCTION(f)->arity, length(args));
     Continuation *cont = FUNCTION(f)->cont;
     cont->retval = car(args);
     int64_t d = sp - cont->sp;
@@ -868,27 +841,50 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
+static void expect_applicative(Value v)
+{
+    Type t = value_type_of(v);
+    switch (t) {
+    case TYPE_SPECIAL:
+    case TYPE_CFUNC:
+    case TYPE_CLOSURE:
+    case TYPE_CONTINUATION:
+        return;
+    default:
+        runtime_error("type error in (eval): expected applicative but got %s",
+                      value_type_to_string(t));
+    }
+}
+
+static Value map_eval(Value *env, Value l)
+{
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append_at(last, ieval(env, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
+    }
+    return mapped;
+}
+
 static Value apply(Value *env, Value func, Value args)
 {
-    if (is_immediate(func))
-        goto unapplicative;
+    expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
-    if (tag == TAG_SPECIAL)
-        return apply_cfunc(env, func, cons((Value) env, args));
-    Value vargs = map2(ieval, env, args);
+    Value eargs = (tag == TAG_SPECIAL) ?
+        cons((Value) env, args) : map_eval(env, args);
+    expect_arity(FUNCTION(func)->arity, length(eargs));
     switch (tag) {
+    case TAG_SPECIAL:
     case TAG_CFUNC:
-        return apply_cfunc(env, func, vargs);
+        return apply_cfunc(env, func, eargs);
     case TAG_CLOSURE:
-        return apply_closure(env, func, vargs);
+        return apply_closure(env, func, eargs);
     case TAG_CONTINUATION:
-        apply_continuation(func, vargs); // no return!
+        apply_continuation(func, eargs); // no return!
     default:
-        break;
+        UNREACHABLE();
     }
- unapplicative:
-    runtime_error("type error in (eval): expected applicative but got %s",
-                  value_type_to_string(value_type_of(func)));
 }
 
 static Value alist_find(Value l, Value key)
@@ -901,24 +897,24 @@ static Value alist_find(Value l, Value key)
     return Qnil;
 }
 
-static void expect_valid_arity(int64_t expected_max, int64_t actual)
+static void expect_cfunc_arity(int64_t actual)
 {
-    if (actual <= expected_max)
+    if (actual <= CFUNCARG_MAX)
         return;
     error("arity too large: expected ..%"PRId64" but got %"PRId64,
-          expected_max, actual);
+          CFUNCARG_MAX, actual);
 }
 
 static Value define_special(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
-    expect_valid_arity(FUNCARG_MAX - 1, arity);
+    expect_cfunc_arity(arity + 1);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
 
 static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t arity)
 {
-    expect_valid_arity(FUNCARG_MAX, arity);
+    expect_cfunc_arity(arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
     return Qnil;
 }
