@@ -1440,6 +1440,30 @@ static Value builtin_eq(Value x, Value y)
     return x == y ? Qtrue : Qfalse;
 }
 
+static Value builtin_equal(Value x, Value y)
+{
+    if (x == y)
+        return Qtrue;
+    Type tx = value_type_of(x), ty = value_type_of(y);
+    if (tx != ty)
+        return Qfalse;
+    bool b;
+    switch (tx) {
+    case TYPE_PAIR:
+        if (x == Qnil || y == Qnil)
+            return Qfalse;
+        b = (builtin_equal(car(x), car(y)) == Qtrue &&
+             builtin_equal(cdr(x), cdr(y)) == Qtrue);
+        break;
+    case TYPE_STR:
+        b = (strcmp(STRING(x)->body, STRING(y)->body) == 0);
+        break;
+    default:
+        return Qfalse;
+    }
+    return b ? Qtrue : Qfalse;
+}
+
 static Value builtin_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
@@ -1487,6 +1511,7 @@ static void initialize(void)
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);
     define_function(e, "eq?", builtin_eq, 2);
+    define_function(e, "equal?", builtin_equal, 2);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }

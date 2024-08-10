@@ -468,7 +468,29 @@ Test(lisp, eq) {
     assert_vfalse_evaled("(eq? 1 -1)");
     assert_vtrue_evaled("(eq? () ())");
     assert_vfalse_evaled("(eq? () (list 1))");
-    assert_vfalse_evaled("(eq? (list 1) (list 1))");
     assert_vtrue_evaled("(let ((x (list 1))) (eq? x x))");
     assert_vtrue_evaled("(let ((p (lambda (x) x))) (eq? p p))");
+
+    assert_vfalse_evaled("(eq? (list 1) (list 1))");
+    assert_vfalse_evaled("(eq? (list 1 (list 2)) (list 1 (list 2)))");
+}
+
+Test(lisp, equal) {
+    assert_vtrue_evaled("(equal? #t #t)");
+    assert_vtrue_evaled("(equal? #f #f)");
+    assert_vfalse_evaled("(equal? #t #f)");
+    assert_vtrue_evaled("(equal? 1 1)");
+    assert_vfalse_evaled("(equal? 1 -1)");
+    assert_vtrue_evaled("(equal? () ())");
+    assert_vfalse_evaled("(equal? () (list 1))");
+    assert_vtrue_evaled("(let ((x (list 1))) (equal? x x))");
+    assert_vtrue_evaled("(let ((p (lambda (x) x))) (equal? p p))");
+
+    assert_vtrue_evaled("(equal? (list 1) (list 1))");
+    assert_vtrue_evaled("(equal? (list 1 (list 2)) (list 1 (list 2)))");
+
+    assert_vtrue_evaled("(equal? \"abc\" \"abc\")");
+    assert_vtrue_evaled("(equal? \"\" \"\")");
+    assert_vfalse_evaled("(equal? \"abc\" \"abd\")");
+    assert_vfalse_evaled("(equal? \"abc\" \"\")");
 }
