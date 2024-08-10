@@ -1273,13 +1273,13 @@ static Value define_func_internal(Value *env, Value heads, Value body)
 
 static Value builtin_define(Value *env, Value args)
 {
-    int64_t l = length(args);
-    expect_arity_range("define", 1, -1, l);
+    if (args == Qnil)
+        runtime_error("define: wrong number of arguments: expected 1+");
     Value head = car(args);
     Type t = value_type_of(head);
     switch (t) {
     case TYPE_SYMBOL:
-        expect_arity(2, l);
+        expect_arity(2, length(args));
         return define_variable(env, head, cadr(args));
     case TYPE_PAIR:
         return define_func_internal(env, head, cdr(args));
