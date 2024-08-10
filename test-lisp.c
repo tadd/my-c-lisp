@@ -8,7 +8,7 @@
 
 #define assert_stringify(exp, v) do { \
         char *s = stringify(v); \
-        cr_assert_str_eq(s, exp);   \
+        cr_expect_str_eq(s, exp);   \
         free(s); \
     } while (0)
 
@@ -25,30 +25,30 @@
     } while (0)
 #define assert_list_eq(expected, actual) do { \
         Value exp = expected, act = actual; \
-        cr_assert(value_is_pair(act)); \
+        cr_expect(value_is_pair(act)); \
         assert_int_eq(length(exp), length(act)); \
         for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
             assert_v_eq(car(exp), car(act)); \
     } while (0)
 #define assert_pair_eq(expcar, expcdr, act) do { \
         Value a = act; \
-        cr_assert(value_is_pair(a)); \
+        cr_expect(value_is_pair(a)); \
         assert_v_eq(V(expcar), car(a)); \
         assert_v_eq(V(expcdr), cdr(a)); \
     } while (0)
 
-#define assert_int_eq(exp, act) cr_assert(eq(int, exp, act))
-#define assert_str_eq(exp, act) cr_assert_str_eq(act, exp)
+#define assert_int_eq(exp, act) cr_expect(eq(int, exp, act))
+#define assert_str_eq(exp, act) cr_expect_str_eq(act, exp)
 #define assert_runtime_error(pattern, v) do { \
         assert_int_eq(Qundef, v); \
         char *m = strstr(error_message(), pattern); \
-        cr_assert_not_null(m, \
+        cr_expect_not_null(m, \
                            "expected \"%s\" includes \"%s\" but not", \
                            error_message(), pattern); \
     } while (0)
 
 #define assert_no_error(v) \
-    cr_assert_neq(v, Qundef, "got error with a message: '%s'", error_message())
+    cr_expect_neq(v, Qundef, "got error with a message: '%s'", error_message())
 #define assert_type(exp, act) assert_str_eq(exp, value_type_to_string(value_type_of(act)))
 #define assert_vx_eq(x, y, z, exp, act) do { \
         Value a = act; \
@@ -84,7 +84,7 @@
 TestSuite(lisp, .init = reset_environment);
 
 Test(lisp, nil) {
-    cr_assert(value_is_nil(Qnil));
+    cr_expect(value_is_nil(Qnil));
 }
 
 Test(lisp, printing) {
@@ -110,7 +110,7 @@ Test(lisp, parse_int) {
 }
 
 Test(lisp, parse_nil) {
-    cr_assert(value_is_nil(parse_expr_string("()")));
+    cr_expect(value_is_nil(parse_expr_string("()")));
 }
 
 Test(lisp, parse_list) {
@@ -143,7 +143,7 @@ Test(lisp, parse_dot) {
 Test(lisp, parse_peculiar) {
     assert_vint_eq_parsed(42, "+42");
 
-    cr_assert(value_is_symbol(parse_expr_string("+")));
+    cr_expect(value_is_symbol(parse_expr_string("+")));
 }
 
 Test(lisp, parse_lambda) {
@@ -244,7 +244,7 @@ Test(lisp, list) {
     assert_list_eq_evaled(list(V(42), Qundef), "(list 42)");
 
     Value v = list(V(42), V("foo"), Qundef);
-    cr_assert(value_is_pair(v));
+    cr_expect(value_is_pair(v));
     assert_int_eq(2, length(v));
     assert_vint_eq(42, car(v));
     assert_vstr_eq("foo", cadr(v));
@@ -341,7 +341,7 @@ Test(lisp, apply_variadic) {
 }
 
 Test(lisp, lambda) {
-    cr_assert(value_is_closure(eval_string("(lambda () 1)")));
+    cr_expect(value_is_closure(eval_string("(lambda () 1)")));
 
     assert_vint_eq_evaled(42, "((lambda () 42))");
     assert_vint_eq_evaled(42, "((lambda (x) (* 2 x)) 21)");
@@ -397,7 +397,7 @@ Test(lisp, lambda_rec) {
 }
 
 Test(lisp, lambda_variadic) {
-    cr_assert(value_is_closure(eval_string("(lambda x 1)")));
+    cr_expect(value_is_closure(eval_string("(lambda x 1)")));
 
     assert_vint_eq_evaled(42, "((lambda x 42))");
     assert_vint_eq_evaled(42, "((lambda x (* 2 (car x))) 21)");
@@ -420,8 +420,8 @@ Test(lisp, cond) {
 
 Test(lisp, cputime) {
     Value v = eval_string("(_cputime)");
-    cr_assert(value_is_int(v));
-    cr_assert(gt(int, value_to_int(v), 0));
+    cr_expect(value_is_int(v));
+    cr_expect(gt(int, value_to_int(v), 0));
 }
 
 Test(lisp, comment) {
