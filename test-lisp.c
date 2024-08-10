@@ -459,3 +459,16 @@ Test(lisp, callcc) {
 "                 (call/cc (lambda (baz) baz)))))"
 "       (in yo)))))");
 }
+
+Test(lisp, eq) {
+    assert_vtrue_evaled("(eq? #t #t)");
+    assert_vtrue_evaled("(eq? #f #f)");
+    assert_vfalse_evaled("(eq? #t #f)");
+    assert_vtrue_evaled("(eq? 1 1)");
+    assert_vfalse_evaled("(eq? 1 -1)");
+    assert_vtrue_evaled("(eq? () ())");
+    assert_vfalse_evaled("(eq? () (list 1))");
+    assert_vfalse_evaled("(eq? (list 1) (list 1))");
+    assert_vtrue_evaled("(let ((x (list 1))) (eq? x x))");
+    assert_vtrue_evaled("(let ((p (lambda (x) x))) (eq? p p))");
+}

@@ -1435,6 +1435,11 @@ static Value builtin_cdr(Value pair)
     return cdr(pair);
 }
 
+static Value builtin_eq(Value x, Value y)
+{
+    return x == y ? Qtrue : Qfalse;
+}
+
 static Value builtin_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
@@ -1481,6 +1486,7 @@ static void initialize(void)
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);
+    define_function(e, "eq?", builtin_eq, 2);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
