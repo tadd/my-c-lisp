@@ -336,6 +336,10 @@ Test(lisp, applicable) {
     assert_runtime_error_evaled("expected applicative", "(() 1)");
 }
 
+Test(lisp, apply_variadic) {
+    assert_vtrue_evaled("(= 1 1 1 1 1 1 1 1 1 1)");
+}
+
 Test(lisp, lambda) {
     cr_assert(value_is_closure(eval_string("(lambda () 1)")));
 

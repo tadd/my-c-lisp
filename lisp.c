@@ -733,8 +733,11 @@ static Value apply_cfunc(Value *env, Value func, Value vargs)
     Value a[CFUNCARG_MAX];
     int64_t n = FUNCTION(func)->arity;
     CFunc f = FUNCTION(func)->cfunc;
-    for (Value arg = vargs, *p = a; arg != Qnil; arg = cdr(arg))
-        *p++ = car(arg);
+    Value arg = vargs;
+    for (int i = 0; i < n; i++) {
+        a[i] = car(arg);
+        arg = cdr(arg);
+    }
 
 #if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic push
