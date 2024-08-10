@@ -871,20 +871,17 @@ static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
-    if (tag == TAG_SPECIAL) {
-        Value eargs = cons((Value) env, args);
-        expect_arity(FUNCTION(func)->arity, length(eargs));
-        return apply_cfunc(env, func, eargs);
-    }
-    expect_arity(FUNCTION(func)->arity, length(args));
-    Value vargs = map_eval(env, args);
+    Value eargs = (tag == TAG_SPECIAL) ?
+        cons((Value) env, args) : map_eval(env, args);
+    expect_arity(FUNCTION(func)->arity, length(eargs));
     switch (tag) {
+    case TAG_SPECIAL:
     case TAG_CFUNC:
-        return apply_cfunc(env, func, vargs);
+        return apply_cfunc(env, func, eargs);
     case TAG_CLOSURE:
-        return apply_closure(env, func, vargs);
+        return apply_closure(env, func, eargs);
     case TAG_CONTINUATION:
-        apply_continuation(func, vargs); // no return!
+        apply_continuation(func, eargs); // no return!
     default:
         UNREACHABLE();
     }
