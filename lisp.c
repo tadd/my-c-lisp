@@ -179,7 +179,7 @@ inline bool value_is_nil(Value v)
     return v == Qnil;
 }
 
-inline Type value_type_of(Value v)
+Type value_type_of(Value v)
 {
     if (is_immediate(v)) {
         if (value_is_int(v))
@@ -243,21 +243,21 @@ inline Value value_of_symbol(const char *s)
     return (Value) (sym << FLAG_NBIT | FLAG_SYMBOL);
 }
 
-static inline void *tagged_new(size_t size, ValueTag t)
+static void *tagged_new(size_t size, ValueTag t)
 {
     void *p = xmalloc(size);
     VALUE_TAG(p) = t;
     return p;
 }
 
-inline Value value_of_string(const char *s)
+Value value_of_string(const char *s)
 {
     String *str = tagged_new(sizeof(String), TAG_STR);
     str->body = xstrdup(s);
     return (Value) str;
 }
 
-static inline Value value_of_cfunc(CFunc cfunc, int64_t arity)
+static Value value_of_cfunc(CFunc cfunc, int64_t arity)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
     f->cfunc = cfunc;
@@ -265,7 +265,7 @@ static inline Value value_of_cfunc(CFunc cfunc, int64_t arity)
     return (Value) f;
 }
 
-static inline Value value_of_special(CFunc cfunc, int64_t arity)
+static Value value_of_special(CFunc cfunc, int64_t arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
@@ -273,7 +273,7 @@ static inline Value value_of_special(CFunc cfunc, int64_t arity)
     return sp;
 }
 
-static inline Closure *closure_new(Value env, Value params, Value body)
+static Closure *closure_new(Value env, Value params, Value body)
 {
     Closure *c = xmalloc(sizeof(Closure));
     c->env = env;
@@ -282,7 +282,7 @@ static inline Closure *closure_new(Value env, Value params, Value body)
     return c;
 }
 
-static inline Value value_of_closure(Value env, Value params, Value body)
+static Value value_of_closure(Value env, Value params, Value body)
 {
     Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
     f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
@@ -291,7 +291,7 @@ static inline Value value_of_closure(Value env, Value params, Value body)
 }
 
 // `cons` is well-known name than "value_of_pair"
-inline Value cons(Value car, Value cdr)
+Value cons(Value car, Value cdr)
 {
     Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
     p->car = car;
@@ -333,7 +333,7 @@ static Value append_at(Value l, Value elem)
     return p;
 }
 
-inline Value list(Value v, ...)
+Value list(Value v, ...)
 {
     Value l = Qnil, last = l;
     va_list ap;
