@@ -26,7 +26,7 @@ typedef struct Pair Pair;
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
 #define ANYARGS /*empty*/
-typedef Value (*CFunc)(ANYARGS);
+typedef Value (*cfunc_t)(ANYARGS);
 
 extern const Value Qnil, Qundef, Qfalse, Qtrue;
 

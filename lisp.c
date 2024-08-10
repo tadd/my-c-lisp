@@ -67,12 +67,24 @@ typedef struct {
 } String;
 
 typedef struct {
+    ValueTag tag;
+    int64_t arity;
+} Function;
+
+typedef struct {
+    Function func;
+    cfunc_t cfunc;
+} CFunc;
+
+typedef struct {
+    Function func;
     Value env;
     Value params;
     Value body;
 } Closure;
 
 typedef struct {
+    Function func;
     volatile void *sp;
     void *shelter;
     size_t shelter_len;
@@ -80,20 +92,13 @@ typedef struct {
     Value retval;
 } Continuation;
 
-typedef struct {
-    ValueTag tag;
-    int64_t arity;
-    union {
-        CFunc cfunc;
-        Closure *closure;
-        Continuation *cont;
-    };
-} Function;
-
 #define VALUE_TAG(v) (*(ValueTag*)(v))
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
 #define FUNCTION(v) ((Function *) v)
+#define CFUNC(v) ((CFunc *) v)
+#define CLOSURE(v) ((Closure *) v)
+#define CONTINUATION(v) ((Continuation *) v)
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
@@ -257,36 +262,29 @@ Value value_of_string(const char *s)
     return (Value) str;
 }
 
-static Value value_of_cfunc(CFunc cfunc, int64_t arity)
+static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_CFUNC);
+    CFunc *f = tagged_new(sizeof(CFunc), TAG_CFUNC);
+    f->func.arity = arity;
     f->cfunc = cfunc;
-    f->arity = arity;
     return (Value) f;
 }
 
-static Value value_of_special(CFunc cfunc, int64_t arity)
+static Value value_of_special(cfunc_t cfunc, int64_t arity)
 {
     arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
-    FUNCTION(sp)->tag = TAG_SPECIAL;
+    VALUE_TAG(sp) = TAG_SPECIAL;
     return sp;
-}
-
-static Closure *closure_new(Value env, Value params, Value body)
-{
-    Closure *c = xmalloc(sizeof(Closure));
-    c->env = env;
-    c->params = params;
-    c->body = body;
-    return c;
 }
 
 static Value value_of_closure(Value env, Value params, Value body)
 {
-    Function *f = tagged_new(sizeof(Function), TAG_CLOSURE);
-    f->arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
-    f->closure = closure_new(env, params, body);
+    Closure *f = tagged_new(sizeof(Closure), TAG_CLOSURE);
+    f->func.arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
+    f->env = env;
+    f->params = params;
+    f->body = body;
     return (Value) f;
 }
 
@@ -729,13 +727,14 @@ static void expect_arity(int64_t expected, int64_t actual)
 static Value apply_cfunc(Value *env, Value func, Value args)
 {
     Value a[CFUNCARG_MAX];
-    int64_t n = FUNCTION(func)->arity;
-    CFunc f = FUNCTION(func)->cfunc;
+    CFunc *cf = CFUNC(func);
+    int64_t n = cf->func.arity;
     Value arg = args;
     for (int i = 0; i < n; i++) {
         a[i] = car(arg);
         arg = cdr(arg);
     }
+    cfunc_t f = cf->cfunc;
 
 #if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic push
@@ -807,8 +806,8 @@ static Value append(Value l1, Value l2)
 
 static Value apply_closure(Value *env, Value func, Value args)
 {
-    int64_t arity = FUNCTION(func)->arity;
-    Closure *cl = FUNCTION(func)->closure;
+    Closure *cl = CLOSURE(func);
+    int64_t arity = cl->func.arity;
     Value clenv = append(cl->env, *env), params = cl->params;
     if (arity == -1)
         clenv = alist_prepend(clenv, params, args);
@@ -832,7 +831,7 @@ ATTR_NORETURN
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
-    Continuation *cont = FUNCTION(f)->cont;
+    Continuation *cont = CONTINUATION(f);
     cont->retval = car(args);
     int64_t d = sp - cont->sp;
     if (d < 1)
@@ -906,14 +905,14 @@ static void expect_cfunc_arity(int64_t actual)
           CFUNCARG_MAX, actual);
 }
 
-static Value define_special(Value *env, const char *name, CFunc cfunc, int64_t arity)
+static Value define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity + 1);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
     return Qnil;
 }
 
-static Value define_function(Value *env, const char *name, CFunc cfunc, int64_t arity)
+static Value define_function(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
     *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
@@ -1346,16 +1345,15 @@ static Value builtin_lambda(Value *env, Value args)
 
 static Value value_of_continuation(void)
 {
-    Function *c = tagged_new(sizeof(Function), TAG_CONTINUATION);
-    c->arity = 1; // by spec
-    c->cont = xmalloc(sizeof(Continuation));
+    Continuation *c = tagged_new(sizeof(Continuation), TAG_CONTINUATION);
+    c->func.arity = 1; // by spec
     return (Value) c;
 }
 
 static bool continuation_set(Value c)
 {
     GET_SP(sp); // must be the first!
-    Continuation *cont = FUNCTION(c)->cont;
+    Continuation *cont = CONTINUATION(c);
     cont->sp = sp;
     cont->shelter_len = stack_base - sp;
     cont->shelter = xmalloc(cont->shelter_len);
@@ -1369,7 +1367,7 @@ static Value builtin_callcc(Value *env, Value f)
     expect_type("call/cc", TYPE_CLOSURE, cl);
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
-        return FUNCTION(c)->cont->retval;
+        return CONTINUATION(c)->retval;
     return apply_closure(env, cl, cons(c, Qnil));
 }
 
