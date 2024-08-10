@@ -176,6 +176,11 @@ inline bool value_is_closure(Value v)
     return value_tag_is(v, TAG_CLOSURE);
 }
 
+static inline bool is_special(Value v)
+{
+    return value_tag_is(v, TAG_SPECIAL);
+}
+
 inline bool value_is_pair(Value v)
 {
     return value_tag_is(v, TAG_PAIR);
@@ -875,7 +880,7 @@ static void expect_applicative(Value v)
 {
     Type t = value_type_of(v);
     switch (t) {
-    case TYPE_SPECIAL:
+    //case TYPE_SPECIAL: // not handled here
     case TYPE_CFUNC:
     case TYPE_CLOSURE:
     case TYPE_CONTINUATION:
@@ -913,23 +918,12 @@ static void expect_arg_types(int64_t arity, int8_t *types, Value args)
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
-    ValueTag tag = VALUE_TAG(func);
-    Value eargs;
-    if (tag == TAG_SPECIAL) {
-        int farity = FUNCTION(func)->arity - 1;
-        expect_arity(farity, args);
-        if (CFUNC(func)->typed)
-            expect_arg_types(farity, CFUNC(func)->types, args);
-        eargs = cons((Value) env, args);
-    } else {
-        expect_arity(FUNCTION(func)->arity, args);
-        eargs = map_eval(env, args);
-        if (tag == TAG_CFUNC && CFUNC(func)->typed)
-            expect_arg_types(FUNCTION(func)->arity, CFUNC(func)->types, eargs);
-    }
-    switch (tag) {
-    case TAG_SPECIAL:
+    expect_arity(FUNCTION(func)->arity, args);
+    Value eargs = map_eval(env, args);
+    switch (VALUE_TAG(func)) {
     case TAG_CFUNC:
+        if (CFUNC(func)->typed)
+            expect_arg_types(CFUNC(func)->func.arity, CFUNC(func)->types, eargs);
         return apply_cfunc(env, func, eargs);
     case TAG_CLOSURE:
         return apply_closure(env, func, eargs);
@@ -938,6 +932,15 @@ static Value apply(Value *env, Value func, Value args)
     default:
         UNREACHABLE();
     }
+}
+
+static Value apply_special(Value *env, Value func, Value args)
+{
+    int arity = FUNCTION(func)->arity - 1;
+    expect_arity(arity, args);
+    if (CFUNC(func)->typed)
+        expect_arg_types(arity, CFUNC(func)->types, args);
+    return apply_cfunc(env, func, cons((Value) env, args));
 }
 
 static Value alist_find(Value l, Value key)
@@ -1031,6 +1034,8 @@ static Value ieval(Value *env, Value v)
         return v;
     // else: function application
     Value func = ieval(env, car(v));
+    if (is_special(func))
+        return apply_special(env, func, cdr(v));
     return apply(env, func, cdr(v));
 }
 
