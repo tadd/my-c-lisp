@@ -149,29 +149,29 @@ static inline bool is_immediate(Value v)
     return v & 0b111U; // for 64 bit machine
 }
 
-static inline bool tagged_value_is(Value v, ValueTag expected)
+static inline bool value_tag_is(Value v, ValueTag expected)
 {
     return !is_immediate(v) && VALUE_TAG(v) == expected;
 }
 
 inline bool value_is_string(Value v)
 {
-    return tagged_value_is(v, TAG_STR);
+    return value_tag_is(v, TAG_STR);
 }
 
 inline bool value_is_cfunc(Value v)
 {
-    return tagged_value_is(v, TAG_CFUNC);
+    return value_tag_is(v, TAG_CFUNC);
 }
 
 inline bool value_is_closure(Value v)
 {
-    return tagged_value_is(v, TAG_CLOSURE);
+    return value_tag_is(v, TAG_CLOSURE);
 }
 
 inline bool value_is_pair(Value v)
 {
-    return tagged_value_is(v, TAG_PAIR);
+    return value_tag_is(v, TAG_PAIR);
 }
 
 inline bool value_is_atom(Value v)
@@ -248,7 +248,7 @@ inline Value value_of_symbol(const char *s)
     return (Value) (sym << FLAG_NBIT | FLAG_SYMBOL);
 }
 
-static void *tagged_new(size_t size, ValueTag t)
+static void *obj_new(size_t size, ValueTag t)
 {
     void *p = xmalloc(size);
     VALUE_TAG(p) = t;
@@ -257,14 +257,14 @@ static void *tagged_new(size_t size, ValueTag t)
 
 Value value_of_string(const char *s)
 {
-    String *str = tagged_new(sizeof(String), TAG_STR);
+    String *str = obj_new(sizeof(String), TAG_STR);
     str->body = xstrdup(s);
     return (Value) str;
 }
 
 static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
 {
-    CFunc *f = tagged_new(sizeof(CFunc), TAG_CFUNC);
+    CFunc *f = obj_new(sizeof(CFunc), TAG_CFUNC);
     f->func.arity = arity;
     f->cfunc = cfunc;
     return (Value) f;
@@ -280,7 +280,7 @@ static Value value_of_special(cfunc_t cfunc, int64_t arity)
 
 static Value value_of_closure(Value env, Value params, Value body)
 {
-    Closure *f = tagged_new(sizeof(Closure), TAG_CLOSURE);
+    Closure *f = obj_new(sizeof(Closure), TAG_CLOSURE);
     f->func.arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
     f->env = env;
     f->params = params;
@@ -291,7 +291,7 @@ static Value value_of_closure(Value env, Value params, Value body)
 // `cons` is well-known name than "value_of_pair"
 Value cons(Value car, Value cdr)
 {
-    Pair *p = tagged_new(sizeof(Pair), TAG_PAIR);
+    Pair *p = obj_new(sizeof(Pair), TAG_PAIR);
     p->car = car;
     p->cdr = cdr;
     return (Value) p;
@@ -1345,7 +1345,7 @@ static Value builtin_lambda(Value *env, Value args)
 
 static Value value_of_continuation(void)
 {
-    Continuation *c = tagged_new(sizeof(Continuation), TAG_CONTINUATION);
+    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
     c->func.arity = 1; // by spec
     return (Value) c;
 }
