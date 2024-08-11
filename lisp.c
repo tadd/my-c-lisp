@@ -902,10 +902,12 @@ static Value map_eval(Value *env, Value l)
     return mapped;
 }
 
-static void expect_arg_types(int64_t arity, int8_t *types, Value args)
+static void expect_arg_types(int64_t arity, Value cfunc, Value args)
 {
-    if (arity == 0)
+    CFunc *f = CFUNC(cfunc);
+    if (arity == 0 || !f->typed)
         return;
+    int8_t *types = f->types;
     if (arity < 0) {
         for (; args != Qnil; args = cdr(args))
             expect_type("apply", *types, car(args));
@@ -918,12 +920,12 @@ static void expect_arg_types(int64_t arity, int8_t *types, Value args)
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
-    expect_arity(FUNCTION(func)->arity, args);
+    int64_t arity = FUNCTION(func)->arity;
+    expect_arity(arity, args);
     Value eargs = map_eval(env, args);
     switch (VALUE_TAG(func)) {
     case TAG_CFUNC:
-        if (CFUNC(func)->typed)
-            expect_arg_types(CFUNC(func)->func.arity, CFUNC(func)->types, eargs);
+        expect_arg_types(arity, func, eargs);
         return apply_cfunc(env, func, eargs);
     case TAG_CLOSURE:
         return apply_closure(env, func, eargs);
@@ -938,8 +940,7 @@ static Value apply_special(Value *env, Value func, Value args)
 {
     int arity = FUNCTION(func)->arity - 1;
     expect_arity(arity, args);
-    if (CFUNC(func)->typed)
-        expect_arg_types(arity, CFUNC(func)->types, args);
+    expect_arg_types(arity, func, args);
     return apply_cfunc(env, func, cons((Value) env, args));
 }
 
