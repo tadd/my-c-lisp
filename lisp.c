@@ -907,18 +907,21 @@ static void expect_cfunc_arity(int64_t actual)
           CFUNCARG_MAX, actual);
 }
 
-static Value define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
+static void env_put(Value *env, const char *name, Value val)
 {
-    expect_cfunc_arity(arity + 1);
-    *env = alist_prepend(*env, value_of_symbol(name), value_of_special(cfunc, arity));
-    return Qnil;
+    *env = alist_prepend(*env, value_of_symbol(name), val);
 }
 
-static Value define_function(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
+static void define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
+{
+    expect_cfunc_arity(arity + 1);
+    env_put(env, name, value_of_special(cfunc, arity));
+}
+
+static void define_function(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
-    *env = alist_prepend(*env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
-    return Qnil;
+    env_put(env, name, value_of_cfunc(cfunc, arity));
 }
 
 static Value lookup(Value env, Value name)
