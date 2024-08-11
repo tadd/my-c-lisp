@@ -708,16 +708,18 @@ int64_t length(Value list)
     return l;
 }
 
-static void expect_arity_range(const char *func, int64_t min, int64_t max, int64_t actual)
+static void expect_arity_range(const char *func, int64_t min, int64_t max, Value args)
 {
+    int64_t actual = length(args);
     if (min <= actual && (max == -1 || actual <= max))
         return;
     runtime_error("%s: wrong number of arguments: expected %"PRId64"..%"PRId64" but got %"PRId64,
                   func, min, max, actual);
 }
 
-static void expect_arity(int64_t expected, int64_t actual)
+static void expect_arity(int64_t expected, Value args)
 {
+    int64_t actual = length(args);
     if (expected < 0 || expected == actual)
         return;
     runtime_error("wrong number of arguments: expected %"PRId64" but got %"PRId64,
@@ -873,7 +875,7 @@ static Value apply(Value *env, Value func, Value args)
     ValueTag tag = VALUE_TAG(func);
     Value eargs = (tag == TAG_SPECIAL) ?
         cons((Value) env, args) : map_eval(env, args);
-    expect_arity(FUNCTION(func)->arity, length(eargs));
+    expect_arity(FUNCTION(func)->arity, eargs);
     switch (tag) {
     case TAG_SPECIAL:
     case TAG_CFUNC:
@@ -1104,7 +1106,7 @@ static Value builtin_add(Value args)
 
 static Value builtin_sub(Value args)
 {
-    expect_arity_range("-", 1, -1, length(args));
+    expect_arity_range("-", 1, -1, args);
 
     Value rest = cdr(args);
     int64_t y = 0;
@@ -1128,7 +1130,7 @@ static Value builtin_mul(Value args)
 
 static Value builtin_div(Value args)
 {
-    expect_arity_range("/", 1, -1, length(args));
+    expect_arity_range("/", 1, -1, args);
 
     Value rest = cdr(args);
     int64_t y = 1;
@@ -1147,7 +1149,7 @@ static Value builtin_div(Value args)
 
 static Value builtin_numeq(Value args)
 {
-    expect_arity_range("=", 2, -1, length(args));
+    expect_arity_range("=", 2, -1, args);
 
     int64_t x = value_get_int("=", car(args));
     while ((args = cdr(args)) != Qnil) {
@@ -1160,7 +1162,7 @@ static Value builtin_numeq(Value args)
 
 static Value builtin_lt(Value args)
 {
-    expect_arity_range("<", 2, -1, length(args));
+    expect_arity_range("<", 2, -1, args);
 
     int64_t x = value_get_int("<", car(args));
     while ((args = cdr(args)) != Qnil) {
@@ -1174,7 +1176,7 @@ static Value builtin_lt(Value args)
 
 static Value builtin_gt(Value args)
 {
-    expect_arity_range(">", 2, -1, length(args));
+    expect_arity_range(">", 2, -1, args);
 
     int64_t x = value_get_int(">", car(args));
     while ((args = cdr(args)) != Qnil) {
@@ -1188,7 +1190,7 @@ static Value builtin_gt(Value args)
 
 static Value builtin_le(Value args)
 {
-    expect_arity_range("<=", 2, -1, length(args));
+    expect_arity_range("<=", 2, -1, args);
 
     int64_t x = value_get_int("<=", car(args));
     while ((args = cdr(args)) != Qnil) {
@@ -1202,7 +1204,7 @@ static Value builtin_le(Value args)
 
 static Value builtin_ge(Value args)
 {
-    expect_arity_range(">=", 2, -1, length(args));
+    expect_arity_range(">=", 2, -1, args);
 
     int64_t x = value_get_int(">=", car(args));
     while ((args = cdr(args)) != Qnil) {
@@ -1228,7 +1230,7 @@ static Value builtin_modulo(Value x, Value y)
 
 static Value builtin_if(Value *env, Value args)
 {
-    expect_arity_range("if", 2, 3, length(args));
+    expect_arity_range("if", 2, 3, args);
 
     Value cond = car(args), then = cadr(args);
     if (ieval(env, cond) != Qfalse)
@@ -1276,7 +1278,7 @@ static Value builtin_define(Value *env, Value args)
     Type t = value_type_of(head);
     switch (t) {
     case TYPE_SYMBOL:
-        expect_arity(2, length(args));
+        expect_arity(2, args);
         return define_variable(env, head, cadr(args));
     case TYPE_PAIR:
         return define_func_internal(env, head, cdr(args));
@@ -1407,7 +1409,7 @@ static Value builtin_begin(Value *env, Value body)
 
 static Value builtin_cond(Value *env, Value clauses)
 {
-    expect_arity_range("cond", 1, -1, length(clauses));
+    expect_arity_range("cond", 1, -1, clauses);
 
     for (; clauses != Qnil; clauses = cdr(clauses)) {
         Value clause = car(clauses);
