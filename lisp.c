@@ -1469,6 +1469,17 @@ static Value builtin_equal(Value x, Value y)
     return b ? Qtrue : Qfalse;
 }
 
+static Value builtin_load(Value path)
+{
+    const char *cpath = value_to_string(path);
+    FILE *f = fopen(cpath, "r");
+    if (f == NULL)
+        runtime_error("load: can't open file: %s", cpath);
+    Value retval = load(f);
+    fclose(f);
+    return retval;
+}
+
 static Value builtin_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
@@ -1517,6 +1528,7 @@ static void initialize(void)
     define_function(e, "print", builtin_print, 1);
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
+    define_function(e, "load", builtin_load, 1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
