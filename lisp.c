@@ -1446,28 +1446,29 @@ static Value builtin_eq(Value x, Value y)
     return OF_BOOL(x == y);
 }
 
-static Value builtin_equal(Value x, Value y)
+static bool equal(Value x, Value y)
 {
     if (x == y)
-        return Qtrue;
+        return true;
     Type tx = value_type_of(x), ty = value_type_of(y);
     if (tx != ty)
-        return Qfalse;
-    bool b;
+        return false;
     switch (tx) {
     case TYPE_PAIR:
         if (x == Qnil || y == Qnil)
-            return Qfalse;
-        b = (builtin_equal(car(x), car(y)) == Qtrue &&
-             builtin_equal(cdr(x), cdr(y)) == Qtrue);
-        break;
+            return false;
+        return equal(car(x), car(y)) &&
+               equal(cdr(x), cdr(y));
     case TYPE_STR:
-        b = (strcmp(STRING(x)->body, STRING(y)->body) == 0);
-        break;
+        return (strcmp(STRING(x)->body, STRING(y)->body) == 0);
     default:
-        return Qfalse;
+        return false;
     }
-    return OF_BOOL(b);
+}
+
+static Value builtin_equal(Value x, Value y)
+{
+    return OF_BOOL(equal(x, y));
 }
 
 static Value builtin_load(Value path)
