@@ -99,6 +99,7 @@ typedef struct {
 #define CFUNC(v) ((CFunc *) v)
 #define CLOSURE(v) ((Closure *) v)
 #define CONTINUATION(v) ((Continuation *) v)
+#define OF_BOOL(v) ((v) ? Qtrue : Qfalse)
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
@@ -1383,7 +1384,7 @@ static Value builtin_list(Value args)
 
 static Value builtin_null(Value list)
 {
-    return list == Qnil ? Qtrue : Qfalse;
+    return OF_BOOL(list == Qnil);
 }
 
 static Value builtin_display(Value obj)
@@ -1442,7 +1443,7 @@ static Value builtin_cdr(Value pair)
 
 static Value builtin_eq(Value x, Value y)
 {
-    return x == y ? Qtrue : Qfalse;
+    return OF_BOOL(x == y);
 }
 
 static Value builtin_equal(Value x, Value y)
@@ -1466,7 +1467,7 @@ static Value builtin_equal(Value x, Value y)
     default:
         return Qfalse;
     }
-    return b ? Qtrue : Qfalse;
+    return OF_BOOL(b);
 }
 
 static Value builtin_load(Value path)
