@@ -10,6 +10,10 @@
 #include <string.h>
 #include <time.h>
 
+#include <libgen.h>
+#include <limits.h>
+#include <unistd.h>
+
 #include "lisp.h"
 #include "utils.h"
 
@@ -127,6 +131,7 @@ static Value symbol_names = Qnil; // ("name0" "name1" ...)
 static Value SYM_ELSE = Qundef; // used in cond
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
+static const char *load_basedir = NULL;
 
 // value_is_*: type checks
 
@@ -977,13 +982,30 @@ static Value iload(FILE *in)
     return eval_top(l);
 }
 
+ATTR_MALLOC
+static char *loadable_path(const char *path)
+{
+    static char joined[PATH_MAX];
+    snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
+    return realpath(joined, NULL);
+}
+
+// Current spec: path is always relative
 Value load(const char *path)
 {
-    FILE *in = fopen(path, "r");
+    char *lpath = loadable_path(path);
+    FILE *in = fopen(lpath, "r");
     if (in == NULL)
         runtime_error("load: can't open file: %s", path);
+
+    const char *basedir_saved = load_basedir;
+    load_basedir = dirname(lpath);
+
     Value retval = iload(in);
     fclose(in);
+
+    load_basedir = basedir_saved;
+    free(lpath);
     return retval;
 }
 
@@ -1512,6 +1534,8 @@ static Value builtin_cputime(void) // in micro sec
 ATTR_CTOR
 static void initialize(void)
 {
+    static char basedir[PATH_MAX];
+    load_basedir = getcwd(basedir, sizeof(basedir));
     SYM_ELSE = value_of_symbol("else");
 
     Value *e = &toplevel_environment;
