@@ -31,19 +31,25 @@ static void opt_error(const char *fmt, ...)
 }
 
 typedef struct {
-    FILE *in;
+    const char *path;
+    const char *script;
     bool print;
     bool parse_only;
 } Option;
 
 static Option parse_opt(int argc, char *const *argv)
 {
-    Option o = { .in = NULL, .print = false, .parse_only = false };
+    Option o = {
+        .path = NULL,
+        .script = NULL,
+        .print = false,
+        .parse_only = false,
+    };
     int opt;
     while ((opt = getopt(argc, argv, "e:hPp")) != -1) {
         switch (opt) {
         case 'e':
-            o.in = fmemopen(optarg, strlen(optarg), "r");
+            o.script = optarg;
             break;
         case 'h':
             usage(stdout);
@@ -57,31 +63,25 @@ static Option parse_opt(int argc, char *const *argv)
             usage(stderr);
         }
     }
-    const char *f = argv[optind];
-    if (f == NULL && o.in == NULL)
+    o.path = argv[optind];
+    if (o.path == NULL && o.script == NULL)
         opt_error("no program provided");
-    if (f != NULL && o.in != NULL)
-        opt_error("filename %s given while option '-e' passed", f);
-    if (f != NULL) {
-        o.in = fopen(f, "r");
-        if (o.in == NULL)
-            opt_error("can't read file %s", f);
-    }
+    if (o.path != NULL && o.script != NULL)
+        opt_error("filename %s given while option '-e' passed", o.path);
     return o;
 }
 
 int main(int argc, char **argv)
 {
-    Option opt = parse_opt(argc, argv);
+    Option o = parse_opt(argc, argv);
     Value v;
-    if (opt.parse_only)
-        v = parse(opt.in);
+    if (o.parse_only)
+        v = o.script ? parse_string(o.script) : parse(o.path);
     else
-        v = load(opt.in);
-    fclose(opt.in);
+        v = o.script ? eval_string(o.script) : load(o.path);
     if (v == Qundef)
         error("%s", error_message());
-    if (opt.print) {
+    if (o.print) {
         display(v);
         printf("\n");
     }

@@ -86,8 +86,8 @@ Value cdddar(Value v);
 Value cddddr(Value v);
 
 void display(Value v);
-Value parse(FILE *in);
-Value load(FILE *in);
+Value parse(const char *path);
+Value load(const char *path);
 Value eval(Value v);
 Value eval_string(const char *s);
 

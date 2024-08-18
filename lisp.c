@@ -933,10 +933,12 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
+static Value iload(FILE *in);
+
 Value eval_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = load(f);
+    Value v = iload(f);
     fclose(f);
     return v;
 }
@@ -965,12 +967,24 @@ Value eval(Value v)
     return eval_top(list(v));
 }
 
-Value load(FILE *in)
+static Value iparse(FILE *in);
+
+static Value iload(FILE *in)
 {
-    Value l = parse(in);
+    Value l = iparse(in);
     if (l == Qundef)
         return Qundef;
     return eval_top(l);
+}
+
+Value load(const char *path)
+{
+    FILE *in = fopen(path, "r");
+    if (in == NULL)
+        runtime_error("load: can't open file: %s", path);
+    Value retval = iload(in);
+    fclose(in);
+    return retval;
 }
 
 static void fdisplay(FILE* f, Value v);
@@ -1056,7 +1070,7 @@ Value reverse(Value v)
     return l;
 }
 
-Value parse(FILE *in)
+static Value iparse(FILE *in)
 {
     if (setjmp(jmp_parse_error) != 0)
         return Qundef;
@@ -1074,6 +1088,16 @@ Value parse(FILE *in)
     return v;
 }
 
+Value parse(const char *path)
+{
+    FILE *in = fopen(path, "r");
+    if (in == NULL)
+        runtime_error("load: can't open file: %s", path);
+    Value retval = iparse(in);
+    fclose(in);
+    return retval;
+}
+
 Value parse_expr_string(const char *in)
 {
     if (setjmp(jmp_parse_error) != 0)
@@ -1089,7 +1113,7 @@ Value parse_expr_string(const char *in)
 Value parse_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = parse(f);
+    Value v = iparse(f);
     fclose(f);
     return v;
 }
@@ -1473,13 +1497,7 @@ static Value builtin_equal(Value x, Value y)
 
 static Value builtin_load(Value path)
 {
-    const char *cpath = value_to_string(path);
-    FILE *f = fopen(cpath, "r");
-    if (f == NULL)
-        runtime_error("load: can't open file: %s", cpath);
-    Value retval = load(f);
-    fclose(f);
-    return retval;
+    return load(value_to_string(path));
 }
 
 static Value builtin_cputime(void) // in micro sec
