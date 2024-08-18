@@ -438,7 +438,7 @@ Test(lisp, define_and_lambda) {
 }
 
 Test(lisp, callcc) {
-    // From Kawa's test suite under the MIT license:
+    // Based on "yin-yang" in Kawa's test suite under the MIT license:
     // https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
     expect_list_eq_evaled(list(V(5), V(4), V(3), V(2), V(1), V(0), Qundef),
 "(let ((x ())"
