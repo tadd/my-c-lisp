@@ -17,6 +17,10 @@
 #include "lisp.h"
 #include "utils.h"
 
+//
+// Errors
+//
+
 #define error(fmt, ...) \
     error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
 
@@ -37,6 +41,10 @@ const char *error_message(void)
 {
     return errmsg;
 }
+
+//
+// Types
+//
 
 static const char *TYPE_NAMES[] = {
     [TYPE_BOOL] = "boolean",
@@ -124,7 +132,9 @@ const Value Qundef = 0b0110U; // may be an error or something
 
 static const int64_t CFUNCARG_MAX = 7;
 
-// runtime-locals (aka global variables)
+//
+// Runtime-locals (aka global variables)
+//
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
@@ -133,7 +143,9 @@ static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
 
-// value_is_*: type checks
+//
+// value_is_*: Type Checks
+//
 
 static inline uintptr_t flags(Value v)
 {
@@ -219,7 +231,7 @@ inline const char *value_type_to_string(Type t)
     return TYPE_NAMES[t];
 }
 
-// value_to_*: convert internal data to external plain C
+// value_to_*: Convert internal data to external plain C
 
 inline int64_t value_to_int(Value v)
 {
@@ -241,7 +253,7 @@ inline const char *value_to_string(Value v)
     return STRING(v)->body;
 }
 
-// value_of_*: convert external plain C data to internal
+// value_of_*: Convert external plain C data to internal
 
 inline Value value_of_int(int64_t i)
 {
@@ -325,7 +337,7 @@ static void expect_type_or(const char *header, Type e1, Type e2, Value v)
                   value_type_to_string(t));
 }
 
-// for parsing
+// Lists: prepare for parsing
 
 // l: last pair
 static Value append_at(Value l, Value elem)
@@ -350,6 +362,10 @@ Value list(Value v, ...)
     va_end(ap);
     return l;
 }
+
+//
+// Parse
+//
 
 typedef enum {
     TOK_TYPE_LPAREN,
@@ -778,14 +794,7 @@ static Value apply_cfunc(Value *env, Value func, Value args)
 }
 
 static Value ieval(Value *env, Value v); // internal
-
-static Value eval_body(Value *env, Value body)
-{
-    Value last = Qnil;
-    for (Value b = body; b != Qnil; b = cdr(b))
-        last = ieval(env, car(b));
-    return last;
-}
+static Value eval_body(Value *env, Value body);
 
 inline static Value alist_prepend(Value list, Value key, Value val)
 {
@@ -938,92 +947,6 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static Value iload(FILE *in);
-
-Value eval_string(const char *in)
-{
-    FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = iload(f);
-    fclose(f);
-    return v;
-}
-
-static Value ieval(Value *env, Value v)
-{
-    if (value_is_symbol(v))
-        return lookup(*env, v);
-    if (v == Qnil || value_is_atom(v))
-        return v;
-    // else: function application
-    Value func = ieval(env, car(v));
-    return apply(env, func, cdr(v));
-}
-
-static Value eval_top(Value v)
-{
-    INIT_STACK();
-    if (setjmp(jmp_runtime_error) != 0)
-        return Qundef;
-    return eval_body(&toplevel_environment, v);
-}
-
-Value eval(Value v)
-{
-    return eval_top(list(v));
-}
-
-static Value iparse(FILE *in);
-
-static Value iload(FILE *in)
-{
-    Value l = iparse(in);
-    if (l == Qundef)
-        return Qundef;
-    return eval_top(l);
-}
-
-static Value iload_inner(FILE *in)
-{
-    Value l = iparse(in);
-    if (l == Qundef)
-        return Qundef;
-    return eval_body(&toplevel_environment, l);
-}
-
-static FILE *open_loadable(const char *path, const char **basedir)
-{
-    char joined[PATH_MAX], rpath[PATH_MAX];
-    snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
-    realpath(joined, rpath);
-
-    FILE *in = fopen(rpath, "r");
-    if (in == NULL)
-        error("load: can't open file: %s", path);
-    *basedir = dirname(rpath);
-    return in;
-}
-
-// Current spec: path is always relative
-Value load(const char *path)
-{
-    const char *basedir_saved = load_basedir;
-    FILE *in = open_loadable(path, &load_basedir);
-    Value retval = iload(in);
-    fclose(in);
-    load_basedir = basedir_saved;
-    return retval;
-}
-
-static Value load_inner(const char *path)
-{
-    const char *basedir_saved = load_basedir;
-    FILE *in = open_loadable(path, &load_basedir);
-    Value retval = iload_inner(in);
-    fclose(in);
-    load_basedir = basedir_saved;
-    return retval;
-}
-
 static void fdisplay(FILE* f, Value v);
 
 static void display_list(FILE *f, Value v)
@@ -1154,6 +1077,275 @@ Value parse_string(const char *in)
     fclose(f);
     return v;
 }
+
+//
+// Evaluation
+//
+
+static Value eval_body(Value *env, Value body)
+{
+    Value last = Qnil;
+    for (Value b = body; b != Qnil; b = cdr(b))
+        last = ieval(env, car(b));
+    return last;
+}
+
+static Value ieval(Value *env, Value v)
+{
+    if (value_is_symbol(v))
+        return lookup(*env, v);
+    if (v == Qnil || value_is_atom(v))
+        return v;
+    // else: function application
+    Value func = ieval(env, car(v));
+    return apply(env, func, cdr(v));
+}
+
+static Value eval_top(Value v)
+{
+    INIT_STACK();
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
+    return eval_body(&toplevel_environment, v);
+}
+
+Value eval(Value v)
+{
+    return eval_top(list(v));
+}
+
+static Value iload(FILE *in, ATTR_UNUSED const char *basedir)
+{
+    Value l = iparse(in);
+    if (l == Qundef)
+        return Qundef;
+    return eval_top(l);
+}
+
+static Value iload_inner(FILE *in)
+{
+    Value l = iparse(in);
+    if (l == Qundef)
+        return Qundef;
+    return eval_body(&toplevel_environment, l);
+}
+
+Value eval_string(const char *in)
+{
+    FILE *f = fmemopen((char *) in, strlen(in), "r");
+    Value v = iload(f, NULL);
+    fclose(f);
+    return v;
+}
+
+Value load(const char *path)
+{
+    FILE *in = fopen(path, "r");
+    if (in == NULL)
+        runtime_error("load: can't open file: %s", path);
+    Value retval = iload(in, NULL);
+    fclose(in);
+    return retval;
+}
+
+static FILE *open_loadable(const char *path, const char **basedir)
+{
+    char joined[PATH_MAX], rpath[PATH_MAX];
+    snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
+    realpath(joined, rpath);
+
+    FILE *in = fopen(rpath, "r");
+    if (in == NULL)
+        error("load: can't open file: %s", path);
+    *basedir = dirname(rpath);
+    return in;
+}
+
+static Value load_inner(const char *path)
+{
+    const char *basedir_saved = load_basedir;
+    FILE *in = open_loadable(path, &load_basedir);
+    Value retval = iload_inner(in);
+    fclose(in);
+    load_basedir = basedir_saved;
+    return retval;
+}
+
+//
+// Special Forms
+//
+
+static Value builtin_if(Value *env, Value args)
+{
+    expect_arity_range("if", 2, 3, args);
+
+    Value cond = car(args), then = cadr(args);
+    if (ieval(env, cond) != Qfalse)
+        return ieval(env, then);
+    Value els = cddr(args);
+    if (els == Qnil)
+        return Qnil;
+    return ieval(env, car(els));
+}
+
+static Value define_variable(Value *env, Value ident, Value expr)
+{
+    expect_type("define", TYPE_SYMBOL, ident);
+
+    Value val = ieval(env, expr), found;
+    if (env == &toplevel_environment &&
+        (found = alist_find(*env, ident)) != Qnil) {
+        PAIR(found)->cdr = val; // set!
+    } else
+        *env = alist_prepend(*env, ident, val); // prepend new
+    return Qnil;
+}
+
+static Value lambda(Value *env, Value params, Value body)
+{
+    expect_type_or("lambda", TYPE_PAIR, TYPE_SYMBOL, params);
+    expect_type("lambda", TYPE_PAIR, body);
+    if (body == Qnil)
+        runtime_error("lambda: one or more expressions needed in body");
+    return value_of_closure(*env, params, body);
+}
+
+static Value define_func_internal(Value *env, Value heads, Value body)
+{
+    Value ident = car(heads), params = cdr(heads);
+    Value val = lambda(env, params, body);
+    return define_variable(env, ident, val);
+}
+
+static Value builtin_define(Value *env, Value args)
+{
+    if (args == Qnil)
+        runtime_error("define: wrong number of arguments: expected 1+");
+    Value head = car(args);
+    Type t = value_type_of(head);
+    switch (t) {
+    case TYPE_SYMBOL:
+        expect_arity(2, args);
+        return define_variable(env, head, cadr(args));
+    case TYPE_PAIR:
+        return define_func_internal(env, head, cdr(args));
+    default:
+        runtime_error("define: expected first argument symbol or pair but got %s",
+                      value_type_to_string(t));
+    }
+}
+
+static Value builtin_set(Value *env, Value ident, Value expr)
+{
+    expect_type("set!", TYPE_SYMBOL, ident);
+
+    Value found = alist_find(*env, ident);
+    if (found == Qnil)
+        runtime_error("set!: unbound variable: %s", value_to_string(ident));
+    PAIR(found)->cdr = ieval(env, expr);
+    return Qnil;
+}
+
+static Value builtin_let(Value *env, Value args)
+{
+    Value bindings = car(args);
+    Value body = cdr(args);
+    expect_type_twin("let", TYPE_PAIR, bindings, body);
+
+    Value letenv = *env;
+    for (; bindings != Qnil; bindings = cdr(bindings)) {
+        Value b = car(bindings);
+        if (b == Qnil)
+            continue;
+        expect_type("let", TYPE_PAIR, b);
+        Value ident = car(b), expr = cadr(b);
+        expect_type("let", TYPE_SYMBOL, ident);
+        letenv = alist_prepend(letenv, ident, ieval(env, expr));
+    }
+    if (body == Qnil)
+        runtime_error("let: one or more expressions needed in body");
+    return eval_body(&letenv, body);
+}
+
+static Value builtin_letrec(Value *env, Value args)
+{
+    Value bindings = car(args);
+    Value body = cdr(args);
+    expect_type_twin("letrec", TYPE_PAIR, bindings, body);
+
+    Value letenv = *env;
+    for (Value b = bindings; b != Qnil; b = cdr(b)) {
+        Value p = car(b);
+        expect_type("letrec", TYPE_PAIR, p);
+        Value ident = car(p);
+        expect_type("letrec", TYPE_SYMBOL, ident);
+        Value val = ieval(&letenv, cadr(p));
+        letenv = alist_prepend(letenv, ident, val);
+    }
+    if (body == Qnil)
+        runtime_error("letrec: one or more expressions needed in body");
+    return eval_body(&letenv, body);
+}
+
+static Value builtin_begin(Value *env, Value body)
+{
+    return eval_body(env, body);
+}
+
+static Value builtin_cond(Value *env, Value clauses)
+{
+    expect_arity_range("cond", 1, -1, clauses);
+
+    for (; clauses != Qnil; clauses = cdr(clauses)) {
+        Value clause = car(clauses);
+        expect_type("cond", TYPE_PAIR, clause);
+        Value test = car(clause);
+        Value exprs = cdr(clause);
+        if (test == SYM_ELSE)
+            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+        Value t = ieval(env, test);
+        if (t != Qfalse)
+            return exprs == Qnil ? t : eval_body(env, exprs);
+    }
+    return Qnil;
+}
+
+static Value builtin_lambda(Value *env, Value args)
+{
+    return lambda(env, car(args), cdr(args));
+}
+
+static Value value_of_continuation(void)
+{
+    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
+    c->func.arity = 1; // by spec
+    return (Value) c;
+}
+
+static bool continuation_set(Value c)
+{
+    GET_SP(sp); // must be the first!
+    Continuation *cont = CONTINUATION(c);
+    cont->sp = sp;
+    cont->shelter_len = stack_base - sp;
+    cont->shelter = xmalloc(cont->shelter_len);
+    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
+    return setjmp(cont->state);
+}
+
+static Value builtin_callcc(Value *env, Value f)
+{
+    Value cl = ieval(env, f);
+    expect_type("call/cc", TYPE_CLOSURE, cl);
+    Value c = value_of_continuation();
+    if (continuation_set(c) != 0)
+        return CONTINUATION(c)->retval;
+    return apply_closure(env, cl, cons(c, Qnil));
+}
+
+//
+// Built-in Functions: Arithmetic
+//
 
 static int64_t value_get_int(const char *header, Value v)
 {
@@ -1293,150 +1485,9 @@ static Value builtin_modulo(Value x, Value y)
     return value_of_int(c);
 }
 
-static Value builtin_if(Value *env, Value args)
-{
-    expect_arity_range("if", 2, 3, args);
-
-    Value cond = car(args), then = cadr(args);
-    if (ieval(env, cond) != Qfalse)
-        return ieval(env, then);
-    Value els = cddr(args);
-    if (els == Qnil)
-        return Qnil;
-    return ieval(env, car(els));
-}
-
-static Value define_variable(Value *env, Value ident, Value expr)
-{
-    expect_type("define", TYPE_SYMBOL, ident);
-
-    Value val = ieval(env, expr), found;
-    if (env == &toplevel_environment &&
-        (found = alist_find(*env, ident)) != Qnil) {
-        PAIR(found)->cdr = val; // set!
-    } else
-        *env = alist_prepend(*env, ident, val); // prepend new
-    return Qnil;
-}
-
-static Value lambda(Value *env, Value params, Value body)
-{
-    expect_type_or("lambda", TYPE_PAIR, TYPE_SYMBOL, params);
-    expect_type("lambda", TYPE_PAIR, body);
-    if (body == Qnil)
-        runtime_error("lambda: one or more expressions needed in body");
-    return value_of_closure(*env, params, body);
-}
-
-static Value define_func_internal(Value *env, Value heads, Value body)
-{
-    Value ident = car(heads), params = cdr(heads);
-    Value val = lambda(env, params, body);
-    return define_variable(env, ident, val);
-}
-
-static Value builtin_define(Value *env, Value args)
-{
-    if (args == Qnil)
-        runtime_error("define: wrong number of arguments: expected 1+");
-    Value head = car(args);
-    Type t = value_type_of(head);
-    switch (t) {
-    case TYPE_SYMBOL:
-        expect_arity(2, args);
-        return define_variable(env, head, cadr(args));
-    case TYPE_PAIR:
-        return define_func_internal(env, head, cdr(args));
-    default:
-        runtime_error("define: expected first argument symbol or pair but got %s",
-                      value_type_to_string(t));
-    }
-}
-
-static Value builtin_set(Value *env, Value ident, Value expr)
-{
-    expect_type("set!", TYPE_SYMBOL, ident);
-
-    Value found = alist_find(*env, ident);
-    if (found == Qnil)
-        runtime_error("set!: unbound variable: %s", value_to_string(ident));
-    PAIR(found)->cdr = ieval(env, expr);
-    return Qnil;
-}
-
-static Value builtin_let(Value *env, Value args)
-{
-    Value bindings = car(args);
-    Value body = cdr(args);
-    expect_type_twin("let", TYPE_PAIR, bindings, body);
-
-    Value letenv = *env;
-    for (; bindings != Qnil; bindings = cdr(bindings)) {
-        Value b = car(bindings);
-        if (b == Qnil)
-            continue;
-        expect_type("let", TYPE_PAIR, b);
-        Value ident = car(b), expr = cadr(b);
-        expect_type("let", TYPE_SYMBOL, ident);
-        letenv = alist_prepend(letenv, ident, ieval(env, expr));
-    }
-    if (body == Qnil)
-        runtime_error("let: one or more expressions needed in body");
-    return eval_body(&letenv, body);
-}
-
-static Value builtin_letrec(Value *env, Value args)
-{
-    Value bindings = car(args);
-    Value body = cdr(args);
-    expect_type_twin("letrec", TYPE_PAIR, bindings, body);
-
-    Value letenv = *env;
-    for (Value b = bindings; b != Qnil; b = cdr(b)) {
-        Value p = car(b);
-        expect_type("letrec", TYPE_PAIR, p);
-        Value ident = car(p);
-        expect_type("letrec", TYPE_SYMBOL, ident);
-        Value val = ieval(&letenv, cadr(p));
-        letenv = alist_prepend(letenv, ident, val);
-    }
-    if (body == Qnil)
-        runtime_error("letrec: one or more expressions needed in body");
-    return eval_body(&letenv, body);
-}
-
-static Value builtin_lambda(Value *env, Value args)
-{
-    return lambda(env, car(args), cdr(args));
-}
-
-static Value value_of_continuation(void)
-{
-    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
-    c->func.arity = 1; // by spec
-    return (Value) c;
-}
-
-static bool continuation_set(Value c)
-{
-    GET_SP(sp); // must be the first!
-    Continuation *cont = CONTINUATION(c);
-    cont->sp = sp;
-    cont->shelter_len = stack_base - sp;
-    cont->shelter = xmalloc(cont->shelter_len);
-    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
-    return setjmp(cont->state);
-}
-
-static Value builtin_callcc(Value *env, Value f)
-{
-    Value cl = ieval(env, f);
-    expect_type("call/cc", TYPE_CLOSURE, cl);
-    Value c = value_of_continuation();
-    if (continuation_set(c) != 0)
-        return CONTINUATION(c)->retval;
-    return apply_closure(env, cl, cons(c, Qnil));
-}
+//
+// Built-in Functions: Lists and others
+//
 
 static Value builtin_list(Value args)
 {
@@ -1465,29 +1516,6 @@ static Value builtin_print(Value obj)
     display(obj);
     puts("");
     return obj;
-}
-
-static Value builtin_begin(Value *env, Value body)
-{
-    return eval_body(env, body);
-}
-
-static Value builtin_cond(Value *env, Value clauses)
-{
-    expect_arity_range("cond", 1, -1, clauses);
-
-    for (; clauses != Qnil; clauses = cdr(clauses)) {
-        Value clause = car(clauses);
-        expect_type("cond", TYPE_PAIR, clause);
-        Value test = car(clause);
-        Value exprs = cdr(clause);
-        if (test == SYM_ELSE)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
-        Value t = ieval(env, test);
-        if (t != Qfalse)
-            return exprs == Qnil ? t : eval_body(env, exprs);
-    }
-    return Qnil;
 }
 
 static Value builtin_car(Value pair)
@@ -1537,6 +1565,10 @@ static Value builtin_load(Value path)
     return load_inner(value_to_string(path));
 }
 
+//
+// Built-in Functions: Extensions
+//
+
 static Value builtin_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
@@ -1559,10 +1591,10 @@ static void initialize(void)
     define_special(e, "set!", builtin_set, 2);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
-    define_special(e, "lambda", builtin_lambda, -1);
+    define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
-    define_special(e, "letrec", builtin_letrec, -1);
+    define_special(e, "lambda", builtin_lambda, -1);
     define_special(e, "call/cc", builtin_callcc, 1);
 
     define_function(e, "+", builtin_add, -1);
