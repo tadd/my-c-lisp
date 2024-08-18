@@ -1485,6 +1485,11 @@ static Value builtin_modulo(Value x, Value y)
     return value_of_int(c);
 }
 
+static Value builtin_not(Value x)
+{
+    return OF_BOOL(x == Qfalse);
+}
+
 //
 // Built-in Functions: Lists and others
 //
@@ -1607,6 +1612,7 @@ static void initialize(void)
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
     define_function(e, "modulo", builtin_modulo, 2);
+    define_function(e, "not", builtin_not, 1);
 
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
