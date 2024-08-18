@@ -982,30 +982,45 @@ static Value iload(FILE *in)
     return eval_top(l);
 }
 
-ATTR_MALLOC
-static char *loadable_path(const char *path)
+static Value iload_inner(FILE *in)
 {
-    static char joined[PATH_MAX];
+    Value l = iparse(in);
+    if (l == Qundef)
+        return Qundef;
+    return eval_body(&toplevel_environment, l);
+}
+
+static FILE *open_loadable(const char *path, const char **basedir)
+{
+    char joined[PATH_MAX], rpath[PATH_MAX];
     snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
-    return realpath(joined, NULL);
+    realpath(joined, rpath);
+
+    FILE *in = fopen(rpath, "r");
+    if (in == NULL)
+        error("load: can't open file: %s", path);
+    *basedir = dirname(rpath);
+    return in;
 }
 
 // Current spec: path is always relative
 Value load(const char *path)
 {
-    char *lpath = loadable_path(path);
-    FILE *in = fopen(lpath, "r");
-    if (in == NULL)
-        error("load: can't open file: %s", path);
-
     const char *basedir_saved = load_basedir;
-    load_basedir = dirname(lpath);
-
+    FILE *in = open_loadable(path, &load_basedir);
     Value retval = iload(in);
     fclose(in);
-
     load_basedir = basedir_saved;
-    free(lpath);
+    return retval;
+}
+
+static Value load_inner(const char *path)
+{
+    const char *basedir_saved = load_basedir;
+    FILE *in = open_loadable(path, &load_basedir);
+    Value retval = iload_inner(in);
+    fclose(in);
+    load_basedir = basedir_saved;
     return retval;
 }
 
@@ -1519,7 +1534,7 @@ static Value builtin_equal(Value x, Value y)
 
 static Value builtin_load(Value path)
 {
-    return load(value_to_string(path));
+    return load_inner(value_to_string(path));
 }
 
 static Value builtin_cputime(void) // in micro sec
