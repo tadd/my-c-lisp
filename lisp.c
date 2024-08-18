@@ -996,7 +996,7 @@ Value load(const char *path)
     char *lpath = loadable_path(path);
     FILE *in = fopen(lpath, "r");
     if (in == NULL)
-        runtime_error("load: can't open file: %s", path);
+        error("load: can't open file: %s", path);
 
     const char *basedir_saved = load_basedir;
     load_basedir = dirname(lpath);
@@ -1114,7 +1114,7 @@ Value parse(const char *path)
 {
     FILE *in = fopen(path, "r");
     if (in == NULL)
-        runtime_error("load: can't open file: %s", path);
+        error("load: can't open file: %s", path);
     Value retval = iparse(in);
     fclose(in);
     return retval;
