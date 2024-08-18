@@ -1114,7 +1114,7 @@ Value eval(Value v)
     return eval_top(list(v));
 }
 
-static Value iload(FILE *in, ATTR_UNUSED const char *basedir)
+static Value iload(FILE *in)
 {
     Value l = iparse(in);
     if (l == Qundef)
@@ -1133,19 +1133,9 @@ static Value iload_inner(FILE *in)
 Value eval_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = iload(f, NULL);
+    Value v = iload(f);
     fclose(f);
     return v;
-}
-
-Value load(const char *path)
-{
-    FILE *in = fopen(path, "r");
-    if (in == NULL)
-        runtime_error("load: can't open file: %s", path);
-    Value retval = iload(in, NULL);
-    fclose(in);
-    return retval;
 }
 
 static FILE *open_loadable(const char *path, const char **basedir)
@@ -1159,6 +1149,17 @@ static FILE *open_loadable(const char *path, const char **basedir)
         error("load: can't open file: %s", path);
     *basedir = dirname(rpath);
     return in;
+}
+
+// Current spec: path is always relative
+Value load(const char *path)
+{
+    const char *basedir_saved = load_basedir;
+    FILE *in = open_loadable(path, &load_basedir);
+    Value retval = iload(in);
+    fclose(in);
+    load_basedir = basedir_saved;
+    return retval;
 }
 
 static Value load_inner(const char *path)
