@@ -1138,7 +1138,7 @@ Value eval_string(const char *in)
     return v;
 }
 
-static FILE *open_loadable(const char *path, const char **basedir)
+static FILE *open_loadable(const char *path)
 {
     char joined[PATH_MAX], rpath[PATH_MAX];
     snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
@@ -1147,7 +1147,7 @@ static FILE *open_loadable(const char *path, const char **basedir)
     FILE *in = fopen(rpath, "r");
     if (in == NULL)
         error("load: can't open file: %s", path);
-    *basedir = dirname(rpath);
+    load_basedir = dirname(rpath);
     return in;
 }
 
@@ -1155,7 +1155,7 @@ static FILE *open_loadable(const char *path, const char **basedir)
 Value load(const char *path)
 {
     const char *basedir_saved = load_basedir;
-    FILE *in = open_loadable(path, &load_basedir);
+    FILE *in = open_loadable(path);
     Value retval = iload(in);
     fclose(in);
     load_basedir = basedir_saved;
@@ -1165,7 +1165,7 @@ Value load(const char *path)
 static Value load_inner(const char *path)
 {
     const char *basedir_saved = load_basedir;
-    FILE *in = open_loadable(path, &load_basedir);
+    FILE *in = open_loadable(path);
     Value retval = iload_inner(in);
     fclose(in);
     load_basedir = basedir_saved;
