@@ -4,11 +4,9 @@ LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 
-SRC_COMMON=lisp.c utils.c
-SRC=$(SRC_COMMON) main.c
-SRC_TEST=$(SRC_COMMON) basic-test.c
-OBJ=$(SRC:.c=.o)
-OBJ_TEST=$(SRC_TEST:.c=.o)
+OBJ_COMMON=lisp.o utils.o
+OBJ=$(OBJ_COMMON) main.o
+OBJ_TEST=$(OBJ_COMMON) basic-test.o
 
 all: lisp test
 
