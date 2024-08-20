@@ -798,7 +798,7 @@ inline static Value alist_prepend(Value list, Value key, Value val)
     return cons(cons(key, val), list);
 }
 
-static Value append(Value l1, Value l2)
+static Value append2(Value l1, Value l2)
 {
     if (l2 == Qnil)
         return l1;
@@ -822,7 +822,7 @@ static Value apply_closure(Value *env, Value func, Value args)
 {
     Closure *cl = CLOSURE(func);
     int64_t arity = cl->func.arity;
-    Value clenv = append(cl->env, *env), params = cl->params;
+    Value clenv = append2(cl->env, *env), params = cl->params;
     if (arity == -1)
         clenv = alist_prepend(clenv, params, args);
     else {
@@ -1526,16 +1526,12 @@ static Value dup_list(Value l, Value *plast)
 static Value builtin_append(UNUSED Value *env, Value args)
 {
     Value l = Qnil, last = Qnil;
-    Value a, next, prev_last = Qnil;
+    Value a, next;
     for (a = args; a != Qnil; a = next) {
         if ((next = cdr(a)) == Qnil)
             break;
         Value dup = dup_list(car(a), &last);
-        if (l == Qnil)
-            l = dup;
-        else
-            PAIR(prev_last)->cdr = dup;
-        prev_last = last;
+        l = append2(l, dup);
     }
     if (a != Qnil) {
         if (l == Qnil)
