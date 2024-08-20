@@ -94,6 +94,12 @@
   (expect eq? (car '(1 . 2)) 1)
   (expect eq? (cdr '(1 . 2)) 2)))
 
+(describe "cxxr" (lambda ()
+  (define l '(1 2 3 4))
+  (expect equal? (cadr l) 2)
+  (expect equal? (caddr l) 3)
+  (expect equal? (cadddr l) 4)))
+
 (describe "define variable" (lambda ()
   (expect eq? 42 (begin
                    (define x 42)

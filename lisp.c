@@ -610,14 +610,17 @@ static void unget_token(Parser *p, Token t)
     p->prev_token = t;
 }
 
-#define DEF_CXR(x, y) Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
-#define DEF_CXR1(x) DEF_CXR(a, x) DEF_CXR(d, x)
-#define DEF_CXR2(x) DEF_CXR1(a ## x) DEF_CXR1(d ## x)
-#define DEF_CXR3(x) DEF_CXR2(a ## x) DEF_CXR2(d ## x)
-#define DEF_CXR4(x) DEF_CXR3(a ## x) DEF_CXR3(d ## x)
-#define DEF_CXRS() DEF_CXR2() DEF_CXR3() DEF_CXR4()
+#define CXR1(f, x) f(a, x); f(d, x);
+#define CXR2(f, x) CXR1(f, a ## x) CXR1(f, d ## x)
+#define CXR3(f, x) CXR2(f, a ## x) CXR2(f, d ## x)
+#define CXR4(f, x) CXR3(f, a) CXR3(f, d)
+#define CXRS(f) CXR2(f,) CXR3(f,) CXR4(f,)
 
-DEF_CXRS()
+#define DEF_CXR(x, y) \
+    static Value c##x##y##r(Value v) { \
+        return c##x##r(c##y##r(v)); \
+    }
+CXRS(DEF_CXR)
 
 static const char *token_stringify(Token t)
 {
@@ -1857,6 +1860,13 @@ static Value builtin_cputime(void) // in micro sec
     return value_of_int(n);
 }
 
+#define DEF_CXR_BUILTIN(x, y) \
+    static Value builtin_c##x##y##r(UNUSED Value *env, Value v) { \
+        expect_type("c" #x #y "r", TYPE_PAIR, v); \
+        return c##x##y##r(v); \
+    }
+CXRS(DEF_CXR_BUILTIN)
+
 ATTR(constructor)
 static void initialize(void)
 {
@@ -1950,6 +1960,8 @@ static void initialize(void)
     define_function(e, "cons", builtin_cons, 2);
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
+#define DEFUN_CXR(x, y) define_function(e, "c" #x #y "r", builtin_c##x##y##r, 1)
+    CXRS(DEFUN_CXR);
     //-set-car!
     //-set-cdr!
     define_function(e, "null?", builtin_null, 1);
