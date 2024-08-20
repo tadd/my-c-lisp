@@ -855,7 +855,7 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
-static void expect_applicative(Value v)
+static Type expect_applicative(Value v)
 {
     Type t = value_type_of(v);
     switch (t) {
@@ -863,7 +863,7 @@ static void expect_applicative(Value v)
     case TYPE_CFUNC:
     case TYPE_CLOSURE:
     case TYPE_CONTINUATION:
-        return;
+        return t;
     default:
         runtime_error("type error in (eval): expected applicative but got %s",
                       value_type_to_string(t));
@@ -872,8 +872,7 @@ static void expect_applicative(Value v)
 
 static Value apply(Value *env, Value func, Value args)
 {
-    expect_applicative(func);
-    ValueTag tag = VALUE_TAG(func);
+    ValueTag tag = (ValueTag) expect_applicative(func);
     expect_arity(FUNCTION(func)->arity, args);
     switch (tag) {
     case TAG_SPECIAL:
