@@ -791,11 +791,6 @@ static Value apply_cfunc(Value *env, Value func, Value args)
 static Value ieval(Value *env, Value v); // internal
 static Value eval_body(Value *env, Value body);
 
-inline static Value alist_prepend(Value list, Value key, Value val)
-{
-    return cons(cons(key, val), list);
-}
-
 static Value append2(Value l1, Value l2)
 {
     if (l2 == Qnil)
@@ -816,16 +811,21 @@ static Value append2(Value l1, Value l2)
     return ret;
 }
 
+inline static void env_put(Value *env, Value name, Value val)
+{
+    *env = cons(cons(name, val), *env);
+}
+
 static Value apply_closure(Value *env, Value func, Value args)
 {
     Closure *cl = CLOSURE(func);
     int64_t arity = cl->func.arity;
     Value clenv = append2(cl->env, *env), params = cl->params;
     if (arity == -1)
-        clenv = alist_prepend(clenv, params, args);
+        env_put(&clenv, params, args);
     else {
         for (; args != Qnil; args = cdr(args), params = cdr(params))
-            clenv = alist_prepend(clenv, car(params), car(args));
+            env_put(&clenv, car(params), car(args));
     }
     return eval_body(&clenv, cl->body);
 }
@@ -903,21 +903,16 @@ static void expect_cfunc_arity(int64_t actual)
           CFUNCARG_MAX, actual);
 }
 
-static void env_put(Value *env, const char *name, Value val)
-{
-    *env = alist_prepend(*env, value_of_symbol(name), val);
-}
-
 static void define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
-    env_put(env, name, value_of_special(cfunc, arity));
+    env_put(env, value_of_symbol(name), value_of_special(cfunc, arity));
 }
 
 static void define_function(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
-    env_put(env, name, value_of_cfunc(cfunc, arity));
+    env_put(env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
 }
 
 static Value lookup(Value env, Value name)
@@ -1197,7 +1192,7 @@ static Value define_variable(Value *env, Value ident, Value expr)
         (found = alist_find(*env, ident)) != Qnil) {
         PAIR(found)->cdr = val; // set!
     } else
-        *env = alist_prepend(*env, ident, val); // prepend new
+        env_put(env, ident, val); // prepend new
     return Qnil;
 }
 
@@ -1260,7 +1255,7 @@ static Value builtin_let(Value *env, Value args)
         expect_type("let", TYPE_PAIR, b);
         Value ident = car(b), expr = cadr(b);
         expect_type("let", TYPE_SYMBOL, ident);
-        letenv = alist_prepend(letenv, ident, ieval(env, expr));
+        env_put(&letenv, ident, ieval(env, expr));
     }
     if (body == Qnil)
         runtime_error("let: one or more expressions needed in body");
@@ -1280,7 +1275,7 @@ static Value builtin_letrec(Value *env, Value args)
         Value ident = car(p);
         expect_type("letrec", TYPE_SYMBOL, ident);
         Value val = ieval(&letenv, cadr(p));
-        letenv = alist_prepend(letenv, ident, val);
+        env_put(&letenv, ident, val);
     }
     if (body == Qnil)
         runtime_error("letrec: one or more expressions needed in body");
