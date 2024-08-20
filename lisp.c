@@ -1514,6 +1514,7 @@ static Value dup_list(Value l, Value *plast)
 {
     Value dup = Qnil, last = Qnil;
     for (Value p = l; p != Qnil; p = cdr(p)) {
+        expect_type("append", TYPE_PAIR, p);
         last = append_at(last, car(p));
         if (dup == Qnil)
             dup = last;
@@ -1527,7 +1528,6 @@ static Value builtin_append(UNUSED Value *env, Value args)
     Value l = Qnil, last = Qnil, prev_last, a, next;
     for (a = args; a != Qnil && (next = cdr(a)) != Qnil; a = next, prev_last = last) {
         Value e = car(a);
-        expect_type("append", TYPE_PAIR, e);
         Value dup = dup_list(e, &last);
         if (l == Qnil)
             l = dup;
