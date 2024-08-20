@@ -290,7 +290,6 @@ static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
 
 static Value value_of_special(cfunc_t cfunc, int64_t arity)
 {
-    arity += (arity == -1) ? -1 : 1; // for *env
     Value sp = value_of_cfunc(cfunc, arity);
     VALUE_TAG(sp) = TAG_SPECIAL;
     return sp;
@@ -765,26 +764,24 @@ static Value apply_cfunc(Value *env, Value func, Value args)
 #pragma clang diagnostic ignored "-Wdeprecated-non-prototype"
 #endif
     switch (n) {
-    case -2:
-        return (*f)(env, cdr(args)); // special form
     case -1:
-        return (*f)(args); // non-special
+        return (*f)(env, args);
     case 0:
-        return (*f)();
+        return (*f)(env);
     case 1:
-        return (*f)(a[0]);
+        return (*f)(env, a[0]);
     case 2:
-        return (*f)(a[0], a[1]);
+        return (*f)(env, a[0], a[1]);
     case 3:
-        return (*f)(a[0], a[1], a[2]);
+        return (*f)(env, a[0], a[1], a[2]);
     case 4:
-        return (*f)(a[0], a[1], a[2], a[3]);
+        return (*f)(env, a[0], a[1], a[2], a[3]);
     case 5:
-        return (*f)(a[0], a[1], a[2], a[3], a[4]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4]);
     case 6:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5]);
     case 7:
-        return (*f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
     default:
         error("arity too large: %"PRId64, n);
     }
@@ -889,7 +886,7 @@ static Value apply(Value *env, Value func, Value args)
     expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
     Value eargs = (tag == TAG_SPECIAL) ?
-        cons((Value) env, args) : map_eval(env, args);
+                  args : map_eval(env, args);
     expect_arity(FUNCTION(func)->arity, eargs);
     switch (tag) {
     case TAG_SPECIAL:
@@ -929,7 +926,7 @@ static void env_put(Value *env, const char *name, Value val)
 
 static void define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
-    expect_cfunc_arity(arity + 1);
+    expect_cfunc_arity(arity);
     env_put(env, name, value_of_special(cfunc, arity));
 }
 
@@ -1355,7 +1352,8 @@ static int64_t value_get_int(const char *header, Value v)
     return value_to_int(v);
 }
 
-static Value builtin_add(Value args)
+#define UNUSED ATTR_UNUSED
+static Value builtin_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
     for (Value l = args; l != Qnil; l = cdr(l))
@@ -1363,7 +1361,7 @@ static Value builtin_add(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_sub(Value args)
+static Value builtin_sub(UNUSED Value *env, Value args)
 {
     expect_arity_range("-", 1, -1, args);
 
@@ -1379,7 +1377,7 @@ static Value builtin_sub(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_mul(Value args)
+static Value builtin_mul(UNUSED Value *env, Value args)
 {
     int64_t y = 1;
     for (Value l = args; l != Qnil; l = cdr(l))
@@ -1387,7 +1385,7 @@ static Value builtin_mul(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_div(Value args)
+static Value builtin_div(UNUSED Value *env, Value args)
 {
     expect_arity_range("/", 1, -1, args);
 
@@ -1406,7 +1404,7 @@ static Value builtin_div(Value args)
     return value_of_int(y);
 }
 
-static Value builtin_numeq(Value args)
+static Value builtin_numeq(UNUSED Value *env, Value args)
 {
     expect_arity_range("=", 2, -1, args);
 
@@ -1419,7 +1417,7 @@ static Value builtin_numeq(Value args)
     return Qtrue;
 }
 
-static Value builtin_lt(Value args)
+static Value builtin_lt(UNUSED Value *env, Value args)
 {
     expect_arity_range("<", 2, -1, args);
 
@@ -1433,7 +1431,7 @@ static Value builtin_lt(Value args)
     return Qtrue;
 }
 
-static Value builtin_gt(Value args)
+static Value builtin_gt(UNUSED Value *env, Value args)
 {
     expect_arity_range(">", 2, -1, args);
 
@@ -1447,7 +1445,7 @@ static Value builtin_gt(Value args)
     return Qtrue;
 }
 
-static Value builtin_le(Value args)
+static Value builtin_le(UNUSED Value *env, Value args)
 {
     expect_arity_range("<=", 2, -1, args);
 
@@ -1461,7 +1459,7 @@ static Value builtin_le(Value args)
     return Qtrue;
 }
 
-static Value builtin_ge(Value args)
+static Value builtin_ge(UNUSED Value *env, Value args)
 {
     expect_arity_range(">=", 2, -1, args);
 
@@ -1475,7 +1473,7 @@ static Value builtin_ge(Value args)
     return Qtrue;
 }
 
-static Value builtin_modulo(Value x, Value y)
+static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("modulo", y);
     if (b == 0)
@@ -1487,7 +1485,7 @@ static Value builtin_modulo(Value x, Value y)
     return value_of_int(c);
 }
 
-static Value builtin_not(Value x)
+static Value builtin_not(UNUSED Value *env, Value x)
 {
     return OF_BOOL(x == Qfalse);
 }
@@ -1496,17 +1494,23 @@ static Value builtin_not(Value x)
 // Built-in Functions: Lists and others
 //
 
-static Value builtin_list(Value args)
+static Value builtin_list(UNUSED Value *env, Value args)
 {
     return args;
 }
 
-static Value builtin_null(Value list)
+static Value builtin_null(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
 }
 
-static Value builtin_display(Value obj)
+static Value builtin_reverse(UNUSED Value *env, Value list)
+{
+    expect_type("reverse", TYPE_PAIR, list);
+    return reverse(list);
+}
+
+static Value builtin_display(UNUSED Value *env, Value obj)
 {
     display(obj);
     return obj;
@@ -1518,26 +1522,31 @@ static Value builtin_newline(void)
     return Qnil;
 }
 
-static Value builtin_print(Value obj)
+static Value builtin_print(UNUSED Value *env, Value obj)
 {
     display(obj);
     puts("");
     return obj;
 }
 
-static Value builtin_car(Value pair)
+static Value builtin_car(UNUSED Value *env, Value pair)
 {
     expect_type("car", TYPE_PAIR, pair);
     return car(pair);
 }
 
-static Value builtin_cdr(Value pair)
+static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
     expect_type("cdr", TYPE_PAIR, pair);
     return cdr(pair);
 }
 
-static Value builtin_eq(Value x, Value y)
+static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
+{
+    return cons(car, cdr);
+}
+
+static Value builtin_eq(UNUSED Value *env, Value x, Value y)
 {
     return OF_BOOL(x == y);
 }
@@ -1562,12 +1571,12 @@ static bool equal(Value x, Value y)
     }
 }
 
-static Value builtin_equal(Value x, Value y)
+static Value builtin_equal(UNUSED Value *env, Value x, Value y)
 {
     return OF_BOOL(equal(x, y));
 }
 
-static Value builtin_load(Value path)
+static Value builtin_load(UNUSED Value *env, Value path)
 {
     return load_inner(value_to_string(path));
 }
@@ -1618,10 +1627,10 @@ static void initialize(void)
 
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
-    define_function(e, "cons", cons, 2);
+    define_function(e, "cons", builtin_cons, 2);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "null?", builtin_null, 1);
-    define_function(e, "reverse", reverse, 1);
+    define_function(e, "reverse", builtin_reverse, 1);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);
