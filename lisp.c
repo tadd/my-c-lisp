@@ -1613,6 +1613,43 @@ static Value builtin_load(UNUSED Value *env, Value path)
     return load_inner(value_to_string(path));
 }
 
+static void expect_proc(const char *header, Value v)
+{
+    Type t = value_type_of(v);
+    switch (t) {
+    case TYPE_CFUNC:
+    case TYPE_CLOSURE:
+    case TYPE_CONTINUATION:
+        return;
+    default:
+        runtime_error("type error in %s: expected procedure but got %s",
+                      header, value_type_to_string(t));
+    }
+}
+
+static Value apply_args(Value args)
+{
+    if (cdr(args) == Qnil) // single-element list
+        return car(args);
+    Value heads = Qnil, last = Qnil, a, next;
+    for (a = args; (next = cdr(a)) != Qnil; a = next) {
+        last = append_at(last, car(a));
+        if (heads == Qnil)
+            heads = last;
+    }
+    return append2(heads, car(a));
+}
+
+static Value builtin_apply(Value *env, Value args)
+{
+    expect_arity_range("apply", 2, -1, args);
+
+    Value proc = car(args);
+    expect_proc("apply", proc);
+    Value appargs = apply_args(cdr(args));
+    return apply(env, proc, appargs);
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1670,6 +1707,7 @@ static void initialize(void)
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
     define_function(e, "load", builtin_load, 1);
+    define_function(e, "apply", builtin_apply, -1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }

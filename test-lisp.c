@@ -514,3 +514,12 @@ Test(lisp, append) {
     expect_list_eq_evaled(list(V(1), V(2), V(3), Qundef),
                           "(append (list 1) (list 2) (list 3))");
 }
+
+Test(lisp, apply) {
+    expect_vint_eq_evaled(42, "(apply + (list 42))");
+    expect_vint_eq_evaled(43, "(apply + 1 (list 42))");
+    expect_vint_eq_evaled(45, "(apply + 1 2 (list 42))");
+    expect_vint_eq_evaled(48, "(apply + 1 2 3 (list 42))");
+    expect_vint_eq_evaled(48, "(apply + (list 1 2 3 42))");
+    expect_vint_eq_evaled(48, "(apply + (apply + (list 1 2 3)) (list 42))");
+}
