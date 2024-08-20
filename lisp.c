@@ -1071,7 +1071,6 @@ static Value eval_body(Value *env, Value body)
     return last;
 }
 
-
 static Value map_eval(Value *env, Value l)
 {
     Value mapped = Qnil, last = Qnil;
