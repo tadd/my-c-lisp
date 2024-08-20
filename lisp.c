@@ -870,32 +870,19 @@ static void expect_applicative(Value v)
     }
 }
 
-static Value map_eval(Value *env, Value l)
-{
-    Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append_at(last, ieval(env, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
-    return mapped;
-}
-
 static Value apply(Value *env, Value func, Value args)
 {
     expect_applicative(func);
     ValueTag tag = VALUE_TAG(func);
-    Value eargs = (tag == TAG_SPECIAL) ?
-                  args : map_eval(env, args);
-    expect_arity(FUNCTION(func)->arity, eargs);
+    expect_arity(FUNCTION(func)->arity, args);
     switch (tag) {
     case TAG_SPECIAL:
     case TAG_CFUNC:
-        return apply_cfunc(env, func, eargs);
+        return apply_cfunc(env, func, args);
     case TAG_CLOSURE:
-        return apply_closure(env, func, eargs);
+        return apply_closure(env, func, args);
     case TAG_CONTINUATION:
-        apply_continuation(func, eargs); // no return!
+        apply_continuation(func, args); // no return!
     default:
         UNREACHABLE();
     }
@@ -1087,15 +1074,33 @@ static Value eval_body(Value *env, Value body)
     return last;
 }
 
+
+static Value map_eval(Value *env, Value l)
+{
+    Value mapped = Qnil, last = Qnil;
+    for (; l != Qnil; l = cdr(l)) {
+        last = append_at(last, ieval(env, car(l)));
+        if (mapped == Qnil)
+            mapped = last;
+    }
+    return mapped;
+}
+
+static Value eval_apply(Value *env, Value symfunc, Value args)
+{
+    Value func = ieval(env, symfunc);
+    if (!value_tag_is(func, TAG_SPECIAL))
+        args = map_eval(env, args);
+    return apply(env, func, args);
+}
+
 static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
     if (v == Qnil || value_is_atom(v))
         return v;
-    // else: function application
-    Value func = ieval(env, car(v));
-    return apply(env, func, cdr(v));
+    return eval_apply(env, car(v), cdr(v));
 }
 
 static Value eval_top(Value v)

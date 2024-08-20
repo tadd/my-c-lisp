@@ -522,4 +522,5 @@ Test(lisp, apply) {
     expect_vint_eq_evaled(48, "(apply + 1 2 3 (list 42))");
     expect_vint_eq_evaled(48, "(apply + (list 1 2 3 42))");
     expect_vint_eq_evaled(48, "(apply + (apply + (list 1 2 3)) (list 42))");
+    expect_vtrue_evaled("(apply equal? (list (list 1) (list 1)))");
 }
