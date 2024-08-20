@@ -1140,7 +1140,8 @@ Value eval_string(const char *in)
 
 static FILE *open_loadable(const char *path)
 {
-    char joined[PATH_MAX], rpath[PATH_MAX];
+    static char rpath[PATH_MAX];
+    char joined[PATH_MAX];
     snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
     realpath(joined, rpath);
 
