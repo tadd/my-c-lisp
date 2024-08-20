@@ -18,31 +18,6 @@
 #include "utils.h"
 
 //
-// Errors
-//
-
-#define error(fmt, ...) \
-    error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
-
-static jmp_buf jmp_runtime_error, jmp_parse_error;
-static char errmsg[BUFSIZ];
-
-ATTR_NORETURN
-static void runtime_error(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
-    va_end(ap);
-    longjmp(jmp_runtime_error, 1);
-}
-
-const char *error_message(void)
-{
-    return errmsg;
-}
-
-//
 // Types
 //
 
@@ -314,7 +289,30 @@ Value cons(Value car, Value cdr)
     return (Value) p;
 }
 
-// utilities for errors
+//
+// Errors
+//
+
+#define error(fmt, ...) \
+    error("%s:%d of %s: " fmt, __FILE__, __LINE__, __func__ __VA_OPT__(,) __VA_ARGS__)
+
+static jmp_buf jmp_runtime_error, jmp_parse_error;
+static char errmsg[BUFSIZ];
+
+ATTR_NORETURN
+static void runtime_error(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    va_end(ap);
+    longjmp(jmp_runtime_error, 1);
+}
+
+const char *error_message(void)
+{
+    return errmsg;
+}
 
 static void expect_type(const char *header, Type expected, Value v)
 {
