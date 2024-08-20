@@ -1510,6 +1510,40 @@ static Value builtin_reverse(UNUSED Value *env, Value list)
     return reverse(list);
 }
 
+static Value dup_list(Value l, Value *plast)
+{
+    Value dup = Qnil, last = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        last = append_at(last, car(p));
+        if (dup == Qnil)
+            dup = last;
+    }
+    *plast = last;
+    return dup;
+}
+
+static Value builtin_append(UNUSED Value *env, Value args)
+{
+    Value l = Qnil, last = Qnil, prev_last, a, next;
+    for (a = args; a != Qnil && (next = cdr(a)) != Qnil; a = next, prev_last = last) {
+        Value e = car(a);
+        expect_type("append", TYPE_PAIR, e);
+        Value dup = dup_list(e, &last);
+        if (l == Qnil)
+            l = dup;
+        else
+            PAIR(prev_last)->cdr = dup;
+    }
+    if (a != Qnil) {
+        Value e = car(a);
+        if (l == Qnil)
+            l = e;
+        else
+            PAIR(last)->cdr = e;
+    }
+    return l;
+}
+
 static Value builtin_display(UNUSED Value *env, Value obj)
 {
     display(obj);
@@ -1631,6 +1665,7 @@ static void initialize(void)
     define_function(e, "list", builtin_list, -1);
     define_function(e, "null?", builtin_null, 1);
     define_function(e, "reverse", builtin_reverse, 1);
+    define_function(e, "append", builtin_append, -1);
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
     define_function(e, "print", builtin_print, 1);

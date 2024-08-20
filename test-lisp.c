@@ -494,3 +494,23 @@ Test(lisp, equal) {
     expect_vfalse_evaled("(equal? \"abc\" \"abd\")");
     expect_vfalse_evaled("(equal? \"abc\" \"\")");
 }
+
+Test(lisp, append) {
+    expect_list_eq_evaled(Qnil, "(append)");
+    expect_list_eq_evaled(list(V(1), Qundef),
+                          "(append (list 1))");
+    expect_list_eq_evaled(list(V(1), V(2), Qundef),
+                          "(append (list 1) (list 2))");
+    expect_list_eq_evaled(list(V(1), V(2), V(3), Qundef),
+                          "(append (list 1) (list 2 3))");
+    expect_list_eq_evaled(list(V(1), list(V(2), Qundef), list(V(3), Qundef), Qundef),
+                          "(append (list 1 (list 2)) (list (list 3)))");
+    Value v = eval_string("(append (list 1 2) (cons 3 4))");
+    // expects: '(1 2 3 . 4)
+    expect_vint_eq(1, car(v));
+    expect_vint_eq(2, cadr(v));
+    expect_vint_eq(3, caddr(v));
+    expect_vint_eq(4, cdddr(v));
+    expect_list_eq_evaled(list(V(1), V(2), V(3), Qundef),
+                          "(append (list 1) (list 2) (list 3))");
+}
