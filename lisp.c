@@ -1525,21 +1525,23 @@ static Value dup_list(Value l, Value *plast)
 
 static Value builtin_append(UNUSED Value *env, Value args)
 {
-    Value l = Qnil, last = Qnil, prev_last, a, next;
-    for (a = args; a != Qnil && (next = cdr(a)) != Qnil; a = next, prev_last = last) {
-        Value e = car(a);
-        Value dup = dup_list(e, &last);
+    Value l = Qnil, last = Qnil;
+    Value a, next, prev_last = Qnil;
+    for (a = args; a != Qnil; a = next) {
+        if ((next = cdr(a)) == Qnil)
+            break;
+        Value dup = dup_list(car(a), &last);
         if (l == Qnil)
             l = dup;
         else
             PAIR(prev_last)->cdr = dup;
+        prev_last = last;
     }
     if (a != Qnil) {
-        Value e = car(a);
         if (l == Qnil)
-            l = e;
+            l = car(a);
         else
-            PAIR(last)->cdr = e;
+            PAIR(last)->cdr = car(a);
     }
     return l;
 }
