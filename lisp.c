@@ -1170,6 +1170,8 @@ static Value load_inner(const char *path)
 // Special Forms
 //
 
+#define UNUSED ATTR_UNUSED
+
 static Value builtin_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, args);
@@ -1282,6 +1284,11 @@ static Value builtin_letrec(Value *env, Value args)
     return eval_body(&letenv, body);
 }
 
+static Value builtin_quote(UNUSED Value *env, Value datum)
+{
+    return datum;
+}
+
 static Value builtin_begin(Value *env, Value body)
 {
     return eval_body(env, body);
@@ -1348,7 +1355,6 @@ static int64_t value_get_int(const char *header, Value v)
     return value_to_int(v);
 }
 
-#define UNUSED ATTR_UNUSED
 static Value builtin_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
@@ -1686,6 +1692,7 @@ static void initialize(void)
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
+    define_special(e, "quote", builtin_quote, 1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);

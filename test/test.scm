@@ -402,4 +402,13 @@
           (assq (list 1) (list (list (list 1) (list 2) (list 3))))
           #f)))
 
+(describe "quote" (lambda ()
+  (expect eq? (quote 10) 10)
+  (expect eq? (quote ()) ())
+  (expect equal? (quote (1 2 3)) (list 1 2 3))
+  (expect eq? (quote foooo) (quote foooo))
+  (let ((l (quote (+ 1 2))))
+     (expect equal? l (quote (+ 1 2)))
+     (expect equal? l (list (quote +) 1 2)))))
+
 (test-run)
