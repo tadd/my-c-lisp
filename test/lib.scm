@@ -1,4 +1,4 @@
-(define tests ())
+(define tests '())
 (define n-failure 0)
 (define n-success 0)
 
@@ -54,7 +54,7 @@
 (define (expect-f x)
   (expect eq? #f x))
 
-(define test-name ())
+(define test-name '())
 
 (define (test-run)
   (define (test-run-inner l)
