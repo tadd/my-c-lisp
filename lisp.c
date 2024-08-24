@@ -1495,6 +1495,12 @@ static Value builtin_list(UNUSED Value *env, Value args)
     return args;
 }
 
+static Value builtin_length(UNUSED Value *env, Value list)
+{
+    expect_type("length", TYPE_PAIR, list);
+    return value_of_int(length(list));
+}
+
 static Value builtin_null(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
@@ -1694,6 +1700,7 @@ static void initialize(void)
     define_function(e, "cdr", builtin_cdr, 1);
     define_function(e, "cons", builtin_cons, 2);
     define_function(e, "list", builtin_list, -1);
+    define_function(e, "length", builtin_length, 1);
     define_function(e, "null?", builtin_null, 1);
     define_function(e, "reverse", builtin_reverse, 1);
     define_function(e, "append", builtin_append, -1);

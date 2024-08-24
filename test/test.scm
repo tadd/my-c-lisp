@@ -10,9 +10,6 @@
   (expect eq? (+ (+ 40 2) 21) 63)
   (expect eq? (+ (- 40 4) (* 3 (/ 100 50))) 42)))
 
-;; (describe "div0" (lambda ()
-;;   (expect-error "divided by zero" (/ 42 0))))
-
 (describe "relop" (lambda ()
   (expect-t (= 42 42))
   (expect-t (= 0 0 0 0 0))
@@ -49,11 +46,6 @@
   (expect eq? (modulo -13 4) 3)
   (expect eq? (modulo 13 -4) -3)
   (expect eq? (modulo -13 -4) -1)))
-  ;; (expect-error "divided by zero" (modulo 13 0))))
-
-;; (describe "unbound variable" (lambda ()
-;;   (expect-error "unbound variable: x" x)
-;;   (expect-error "unbound variable: x" (+ x 2)))
 
 (describe "true/false" (lambda ()
   (expect-t #t)
@@ -63,8 +55,6 @@
   (expect eq? (if #t 1) 1)
   (expect eq? (if #t 1 2) 1)
   (expect eq? (if #f 1 2) 2)))
-;; (expect-error "2..3 but got 1" (if #f))
-;; (expect-error "2..3 but got 4" (if #f 1 2 3)))
 
 (describe "if composed" (lambda ()
   (expect eq? (if (if #t 1 #f) (if #t 3 4) (if #t 5 6)) 3)
@@ -75,7 +65,7 @@
   (expect null? (list))
   (let ((l (list 42 "foo")))
     ;; (expect pair? l)
-    ;; (expect eq? (length l) 2)
+    (expect eq? (length l) 2)
     (expect eq? (car l) 42)
     (expect equal? (car (cdr l)) "foo"))))
 
@@ -121,10 +111,6 @@
                     (f 42)))))
 
 (describe "set!" (lambda ()
-  ;; (expect-error "unbound variable: x"
-  ;;               (begin
-  ;;                 (set! x 42)
-  ;;                 x))
   (expect eq? 42 (begin
                    (define x 1)
                    (set! x 42)
@@ -151,8 +137,6 @@
                 x) 42)
   (expect equal? (let ((x 42) (y 10))
                    (list x y)) (list 42 10))))
-  ;; (expect-error "one or more expressions" (let ((x 42))))
-  ;; (expect-error "one or more expressions" (let ((x 42) (y 100)))))
 
 (describe "let body define" (lambda ()
   (expect eq? (let ((x 42))
@@ -189,10 +173,6 @@
                     (myeven? (- n 1))))))
       (myeven? 88)))
   (expect-t retval)))
-
-;; (describe "applicable" (lambda ()
-;;   (expect-error "expected applicative" (1 1))
-;;   (expect-error "expected applicative" (() 1))))
 
 (describe "apply variadic" (lambda ()
   (expect-t (= 1 1 1 1 1 1 1 1 1 1))))
