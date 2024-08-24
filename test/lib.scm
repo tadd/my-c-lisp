@@ -28,12 +28,6 @@
    (cons eq? (msg-proc-2 "be eq?"))
    (cons null? (msg-proc-1 "be null?"))))
 
-(define (assq o alist) ;; XXX: Implement me in C
-  (cond
-   ((null? alist) ())
-   ((eq? o (car (car alist))) (car alist))
-   (else (assq o (cdr alist)))))
-
 (define (succeed)
   (set! n-success (+ n-success 1)))
 

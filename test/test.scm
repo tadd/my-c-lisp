@@ -393,4 +393,13 @@
   (expect equal? (apply + (apply + (list 1 2 3)) (list 42)) 48)
   (expect-t (apply equal? (list (list 1) (list 1))))))
 
+(describe "assq" (lambda ()
+  (define alist (list (cons 10 1) (cons 20 2) (cons 30 3)))
+  (expect equal? (assq 10 alist) (cons 10 1))
+  (expect equal? (assq 20 alist) (cons 20 2))
+  (expect equal? (assq 40 alist) #f)
+  (expect equal?
+          (assq (list 1) (list (list (list 1) (list 2) (list 3))))
+          #f)))
+
 (test-run)
