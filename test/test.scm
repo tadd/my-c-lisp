@@ -418,6 +418,10 @@
   (expect eq? 'foooo (quote foooo))
   (let ((l '(+ 1 2)))
      (expect equal? l (quote (+ 1 2)))
-     (expect equal? l (list (quote +) 1 2)))))
+     (expect equal? l (list (quote +) 1 2)))
+  (expect equal? '(quote a) (list 'quote 'a))
+  (expect equal? ''a (list 'quote 'a))
+  (expect equal? '"abc" "abc")
+  (expect equal? '#t #t)))
 
 (test-run)
