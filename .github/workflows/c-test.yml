@@ -37,6 +37,6 @@ jobs:
     - name: Test for Clang
       run: make test CC=clang
     - name: Test -O3
-      run: make clean && make -j2 XCFLAGS=-O3
+      run: make clean && make -j2 test XCFLAGS=-O3
     - name: Test Clang -O3
-      run: make clean && make -j2 CC=clang XCFLAGS=-O3
+      run: make clean && make -j2 test CC=clang XCFLAGS=-O3
