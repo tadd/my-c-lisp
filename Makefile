@@ -22,17 +22,21 @@ test: test-c test-scheme
 
 test-c: test-basic
 	./$<
+test-c-san: test-basic-san
+	./$<
 
 test-scheme: lisp
-	./lisp test/test.scm
+	./$< test/test.scm
+test-scheme-san: lisp-san
+	./$< test/test.scm
 
 clean:
 	rm -f lisp test-basic *-san *.o *.s
 
 analyze: $(OBJ:.o=.analyzer)
 
-sanitize: test-basic-san lisp-san
-	./$<
+sanitize: lisp-san test-san
+test-san: test-c-san test-scheme-san
 
 lisp-san: $(OBJ:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS)
