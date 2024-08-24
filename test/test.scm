@@ -242,11 +242,13 @@
                 (define f (lambda () a))
                 ((((lambda ()
                      (lambda () f)))))) 42)
-  (expect eq? (((lambda () 42
-                        (lambda () 42)))) 42)
-  (expect eq? ((((lambda () 42
-                         (lambda ()
-                           (lambda () 42)))))) 42)))
+  (expect eq? (((lambda ()
+                  42
+                  (lambda () 42)))) 42)
+  (expect eq? ((((lambda ()
+                   42
+                   (lambda ()
+                     (lambda () 42)))))) 42)))
 
 (describe "let is lambda" (lambda ()
   (expect eq? ((lambda (x) x) 42) 42)

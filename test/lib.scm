@@ -6,19 +6,20 @@
   (set! tests (cons (cons name f) tests)))
 ;;(define context describe)
 
+(define (display* . args)
+  (if (not (null? args))
+      (begin
+        (display (car args))
+        (apply display* (cdr args)))))
+
 (define (msg-proc-1 msg)
   (lambda (x)
-    (display "<")
-    (display x)
-    (display "> to ")
-    (display msg)))
+    (display* "<" x "> to " msg)))
 
 (define (msg-proc-2 msg)
   (lambda (x y)
     ((msg-proc-1 msg) x)
-    (display " <")
-    (display y)
-    (display ">")))
+    (display* " <" y ">")))
 
 (define fail-message-procs
   (list
@@ -33,25 +34,24 @@
    ((eq? o (car (car alist))) (car alist))
    (else (assq o (cdr alist)))))
 
-(define (fail-message proc args)
-  (let ((f (assq proc fail-message-procs)))
-    (if (null? f)
-        (display "pass known procedure!")
-        (apply (cdr f) args))))
+(define (succeed)
+  (set! n-success (+ n-success 1)))
 
 (define (fail proc args)
   (set! n-failure (+ n-failure 1))
-  (display "Failed in ")
-  (display test-name)
-  (display ": Expected ")
+  (display* "Failed in " test-name ": Expected ")
   (fail-message proc args)
   (newline))
+
+(define (fail-message proc args)
+  (let ((f (assq proc fail-message-procs)))
+    (apply (cdr f) args)))
 
 (define (expect . args)
   (let ((proc (car args))
         (pargs (cdr args)))
     (if (apply proc pargs)
-        (set! n-success (+ n-success 1))
+        (succeed)
         (fail proc pargs))))
 
 (define (expect-t x)
@@ -78,8 +78,7 @@
     (func)))
 
 (define (test-summarize)
-  (display "Test summary: ")
-  (display n-success)
-  (display " succeeded, ")
-  (display n-failure)
-  (print " failed."))
+  (display* "Test summary: "
+            n-success " succeeded, "
+            n-failure " failed.")
+  (newline))
