@@ -144,7 +144,7 @@ Test(lisp, parse_lambda) {
 
 Test(lisp, parse_broken) {
     expect_runtime_error_parsed("got 'EOF'", "(");
-    expect_runtime_error_parsed("got '''", "'");
+    expect_runtime_error_parsed("got 'EOF'", "'");
 }
 
 Test(lisp, div0) {

@@ -113,7 +113,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE = Qundef; // used in cond
+static Value SYM_ELSE = Qundef, SYM_QUOTE = Qundef; // used in cond
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -367,6 +367,7 @@ Value list(Value v, ...)
 typedef enum {
     TOK_TYPE_LPAREN,
     TOK_TYPE_RPAREN,
+    TOK_TYPE_QUOTE,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -385,6 +386,7 @@ typedef struct {
 static const Token
     TOK_LPAREN = TOK(LPAREN),
     TOK_RPAREN = TOK(RPAREN),
+    TOK_QUOTE = TOK(QUOTE),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -576,6 +578,8 @@ static Token get_token(Parser *p)
         return TOK_LPAREN;
     case ')':
         return TOK_RPAREN;
+    case '\'':
+        return TOK_QUOTE;
     case '.':
         return TOK_DOT;
     case '"':
@@ -640,6 +644,8 @@ static const char *token_stringify(Token t)
         return "(";
     case TOK_TYPE_RPAREN:
         return ")";
+    case TOK_TYPE_QUOTE:
+        return "'";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -693,11 +699,17 @@ static Value parse_list(Parser *p)
 static Value parse_expr(Parser *p)
 {
     Token t = get_token(p);
+    Value e;
     switch (t.type) {
     case TOK_TYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TOK_TYPE_RPAREN:
         parse_error(p, "expression", "')'");
+    case TOK_TYPE_QUOTE:
+        e = parse_expr(p);
+        if (e == Qundef)
+            parse_error(p, "expression", "'EOF'");
+        return cons(SYM_QUOTE, cons(e, Qnil));
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1684,6 +1696,7 @@ static void initialize(void)
     static char basedir[PATH_MAX];
     load_basedir = getcwd(basedir, sizeof(basedir));
     SYM_ELSE = value_of_symbol("else");
+    SYM_QUOTE = value_of_symbol("quote");
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);

@@ -411,4 +411,13 @@
      (expect equal? l (quote (+ 1 2)))
      (expect equal? l (list (quote +) 1 2)))))
 
+(describe "quote2" (lambda ()
+  (expect eq? '10 10)
+  (expect eq? '() ())
+  (expect equal? '(1 2 3) (list 1 2 3))
+  (expect eq? 'foooo (quote foooo))
+  (let ((l '(+ 1 2)))
+     (expect equal? l (quote (+ 1 2)))
+     (expect equal? l (list (quote +) 1 2)))))
+
 (test-run)
