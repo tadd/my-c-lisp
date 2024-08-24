@@ -29,11 +29,11 @@ jobs:
         echo CPATH="/opt/homebrew/include:$CPATH" >> "$GITHUB_ENV"
         echo LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH" >> "$GITHUB_ENV"
     - name: Make binaries
-      run: make -j2 lisp test-lisp
+      run: make -j2 lisp test-basic
     - name: Test
       run: make test
     - name: Make binaries for Clang
-      run: make clean && make -j2 lisp test-lisp CC=clang
+      run: make clean && make -j2 lisp test-basic CC=clang
     - name: Test for Clang
       run: make test CC=clang
     - name: Test -O3

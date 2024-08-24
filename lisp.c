@@ -885,14 +885,14 @@ static Value apply(Value *env, Value func, Value args)
     }
 }
 
-static Value alist_find(Value l, Value key)
+static Value assq(Value key, Value l)
 {
     for (Value p = l; p != Qnil; p = cdr(p)) {
         Value entry = car(p);
         if (value_is_pair(entry) && car(entry) == key)
             return entry;
     }
-    return Qnil;
+    return Qfalse;
 }
 
 static void expect_cfunc_arity(int64_t actual)
@@ -917,8 +917,8 @@ static void define_function(Value *env, const char *name, cfunc_t cfunc, int64_t
 
 static Value lookup(Value env, Value name)
 {
-    Value found = alist_find(env, name);
-    if (found == Qnil)
+    Value found = assq(name, env);
+    if (found == Qfalse)
         runtime_error("unbound variable: %s", value_to_string(name));
     return cdr(found);
 }
@@ -1189,7 +1189,7 @@ static Value define_variable(Value *env, Value ident, Value expr)
 
     Value val = ieval(env, expr), found;
     if (env == &toplevel_environment &&
-        (found = alist_find(*env, ident)) != Qnil) {
+        (found = assq(ident, *env)) != Qfalse) {
         PAIR(found)->cdr = val; // set!
     } else
         env_put(env, ident, val); // prepend new
@@ -1234,8 +1234,8 @@ static Value builtin_set(Value *env, Value ident, Value expr)
 {
     expect_type("set!", TYPE_SYMBOL, ident);
 
-    Value found = alist_find(*env, ident);
-    if (found == Qnil)
+    Value found = assq(ident, *env);
+    if (found == Qfalse)
         runtime_error("set!: unbound variable: %s", value_to_string(ident));
     PAIR(found)->cdr = ieval(env, expr);
     return Qnil;
@@ -1495,6 +1495,12 @@ static Value builtin_list(UNUSED Value *env, Value args)
     return args;
 }
 
+static Value builtin_length(UNUSED Value *env, Value list)
+{
+    expect_type("length", TYPE_PAIR, list);
+    return value_of_int(length(list));
+}
+
 static Value builtin_null(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
@@ -1604,6 +1610,13 @@ static Value builtin_equal(UNUSED Value *env, Value x, Value y)
     return OF_BOOL(equal(x, y));
 }
 
+
+static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
+{
+    expect_type("assq", TYPE_PAIR, alist);
+    return assq(obj, alist);
+}
+
 static Value builtin_load(UNUSED Value *env, Value path)
 {
     return load_inner(value_to_string(path));
@@ -1694,6 +1707,7 @@ static void initialize(void)
     define_function(e, "cdr", builtin_cdr, 1);
     define_function(e, "cons", builtin_cons, 2);
     define_function(e, "list", builtin_list, -1);
+    define_function(e, "length", builtin_length, 1);
     define_function(e, "null?", builtin_null, 1);
     define_function(e, "reverse", builtin_reverse, 1);
     define_function(e, "append", builtin_append, -1);
@@ -1702,6 +1716,7 @@ static void initialize(void)
     define_function(e, "print", builtin_print, 1);
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
+    define_function(e, "assq", builtin_assq, 2);
     define_function(e, "load", builtin_load, 1);
     define_function(e, "apply", builtin_apply, -1);
 

@@ -6,7 +6,7 @@ SANITIZER=-fsanitize=undefined #,address
 
 SRC_COMMON=lisp.c utils.c
 SRC=$(SRC_COMMON) main.c
-SRC_TEST=$(SRC_COMMON) test-lisp.c
+SRC_TEST=$(SRC_COMMON) test-basic.c
 OBJ=$(SRC:.c=.o)
 OBJ_TEST=$(SRC_TEST:.c=.o)
 
@@ -15,24 +15,29 @@ all: lisp test
 lisp: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-test-lisp: $(OBJ_TEST)
+test-basic: $(OBJ_TEST)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS) -lcriterion
 
-test: test-lisp
+test: test-c test-scheme
+
+test-c: test-basic
 	./$<
 
+test-scheme: lisp
+	./lisp test/test.scm
+
 clean:
-	rm -f lisp test-lisp *-san *.o *.s
+	rm -f lisp test-basic *-san *.o *.s
 
 analyze: $(OBJ:.o=.analyzer)
 
-sanitize: test-lisp-san lisp-san
+sanitize: test-basic-san lisp-san
 	./$<
 
 lisp-san: $(OBJ:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS)
 
-test-lisp-san: $(OBJ_TEST:.o=.san.o)
+test-basic-san: $(OBJ_TEST:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS) -lcriterion
 
 %.o: %.c
@@ -49,6 +54,6 @@ test-lisp-san: $(OBJ_TEST:.o=.san.o)
 
 utils.o: utils.h
 lisp.o main.o: lisp.h utils.h
-test-lisp.o: lisp.h
+test-basic.o: lisp.h
 
-.PHONY: all clean test analyze sanitize
+.PHONY: all clean test test-c test-scheme analyze sanitize
