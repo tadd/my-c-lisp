@@ -696,20 +696,24 @@ static Value parse_list(Parser *p)
     return l;
 }
 
+static Value parse_quoted(Parser *p)
+{
+    Value e = parse_expr(p);
+    if (e == Qundef)
+        parse_error(p, "expression", "'EOF'");
+    return cons(SYM_QUOTE, cons(e, Qnil));
+}
+
 static Value parse_expr(Parser *p)
 {
     Token t = get_token(p);
-    Value e;
     switch (t.type) {
     case TOK_TYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TOK_TYPE_RPAREN:
         parse_error(p, "expression", "')'");
     case TOK_TYPE_QUOTE:
-        e = parse_expr(p);
-        if (e == Qundef)
-            parse_error(p, "expression", "'EOF'");
-        return cons(SYM_QUOTE, cons(e, Qnil));
+        return parse_quoted(p);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
