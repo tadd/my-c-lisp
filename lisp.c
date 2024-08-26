@@ -113,7 +113,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE = Qundef, SYM_QUOTE = Qundef; // used in cond
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -368,6 +368,7 @@ typedef enum {
     TOK_TYPE_LPAREN,
     TOK_TYPE_RPAREN,
     TOK_TYPE_QUOTE,
+    TOK_TYPE_GRAVE,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -387,6 +388,7 @@ static const Token
     TOK_LPAREN = TOK(LPAREN),
     TOK_RPAREN = TOK(RPAREN),
     TOK_QUOTE = TOK(QUOTE),
+    TOK_GRAVE = TOK(GRAVE),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -580,6 +582,8 @@ static Token get_token(Parser *p)
         return TOK_RPAREN;
     case '\'':
         return TOK_QUOTE;
+    case '`':
+        return TOK_GRAVE;
     case '.':
         return TOK_DOT;
     case '"':
@@ -646,6 +650,8 @@ static const char *token_stringify(Token t)
         return ")";
     case TOK_TYPE_QUOTE:
         return "'";
+    case TOK_TYPE_GRAVE:
+        return "`";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -696,12 +702,12 @@ static Value parse_list(Parser *p)
     return l;
 }
 
-static Value parse_quoted(Parser *p)
+static Value parse_quoted(Parser *p, Value sym)
 {
     Value e = parse_expr(p);
     if (e == Qundef)
         parse_error(p, "expression", "'EOF'");
-    return cons(SYM_QUOTE, cons(e, Qnil));
+    return cons(sym, cons(e, Qnil));
 }
 
 static Value parse_expr(Parser *p)
@@ -713,7 +719,9 @@ static Value parse_expr(Parser *p)
     case TOK_TYPE_RPAREN:
         parse_error(p, "expression", "')'");
     case TOK_TYPE_QUOTE:
-        return parse_quoted(p);
+        return parse_quoted(p, SYM_QUOTE);
+    case TOK_TYPE_GRAVE:
+        return parse_quoted(p, SYM_QUASIQUOTE);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1312,6 +1320,16 @@ static Value builtin_quote(UNUSED Value *env, Value datum)
     return datum;
 }
 
+static Value quasiquote(UNUSED Value *env, Value datum)
+{
+    return datum;
+}
+
+static Value builtin_quasiquote(Value *env, Value datum)
+{
+    return quasiquote(env, datum);
+}
+
 static Value builtin_begin(Value *env, Value body)
 {
     return eval_body(env, body);
@@ -1776,6 +1794,7 @@ static void initialize(void)
     load_basedir = getcwd(basedir, sizeof(basedir));
     SYM_ELSE = value_of_symbol("else");
     SYM_QUOTE = value_of_symbol("quote");
+    SYM_QUASIQUOTE = value_of_symbol("quasiquote");
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
@@ -1785,6 +1804,7 @@ static void initialize(void)
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "quote", builtin_quote, 1);
+    define_special(e, "quasiquote", builtin_quasiquote, 1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);
