@@ -113,7 +113,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE;
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -369,6 +369,7 @@ typedef enum {
     TOK_TYPE_RPAREN,
     TOK_TYPE_QUOTE,
     TOK_TYPE_GRAVE,
+    TOK_TYPE_COMMA,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -389,6 +390,7 @@ static const Token
     TOK_RPAREN = TOK(RPAREN),
     TOK_QUOTE = TOK(QUOTE),
     TOK_GRAVE = TOK(GRAVE),
+    TOK_COMMA = TOK(COMMA),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -584,6 +586,8 @@ static Token get_token(Parser *p)
         return TOK_QUOTE;
     case '`':
         return TOK_GRAVE;
+    case ',':
+        return TOK_COMMA;
     case '.':
         return TOK_DOT;
     case '"':
@@ -652,6 +656,8 @@ static const char *token_stringify(Token t)
         return "'";
     case TOK_TYPE_GRAVE:
         return "`";
+    case TOK_TYPE_COMMA:
+        return ",";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -722,6 +728,8 @@ static Value parse_expr(Parser *p)
         return parse_quoted(p, SYM_QUOTE);
     case TOK_TYPE_GRAVE:
         return parse_quoted(p, SYM_QUASIQUOTE);
+    case TOK_TYPE_COMMA:
+        return parse_quoted(p, SYM_UNQUOTE);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1320,9 +1328,21 @@ static Value builtin_quote(UNUSED Value *env, Value datum)
     return datum;
 }
 
-static Value quasiquote(UNUSED Value *env, Value datum)
+static Value quasiquote(Value *env, Value datum)
 {
-    return datum;
+    if (datum == Qnil || value_is_atom(datum))
+        return datum;
+    Value a = car(datum), d = cdr(datum);
+    if (a == SYM_UNQUOTE && d != Qnil)
+        return ieval(env, car(d));
+
+    Value ret = Qnil, last = Qnil;
+    for (Value o = datum; o != Qnil; o = cdr(o)) {
+        last = append_at(last, quasiquote(env, car(o)));
+        if (ret == Qnil)
+            ret = last;
+    }
+    return ret;
 }
 
 static Value builtin_quasiquote(Value *env, Value datum)
@@ -1774,6 +1794,11 @@ static Value builtin_for_each(Value *env, Value args)
     return Qnil;
 }
 
+static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
+{
+    runtime_error("unquote: applied out of quasiquote (`)");
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1795,6 +1820,7 @@ static void initialize(void)
     SYM_ELSE = value_of_symbol("else");
     SYM_QUOTE = value_of_symbol("quote");
     SYM_QUASIQUOTE = value_of_symbol("quasiquote");
+    SYM_UNQUOTE = value_of_symbol("unquote");
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
@@ -1805,6 +1831,7 @@ static void initialize(void)
     define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "quote", builtin_quote, 1);
     define_special(e, "quasiquote", builtin_quasiquote, 1);
+    define_special(e, "unquote", builtin_unquote, 1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);
