@@ -1328,26 +1328,32 @@ static Value builtin_quote(UNUSED Value *env, Value datum)
     return datum;
 }
 
-static Value quasiquote(Value *env, Value datum)
-{
-    if (datum == Qnil || value_is_atom(datum))
-        return datum;
-    Value a = car(datum), d = cdr(datum);
-    if (a == SYM_UNQUOTE && d != Qnil)
-        return ieval(env, car(d));
+static Value qq(Value *env, Value datum);
 
+static Value qq_list(Value *env, Value datum)
+{
     Value ret = Qnil, last = Qnil;
     for (Value o = datum; o != Qnil; o = cdr(o)) {
-        last = append_at(last, quasiquote(env, car(o)));
+        last = append_at(last, qq(env, car(o)));
         if (ret == Qnil)
             ret = last;
     }
     return ret;
 }
 
+static Value qq(Value *env, Value datum)
+{
+    if (datum == Qnil || value_is_atom(datum))
+        return datum;
+    Value a = car(datum), d = cdr(datum);
+    if (a == SYM_UNQUOTE && d != Qnil)
+        return ieval(env, car(d));
+    return qq_list(env, datum);
+}
+
 static Value builtin_quasiquote(Value *env, Value datum)
 {
-    return quasiquote(env, datum);
+    return qq(env, datum);
 }
 
 static Value builtin_begin(Value *env, Value body)
