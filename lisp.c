@@ -1341,6 +1341,17 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
     return ret;
 }
 
+static inline Value list_quoted(Value sym, Value e)
+{
+    return cons(sym, cons(e, Qnil));
+}
+
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?: %s", msg, stringify(l));
+}
+
 static Value qq(Value *env, Value datum, int64_t depth)
 {
     if (depth == 0)
@@ -1348,8 +1359,16 @@ static Value qq(Value *env, Value datum, int64_t depth)
     if (datum == Qnil || value_is_atom(datum))
         return datum;
     Value a = car(datum), d = cdr(datum);
-    if (a == SYM_UNQUOTE && d != Qnil)
-        return qq(env, car(d), depth - 1);
+    if (a == SYM_UNQUOTE) {
+        expect_nonnull("unquote in qq", d);
+        Value v = qq(env, car(d), depth - 1);
+        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
+    }
+    if (a == SYM_QUASIQUOTE) {
+        expect_nonnull("quasiquote in qq", d);
+        Value v = qq(env, car(d), depth + 1);
+        return list_quoted(SYM_QUASIQUOTE, v);
+    }
     return qq_list(env, datum, depth);
 }
 

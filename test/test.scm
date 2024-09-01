@@ -495,4 +495,15 @@
   (expect equal? '(quasiquote (list (unquote (+ 1 2)) 4))
                  '`(list ,(+ 1 2) 4))))
 
+(describe "quasiquote unquote nested" (lambda ()
+  (expect equal? ``,1 '`,1)
+  (expect equal? ``,,(+ 1 2) '`,3)
+
+  (expect equal? `(a `(b ,(+ 1 2) ,(foo ,(+ 1 3) d) e) f)
+                 '(a `(b ,(+ 1 2) ,(foo 4 d) e) f))
+  (expect equal? (let ((name1 'x)
+                       (name2 'y))
+                   `(a `(b ,,name1 ,',name2 d) e))
+                 '(a `(b ,x ,'y d) e))))
+
 (test-run)
