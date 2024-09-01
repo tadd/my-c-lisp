@@ -708,12 +708,17 @@ static Value parse_list(Parser *p)
     return l;
 }
 
+static inline Value list_quoted(Value sym, Value e)
+{
+    return cons(sym, cons(e, Qnil));
+}
+
 static Value parse_quoted(Parser *p, Value sym)
 {
     Value e = parse_expr(p);
     if (e == Qundef)
         parse_error(p, "expression", "'EOF'");
-    return cons(sym, cons(e, Qnil));
+    return list_quoted(sym, e);
 }
 
 static Value parse_expr(Parser *p)
@@ -1339,11 +1344,6 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
             ret = last;
     }
     return ret;
-}
-
-static inline Value list_quoted(Value sym, Value e)
-{
-    return cons(sym, cons(e, Qnil));
 }
 
 static inline void expect_nonnull(const char *msg, Value l)
