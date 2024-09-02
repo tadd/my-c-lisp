@@ -524,4 +524,12 @@
   (expect equal? `(10 5 ,(sq 2) ,@(map sq '(4 3)) 8)
                  '(10 5 4 16 9 8))))
 
+(describe "quasiquote improper lists" (lambda ()
+  (expect equal? `(1 . 2) '(1 . 2))
+  (expect equal? `(1 . ,(car '(2))) '(1 . 2))
+  (expect equal? `((foo ,(- 10 3)) ,@(list 8) . ,(car '(9))) '((foo 7) 8 . 9))
+  (expect equal? `((foo ,(- 10 3)) ,@(list 8) . ,(car '(cons))) '((foo 7) 8 . cons))
+  (expect equal? `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(9))) '((foo 7) . 9))
+  (expect equal? `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons))) '((foo 7) . cons))))
+
 (test-run)

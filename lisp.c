@@ -1392,10 +1392,30 @@ static Value last_pair(Value l)
     return last;
 }
 
+static bool is_quoted_terminal(Value list)
+{
+    Value a = car(list), d = cdr(list);
+    return (a == SYM_UNQUOTE || a == SYM_QUASIQUOTE) &&
+        d != Qnil && cdr(d) == Qnil;
+}
+
+static Value qq(Value *env, Value datum, int64_t depth);
+
 static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
     for (Value o = datum; o != Qnil; o = cdr(o)) {
+        if (!value_is_pair(o)) {
+            PAIR(last)->cdr = o;
+            break;
+        }
+        if (is_quoted_terminal(o)) {
+            if (ret == Qnil)
+                runtime_error("invalid quasiquote");
+            Value v = qq(env, o, depth);
+            PAIR(last)->cdr = v;
+            break;
+        }
         bool splice = false;
         Value v = qq_splicable(env, car(o), depth, &splice);
         if (splice) {
