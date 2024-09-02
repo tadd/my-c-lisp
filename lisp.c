@@ -1694,6 +1694,50 @@ static Value builtin_procedure_p(UNUSED Value *env, Value o)
     return OF_BOOL(is_procedure(o));
 }
 
+static Value cars(Value l)
+{
+    Value last = Qnil, ret = Qnil, q;
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        if ((q = car(p)) == Qnil)
+            return ret;
+        last = append_at(last, car(q));
+        if (ret == Qnil)
+            ret = last;
+    }
+    return ret;
+}
+
+static Value cdrs(Value l)
+{
+    Value last = Qnil, ret = Qnil, q;
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        if ((q = car(p)) == Qnil)
+            return ret;
+        last = append_at(last, cdr(q));
+        if (ret == Qnil)
+            ret = last;
+    }
+    return ret;
+}
+
+static Value builtin_map(Value *env, Value args)
+{
+    expect_arity_range("map", 2, -1, args);
+
+    Value proc = car(args);
+    Value lists = cdr(args);
+    int64_t l = length(car(lists));
+    Value last = Qnil, ret = Qnil;
+    for (int64_t i = 0; i < l; i++) {
+        Value v = apply(env, proc, cars(lists));
+        last = append_at(last, v);
+        if (ret == Qnil)
+            ret = last;
+        lists = cdrs(lists);
+    }
+    return ret;
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1757,6 +1801,7 @@ static void initialize(void)
     define_function(e, "load", builtin_load, 1);
     define_function(e, "apply", builtin_apply, -1);
     define_function(e, "procedure?", builtin_procedure_p, 1);
+    define_function(e, "map", builtin_map, -1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }

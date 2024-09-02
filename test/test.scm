@@ -399,6 +399,11 @@
   (expect equal? (apply + (apply + '(1 2 3)) '(42)) 48)
   (expect-t (apply equal? '((1) (1))))))
 
+(describe "map" (lambda ()
+  (expect equal? (map car '((a b) (d e) (g h))) '(a d g))
+  (expect equal? (map (lambda (n) (* n n)) '(1 2 3 4 5)) '(1 4 9 16 25))
+  (expect equal? (map + '(1 2 3) '(4 5 6)) '(5 7 9))))
+
 (describe "assq" (lambda ()
   (define alist '((10 . 1) (20 . 2) (30 . 3)))
   (expect equal? (assq 10 alist) '(10 . 1))
