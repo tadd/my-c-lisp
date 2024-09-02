@@ -1356,8 +1356,7 @@ static inline void expect_nonnull(const char *msg, Value l)
 
 static Value qq_list(Value *env, Value datum, int64_t depth);
 
-static Value qq_splicable(Value *env, Value datum, int64_t depth,
-                          bool *spliced)
+static Value qq(Value *env, Value datum, int64_t depth)
 {
     if (depth == 0)
         return ieval(env, datum);
@@ -1366,19 +1365,17 @@ static Value qq_splicable(Value *env, Value datum, int64_t depth,
     Value a = car(datum), d = cdr(datum);
     if (a == SYM_QUASIQUOTE) {
         expect_nonnull("quasiquote in qq", d);
-        Value v = qq_splicable(env, car(d), depth + 1, NULL);
+        Value v = qq(env, car(d), depth + 1);
         return list2(SYM_QUASIQUOTE, v);
     }
     if (a == SYM_UNQUOTE) {
         expect_nonnull("unquote in qq", d);
-        Value v = qq_splicable(env, car(d), depth - 1, NULL);
+        Value v = qq(env, car(d), depth - 1);
         return depth == 1 ? v : list2(SYM_UNQUOTE, v);
     }
     if (a == SYM_UNQUOTE_SPLICING) {
         expect_nonnull("unquote-splicing in qq", d);
-        if (spliced)
-            *spliced = true;
-        Value v = qq_splicable(env, car(d), depth - 1, NULL);
+        Value v = qq(env, car(d), depth - 1);
         return depth == 1 ? v : list2(SYM_UNQUOTE_SPLICING, v);
     }
     return qq_list(env, datum, depth);
@@ -1410,8 +1407,6 @@ static Value splice_at(Value last, Value to_splice)
     return last_pair(to_splice);
 }
 
-static inline Value qq(Value *env, Value datum, int64_t depth);
-
 static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
@@ -1425,18 +1420,14 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
             PAIR(last)->cdr = qq(env, o, depth);
             break;
         }
-        bool splice = false;
-        Value v = qq_splicable(env, car(o), depth, &splice);
-        last = splice ? splice_at(last, v) : append_at(last, v);
+        Value next = car(o);
+        bool spliced = (value_is_pair(next) && car(next) == SYM_UNQUOTE_SPLICING);
+        Value v = qq(env, next, depth);
+        last = spliced ? splice_at(last, v) : append_at(last, v);
         if (ret == Qnil)
             ret = last;
     }
     return ret;
-}
-
-static inline Value qq(Value *env, Value datum, int64_t depth)
-{
-    return qq_splicable(env, datum, depth, NULL);
 }
 
 static Value builtin_quasiquote(Value *env, Value datum)
