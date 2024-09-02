@@ -1399,6 +1399,17 @@ static bool is_quoted_terminal(Value list)
         d != Qnil && cdr(d) == Qnil;
 }
 
+static Value splice_at(Value last, Value to_splice)
+{
+    if (to_splice == Qnil)
+        return last; // as is
+    expect_type("quasiquote", TYPE_PAIR, to_splice);
+    if (last == Qnil)
+        return to_splice;
+    PAIR(last)->cdr = to_splice;
+    return last_pair(to_splice);
+}
+
 static inline Value qq(Value *env, Value datum, int64_t depth);
 
 static Value qq_list(Value *env, Value datum, int64_t depth)
@@ -1410,26 +1421,13 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
             break;
         }
         if (is_quoted_terminal(o)) {
-            if (ret == Qnil)
-                runtime_error("invalid quasiquote");
-            Value v = qq(env, o, depth);
-            PAIR(last)->cdr = v;
+            expect_nonnull("list in qq", ret);
+            PAIR(last)->cdr = qq(env, o, depth);
             break;
         }
         bool splice = false;
         Value v = qq_splicable(env, car(o), depth, &splice);
-        if (splice) {
-            if (v == Qnil)
-                continue;
-            expect_type("qq_list", TYPE_PAIR, v);
-            if (last == Qnil)
-                last = v;
-            else {
-                PAIR(last)->cdr = v;
-                last = last_pair(v);
-            }
-        } else
-            last = append_at(last, v);
+        last = splice ? splice_at(last, v) : append_at(last, v);
         if (ret == Qnil)
             ret = last;
     }
