@@ -721,9 +721,9 @@ static Value parse_list(Parser *p)
     return l;
 }
 
-static inline Value list_quoted(Value sym, Value e)
+static inline Value list2(Value x, Value y)
 {
-    return cons(sym, cons(e, Qnil));
+    return cons(x, cons(y, Qnil));
 }
 
 static Value parse_quoted(Parser *p, Value sym)
@@ -731,7 +731,7 @@ static Value parse_quoted(Parser *p, Value sym)
     Value e = parse_expr(p);
     if (e == Qundef)
         parse_error(p, "expression", "'EOF'");
-    return list_quoted(sym, e);
+    return list2(sym, e);
 }
 
 static Value parse_expr(Parser *p)
@@ -1367,19 +1367,19 @@ static Value qq_splicable(Value *env, Value datum, int64_t depth,
     if (a == SYM_QUASIQUOTE) {
         expect_nonnull("quasiquote in qq", d);
         Value v = qq_splicable(env, car(d), depth + 1, NULL);
-        return list_quoted(SYM_QUASIQUOTE, v);
+        return list2(SYM_QUASIQUOTE, v);
     }
     if (a == SYM_UNQUOTE) {
         expect_nonnull("unquote in qq", d);
         Value v = qq_splicable(env, car(d), depth - 1, NULL);
-        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
+        return depth == 1 ? v : list2(SYM_UNQUOTE, v);
     }
     if (a == SYM_UNQUOTE_SPLICING) {
         expect_nonnull("unquote-splicing in qq", d);
         if (spliced)
             *spliced = true;
         Value v = qq_splicable(env, car(d), depth - 1, NULL);
-        return depth == 1 ? v : list_quoted(SYM_UNQUOTE_SPLICING, v);
+        return depth == 1 ? v : list2(SYM_UNQUOTE_SPLICING, v);
     }
     return qq_list(env, datum, depth);
 }
