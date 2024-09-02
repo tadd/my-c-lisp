@@ -383,6 +383,13 @@
   (expect equal? (append '(1) '(2) '(3))
           '(1 2 3))))
 
+(describe "procedure?" (lambda ()
+  (expect-t (procedure? car))
+  (expect-f (procedure? 'car))
+  (expect-t (procedure? (lambda (x) (* x x))))
+  (expect-f (procedure? '(lambda (x) (* x x))))
+  (expect-t (call/cc (lambda (c) (procedure? c))))))
+
 (describe "apply" (lambda ()
   (expect equal? (apply + '(42)) 42)
   (expect equal? (apply + 1 '(42)) 43)

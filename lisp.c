@@ -865,19 +865,26 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
-static Type expect_applicative(Value v)
+static bool is_procedure_type(Type t)
 {
-    Type t = value_type_of(v);
     switch (t) {
     case TYPE_SPECIAL:
     case TYPE_CFUNC:
     case TYPE_CLOSURE:
     case TYPE_CONTINUATION:
-        return t;
+        return true;
     default:
-        runtime_error("type error in (eval): expected applicative but got %s",
-                      value_type_to_string(t));
+        return false;
     }
+}
+
+static Type expect_applicative(Value v)
+{
+    Type t = value_type_of(v);
+    if (is_procedure_type(t))
+        return t;
+    runtime_error("type error in (eval): expected applicative but got %s",
+                  value_type_to_string(t));
 }
 
 static Value apply(Value *env, Value func, Value args)
@@ -1677,6 +1684,16 @@ static Value builtin_apply(Value *env, Value args)
     return apply(env, proc, appargs);
 }
 
+static bool is_procedure(Value o)
+{
+    return is_procedure_type(value_type_of(o));
+}
+
+static Value builtin_procedure_p(UNUSED Value *env, Value o)
+{
+    return OF_BOOL(is_procedure(o));
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1739,6 +1756,7 @@ static void initialize(void)
     define_function(e, "assq", builtin_assq, 2);
     define_function(e, "load", builtin_load, 1);
     define_function(e, "apply", builtin_apply, -1);
+    define_function(e, "procedure?", builtin_procedure_p, 1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
