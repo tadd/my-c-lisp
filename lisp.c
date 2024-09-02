@@ -113,7 +113,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE;
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -370,6 +370,7 @@ typedef enum {
     TOK_TYPE_QUOTE,
     TOK_TYPE_GRAVE,
     TOK_TYPE_COMMA,
+    TOK_TYPE_SPLICE,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -391,6 +392,7 @@ static const Token
     TOK_QUOTE = TOK(QUOTE),
     TOK_GRAVE = TOK(GRAVE),
     TOK_COMMA = TOK(COMMA),
+    TOK_SPLICE = TOK(SPLICE),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -567,6 +569,15 @@ static void skip_token_atmosphere(Parser *p)
     ungetc(c, p->in);
 }
 
+static Token get_token_comma_or_splice(Parser *p)
+{
+    int c = fgetc(p->in);
+    if (c == '@')
+        return TOK_SPLICE;
+    ungetc(c, p->in);
+    return TOK_COMMA;
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TOK_TYPE_EOF)  {
@@ -587,7 +598,7 @@ static Token get_token(Parser *p)
     case '`':
         return TOK_GRAVE;
     case ',':
-        return TOK_COMMA;
+        return get_token_comma_or_splice(p);
     case '.':
         return TOK_DOT;
     case '"':
@@ -658,6 +669,8 @@ static const char *token_stringify(Token t)
         return "`";
     case TOK_TYPE_COMMA:
         return ",";
+    case TOK_TYPE_SPLICE:
+        return ",@";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -735,6 +748,8 @@ static Value parse_expr(Parser *p)
         return parse_quoted(p, SYM_QUASIQUOTE);
     case TOK_TYPE_COMMA:
         return parse_quoted(p, SYM_UNQUOTE);
+    case TOK_TYPE_SPLICE:
+        return parse_quoted(p, SYM_UNQUOTE_SPLICING);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1333,23 +1348,72 @@ static Value builtin_quote(UNUSED Value *env, Value datum)
     return datum;
 }
 
-static Value qq(Value *env, Value datum, int64_t depth);
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?: %s", msg, stringify(l));
+}
+
+static Value qq_list(Value *env, Value datum, int64_t depth);
+
+static Value qq_splicable(Value *env, Value datum, int64_t depth,
+                          bool *spliced)
+{
+    if (depth == 0)
+        return ieval(env, datum);
+    if (datum == Qnil || value_is_atom(datum))
+        return datum;
+    Value a = car(datum), d = cdr(datum);
+    if (a == SYM_QUASIQUOTE) {
+        expect_nonnull("quasiquote in qq", d);
+        Value v = qq_splicable(env, car(d), depth + 1, NULL);
+        return list_quoted(SYM_QUASIQUOTE, v);
+    }
+    if (a == SYM_UNQUOTE) {
+        expect_nonnull("unquote in qq", d);
+        Value v = qq_splicable(env, car(d), depth - 1, NULL);
+        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
+    }
+    if (a == SYM_UNQUOTE_SPLICING) {
+        expect_nonnull("unquote-splicing in qq", d);
+        if (spliced)
+            *spliced = true;
+        Value v = qq_splicable(env, car(d), depth - 1, NULL);
+        return depth == 1 ? v : list_quoted(SYM_UNQUOTE_SPLICING, v);
+    }
+    return qq_list(env, datum, depth);
+}
+
+static Value last_pair(Value l)
+{
+    Value last = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p))
+        last = p;
+    return last;
+}
 
 static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
     for (Value o = datum; o != Qnil; o = cdr(o)) {
-        last = append_at(last, qq(env, car(o), depth));
+        bool splice = false;
+        Value v = qq_splicable(env, car(o), depth, &splice);
+        if (splice) {
+            if (v == Qnil)
+                continue;
+            expect_type("qq_list", TYPE_PAIR, v);
+            if (last == Qnil)
+                last = v;
+            else {
+                PAIR(last)->cdr = v;
+                last = last_pair(v);
+            }
+        } else
+            last = append_at(last, v);
         if (ret == Qnil)
             ret = last;
     }
     return ret;
-}
-
-static inline void expect_nonnull(const char *msg, Value l)
-{
-    if (l == Qnil)
-        runtime_error("%s: expected non-null?: %s", msg, stringify(l));
 }
 
 static Value qq(Value *env, Value datum, int64_t depth)
@@ -1359,15 +1423,15 @@ static Value qq(Value *env, Value datum, int64_t depth)
     if (datum == Qnil || value_is_atom(datum))
         return datum;
     Value a = car(datum), d = cdr(datum);
-    if (a == SYM_UNQUOTE) {
-        expect_nonnull("unquote in qq", d);
-        Value v = qq(env, car(d), depth - 1);
-        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
-    }
     if (a == SYM_QUASIQUOTE) {
         expect_nonnull("quasiquote in qq", d);
         Value v = qq(env, car(d), depth + 1);
         return list_quoted(SYM_QUASIQUOTE, v);
+    }
+    if (a == SYM_UNQUOTE) {
+        expect_nonnull("unquote in qq", d);
+        Value v = qq(env, car(d), depth - 1);
+        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
     }
     return qq_list(env, datum, depth);
 }
@@ -1826,6 +1890,11 @@ static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
     runtime_error("unquote: applied out of quasiquote (`)");
 }
 
+static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
+{
+    runtime_error("unquote-splicing: applied out of quasiquote (`)");
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1848,6 +1917,7 @@ static void initialize(void)
     SYM_QUOTE = value_of_symbol("quote");
     SYM_QUASIQUOTE = value_of_symbol("quasiquote");
     SYM_UNQUOTE = value_of_symbol("unquote");
+    SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
@@ -1859,6 +1929,7 @@ static void initialize(void)
     define_special(e, "quote", builtin_quote, 1);
     define_special(e, "quasiquote", builtin_quasiquote, 1);
     define_special(e, "unquote", builtin_unquote, 1);
+    define_special(e, "unquote-splicing", builtin_unquote_splicing, 1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);
