@@ -415,6 +415,13 @@
     (for-each (lambda (a b) (set! x (+ a b))) '(1 2 3) '(4 5 6))
     (expect eq? x 9))))
 
+;; TODO
+(describe "force" (lambda () #t))
+(describe "delay" (lambda () #t))
+(describe "values" (lambda () #t))
+(describe "call-with-values" (lambda () #t))
+(describe "dynamic-wind" (lambda () #t))
+
 (describe "assq" (lambda ()
   (define alist '((10 . 1) (20 . 2) (30 . 3)))
   (expect equal? (assq 10 alist) '(10 . 1))
