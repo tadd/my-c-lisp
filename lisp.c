@@ -1399,7 +1399,7 @@ static bool is_quoted_terminal(Value list)
         d != Qnil && cdr(d) == Qnil;
 }
 
-static Value qq(Value *env, Value datum, int64_t depth);
+static inline Value qq(Value *env, Value datum, int64_t depth);
 
 static Value qq_list(Value *env, Value datum, int64_t depth)
 {
@@ -1436,24 +1436,9 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
     return ret;
 }
 
-static Value qq(Value *env, Value datum, int64_t depth)
+static inline Value qq(Value *env, Value datum, int64_t depth)
 {
-    if (depth == 0)
-        return ieval(env, datum);
-    if (datum == Qnil || value_is_atom(datum))
-        return datum;
-    Value a = car(datum), d = cdr(datum);
-    if (a == SYM_QUASIQUOTE) {
-        expect_nonnull("quasiquote in qq", d);
-        Value v = qq(env, car(d), depth + 1);
-        return list_quoted(SYM_QUASIQUOTE, v);
-    }
-    if (a == SYM_UNQUOTE) {
-        expect_nonnull("unquote in qq", d);
-        Value v = qq(env, car(d), depth - 1);
-        return depth == 1 ? v : list_quoted(SYM_UNQUOTE, v);
-    }
-    return qq_list(env, datum, depth);
+    return qq_splicable(env, datum, depth, NULL);
 }
 
 static Value builtin_quasiquote(Value *env, Value datum)
