@@ -404,6 +404,17 @@
   (expect equal? (map (lambda (n) (* n n)) '(1 2 3 4 5)) '(1 4 9 16 25))
   (expect equal? (map + '(1 2 3) '(4 5 6)) '(5 7 9))))
 
+(describe "for-each" (lambda ()
+  (let ((x '()))
+    (for-each (lambda (l) (set! x (car l))) '((a b) (d e) (g h)))
+    (expect eq? x 'g))
+  (let ((x 0))
+    (for-each (lambda (n) (set! x (* n n))) '(1 2 3 4 5))
+    (expect eq? x 25))
+  (let ((x 0))
+    (for-each (lambda (a b) (set! x (+ a b))) '(1 2 3) '(4 5 6))
+    (expect eq? x 9))))
+
 (describe "assq" (lambda ()
   (define alist '((10 . 1) (20 . 2) (30 . 3)))
   (expect equal? (assq 10 alist) '(10 . 1))

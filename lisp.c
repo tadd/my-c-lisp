@@ -1738,6 +1738,20 @@ static Value builtin_map(Value *env, Value args)
     return ret;
 }
 
+static Value builtin_for_each(Value *env, Value args)
+{
+    expect_arity_range("for-each", 2, -1, args);
+
+    Value proc = car(args);
+    Value lists = cdr(args);
+    int64_t l = length(car(lists));
+    for (int64_t i = 0; i < l; i++) {
+        apply(env, proc, cars(lists));
+        lists = cdrs(lists);
+    }
+    return Qnil;
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1802,6 +1816,7 @@ static void initialize(void)
     define_function(e, "apply", builtin_apply, -1);
     define_function(e, "procedure?", builtin_procedure_p, 1);
     define_function(e, "map", builtin_map, -1);
+    define_function(e, "for-each", builtin_for_each, -1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
