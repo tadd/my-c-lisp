@@ -176,7 +176,9 @@ Type value_type_of(Value v)
             return TYPE_SYMBOL;
         if (v == Qtrue || v == Qfalse)
             return TYPE_BOOL;
-        return TYPE_UNDEF;
+        if (v == Qundef)
+            return TYPE_UNDEF;
+        UNREACHABLE();
     }
     ValueTag t = VALUE_TAG(v);
     switch (t) {
