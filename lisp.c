@@ -1955,10 +1955,3 @@ static void initialize(void)
 
     define_function(e, "_cputime", builtin_cputime, 0);
 }
-
-// for testing
-void reset_environment(void)
-{
-    toplevel_environment = Qnil;
-    initialize();
-}

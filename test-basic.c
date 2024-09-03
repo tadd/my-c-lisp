@@ -72,8 +72,6 @@
 
 #define expect_runtime_error_evaled(exp, act) expect_x_evaled(runtime_error, exp, act)
 
-TestSuite(lisp, .init = reset_environment);
-
 Test(lisp, nil) {
     cr_expect(value_is_nil(Qnil));
 }
