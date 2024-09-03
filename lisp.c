@@ -152,16 +152,6 @@ inline bool value_is_string(Value v)
     return value_tag_is(v, TAG_STR);
 }
 
-static inline bool value_is_cfunc(Value v)
-{
-    return value_tag_is(v, TAG_CFUNC);
-}
-
-static inline bool value_is_closure(Value v)
-{
-    return value_tag_is(v, TAG_CLOSURE);
-}
-
 inline bool value_is_pair(Value v)
 {
     return value_tag_is(v, TAG_PAIR);
