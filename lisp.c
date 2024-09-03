@@ -113,7 +113,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE = Qundef, SYM_QUOTE = Qundef; // used in cond
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -368,6 +368,9 @@ typedef enum {
     TOK_TYPE_LPAREN,
     TOK_TYPE_RPAREN,
     TOK_TYPE_QUOTE,
+    TOK_TYPE_GRAVE,
+    TOK_TYPE_COMMA,
+    TOK_TYPE_SPLICE,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -387,6 +390,9 @@ static const Token
     TOK_LPAREN = TOK(LPAREN),
     TOK_RPAREN = TOK(RPAREN),
     TOK_QUOTE = TOK(QUOTE),
+    TOK_GRAVE = TOK(GRAVE),
+    TOK_COMMA = TOK(COMMA),
+    TOK_SPLICE = TOK(SPLICE),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -563,6 +569,15 @@ static void skip_token_atmosphere(Parser *p)
     ungetc(c, p->in);
 }
 
+static Token get_token_comma_or_splice(Parser *p)
+{
+    int c = fgetc(p->in);
+    if (c == '@')
+        return TOK_SPLICE;
+    ungetc(c, p->in);
+    return TOK_COMMA;
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TOK_TYPE_EOF)  {
@@ -580,6 +595,10 @@ static Token get_token(Parser *p)
         return TOK_RPAREN;
     case '\'':
         return TOK_QUOTE;
+    case '`':
+        return TOK_GRAVE;
+    case ',':
+        return get_token_comma_or_splice(p);
     case '.':
         return TOK_DOT;
     case '"':
@@ -646,6 +665,12 @@ static const char *token_stringify(Token t)
         return ")";
     case TOK_TYPE_QUOTE:
         return "'";
+    case TOK_TYPE_GRAVE:
+        return "`";
+    case TOK_TYPE_COMMA:
+        return ",";
+    case TOK_TYPE_SPLICE:
+        return ",@";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -696,20 +721,35 @@ static Value parse_list(Parser *p)
     return l;
 }
 
+static inline Value list2(Value x, Value y)
+{
+    return cons(x, cons(y, Qnil));
+}
+
+static Value parse_quoted(Parser *p, Value sym)
+{
+    Value e = parse_expr(p);
+    if (e == Qundef)
+        parse_error(p, "expression", "'EOF'");
+    return list2(sym, e);
+}
+
 static Value parse_expr(Parser *p)
 {
     Token t = get_token(p);
-    Value e;
     switch (t.type) {
     case TOK_TYPE_LPAREN:
         return parse_list(p); // parse til ')'
     case TOK_TYPE_RPAREN:
         parse_error(p, "expression", "')'");
     case TOK_TYPE_QUOTE:
-        e = parse_expr(p);
-        if (e == Qundef)
-            parse_error(p, "expression", "'EOF'");
-        return cons(SYM_QUOTE, cons(e, Qnil));
+        return parse_quoted(p, SYM_QUOTE);
+    case TOK_TYPE_GRAVE:
+        return parse_quoted(p, SYM_QUASIQUOTE);
+    case TOK_TYPE_COMMA:
+        return parse_quoted(p, SYM_UNQUOTE);
+    case TOK_TYPE_SPLICE:
+        return parse_quoted(p, SYM_UNQUOTE_SPLICING);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1308,6 +1348,85 @@ static Value builtin_quote(UNUSED Value *env, Value datum)
     return datum;
 }
 
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?: %s", msg, stringify(l));
+}
+
+static Value qq_list(Value *env, Value datum, int64_t depth);
+
+static Value qq(Value *env, Value datum, int64_t depth)
+{
+    if (depth == 0)
+        return ieval(env, datum);
+    if (datum == Qnil || value_is_atom(datum))
+        return datum;
+    Value a = car(datum), d = cdr(datum);
+    if (a == SYM_QUASIQUOTE) {
+        expect_nonnull("nested quasiquote", d);
+        Value v = qq(env, car(d), depth + 1);
+        return list2(a, v);
+    }
+    if (a == SYM_UNQUOTE || a == SYM_UNQUOTE_SPLICING) {
+        expect_nonnull("unquotes in quasiquote", d);
+        Value v = qq(env, car(d), depth - 1);
+        return depth == 1 ? v : list2(a, v);
+    }
+    return qq_list(env, datum, depth);
+}
+
+static Value last_pair(Value l)
+{
+    Value last = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p))
+        last = p;
+    return last;
+}
+
+static bool is_quoted_terminal(Value list)
+{
+    Value a = car(list), d = cdr(list);
+    return (a == SYM_UNQUOTE || a == SYM_QUASIQUOTE) &&
+        d != Qnil && cdr(d) == Qnil;
+}
+
+static Value splice_at(Value last, Value to_splice)
+{
+    if (to_splice == Qnil)
+        return last; // as is
+    expect_type("unquote-splicing", TYPE_PAIR, to_splice);
+    if (last == Qnil)
+        return to_splice;
+    PAIR(last)->cdr = to_splice;
+    return last_pair(to_splice);
+}
+
+static Value qq_list(Value *env, Value datum, int64_t depth)
+{
+    Value ret = Qnil, last = Qnil;
+    for (Value o = datum; o != Qnil; o = cdr(o)) {
+        bool is_atom = value_is_atom(o);
+        if (is_atom || is_quoted_terminal(o)) {
+            expect_nonnull("quasiquote", ret);
+            PAIR(last)->cdr = is_atom ? o : qq(env, o, depth);
+            break;
+        }
+        Value elem = car(o);
+        bool spliced = (value_is_pair(elem) && car(elem) == SYM_UNQUOTE_SPLICING);
+        Value v = qq(env, elem, depth);
+        last = spliced ? splice_at(last, v) : append_at(last, v);
+        if (ret == Qnil)
+            ret = last;
+    }
+    return ret;
+}
+
+static Value builtin_quasiquote(Value *env, Value datum)
+{
+    return qq(env, datum, 1);
+}
+
 static Value builtin_begin(Value *env, Value body)
 {
     return eval_body(env, body);
@@ -1752,6 +1871,16 @@ static Value builtin_for_each(Value *env, Value args)
     return Qnil;
 }
 
+static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
+{
+    runtime_error("unquote: applied out of quasiquote (`)");
+}
+
+static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
+{
+    runtime_error("unquote-splicing: applied out of quasiquote (`)");
+}
+
 //
 // Built-in Functions: Extensions
 //
@@ -1772,6 +1901,9 @@ static void initialize(void)
     load_basedir = getcwd(basedir, sizeof(basedir));
     SYM_ELSE = value_of_symbol("else");
     SYM_QUOTE = value_of_symbol("quote");
+    SYM_QUASIQUOTE = value_of_symbol("quasiquote");
+    SYM_UNQUOTE = value_of_symbol("unquote");
+    SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
 
     Value *e = &toplevel_environment;
     define_special(e, "if", builtin_if, -1);
@@ -1781,6 +1913,9 @@ static void initialize(void)
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
     define_special(e, "quote", builtin_quote, 1);
+    define_special(e, "quasiquote", builtin_quasiquote, 1);
+    define_special(e, "unquote", builtin_unquote, 1);
+    define_special(e, "unquote-splicing", builtin_unquote_splicing, 1);
     define_special(e, "begin", builtin_begin, -1);
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);
