@@ -7,7 +7,7 @@
 #include "lisp.h"
 #include "utils.h"
 
-ATTR_NORETURN
+ATTR(noreturn)
 static void usage(FILE *out)
 {
     fprintf(out, "Usage: lisp [-hepP] <file>\n");
@@ -18,7 +18,7 @@ static void usage(FILE *out)
     exit(out == stdout ? 0 : 2);
 }
 
-ATTR_FORMAT(printf, 1, 2)
+ATTR(format(printf, 1, 2))
 static void opt_error(const char *fmt, ...)
 {
     va_list ap;

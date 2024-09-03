@@ -8,20 +8,21 @@
 
 #define expect_stringify(exp, v) do { \
         char *s = stringify(v); \
-        cr_expect_str_eq(s, exp);   \
+        cr_expect_str_eq(s, exp); \
         free(s); \
     } while (0)
 
 #define value_idfunc list
 #define V(x) \
     _Generic(x, int: value_of_int, char *: value_of_string, Value: value_idfunc)(x)
-#define Vsym(x) value_of_symbol(x)
-#define expect_v_eq(exp, act)  do { \
-        Value tmpe = exp, tmpa = act; \
-        if (value_is_int(tmpe)) \
-            expect_int_eq(tmpe, tmpa); \
-        else if (value_is_string(tmpe)) \
-            expect_vstr_eq(value_to_string(tmpe), tmpa); \
+#define expect_v_eq(expected, actual) do { \
+        Value vexp = expected, vact = actual; \
+        if (value_is_int(vexp)) \
+            expect_int_eq(vexp, vact); \
+        else if (value_is_string(vexp)) \
+            expect_vstr_eq(value_to_string(vexp), vact); \
+        else if (value_is_symbol(vexp)) \
+            expect_vsym_eq(value_to_string(vexp), vact); \
     } while (0)
 #define expect_list_eq(expected, actual) do { \
         Value exp = expected, act = actual; \
@@ -30,49 +31,43 @@
         for (; exp != Qnil; exp = cdr(exp), act = cdr(act)) \
             expect_v_eq(car(exp), car(act)); \
     } while (0)
-#define expect_pair_eq(expcar, expcdr, act) do { \
+#define expect_pair_eq(ecar, ecdr, act) do { \
         Value a = act; \
         cr_expect(value_is_pair(a)); \
-        expect_v_eq(V(expcar), car(a)); \
-        expect_v_eq(V(expcdr), cdr(a)); \
+        expect_v_eq(V(ecar), car(a)); \
+        expect_v_eq(V(ecdr), cdr(a)); \
     } while (0)
 
 #define expect_int_eq(exp, act) cr_expect(eq(int, exp, act))
-#define expect_str_eq(exp, act) cr_expect_str_eq(act, exp)
+#define expect_string_eq(exp, act) cr_expect_str_eq(act, exp)
 #define expect_runtime_error(pattern, v) do { \
         expect_int_eq(Qundef, v); \
         char *m = strstr(error_message(), pattern); \
-        cr_expect_not_null(m, \
-                           "expected \"%s\" includes \"%s\" but not", \
+        cr_expect_not_null(m, "expected \"%s\" includes \"%s\"", \
                            error_message(), pattern); \
     } while (0)
 
 #define expect_no_error(v) \
     cr_expect_neq(v, Qundef, "got error with a message: '%s'", error_message())
-#define expect_type(exp, act) expect_str_eq(exp, value_type_to_string(value_type_of(act)))
-#define expect_vx_eq(x, y, z, exp, act) do { \
+#define expect_vx_eq(t, n, exp, act) do { \
         Value a = act; \
         expect_no_error(a); \
-        expect_type(#x, a); \
-        expect_##y##_eq(exp, value_to_##z(a)); \
+        expect_int_eq(t, value_type_of(a)); \
+        expect_##n##_eq(exp, value_to_##n(a)); \
     } while (0)
-#define expect_x_parsed(x, exp, act) expect_##x(exp, parse_expr_string(act))
-#define expect_x_evaled(x, exp, act) expect_##x(exp, eval_string(act))
+#define expect_x_eq_parsed(x, exp, act) expect_##x##_eq(exp, parse_expr_string(act))
 
-#define expect_vint_eq(exp, act) expect_vx_eq(integer, int, int, exp, act)
-#define expect_vstr_eq(exp, act) expect_vx_eq(string, str, string, exp, act)
-#define expect_vsym_eq(exp, act) expect_vx_eq(symbol, str, string, exp, act)
+#define expect_vint_eq(exp, act) expect_vx_eq(TYPE_INT, int, exp, act)
+#define expect_vstr_eq(exp, act) expect_vx_eq(TYPE_STR, string, exp, act)
+#define expect_vsym_eq(exp, act) expect_vx_eq(TYPE_SYMBOL, string, exp, act)
 
-#define expect_vint_eq_parsed(exp, act) expect_x_parsed(vint_eq, exp, act)
-#define expect_vstr_eq_parsed(exp, act) expect_x_parsed(vstr_eq, exp, act)
-#define expect_vsym_eq_parsed(exp, act) expect_x_parsed(vsym_eq, exp, act)
-#define expect_list_eq_parsed(exp, act) expect_x_parsed(list_eq, exp, act)
+#define expect_vint_eq_parsed(exp, act) expect_x_eq_parsed(vint, exp, act)
+#define expect_vstr_eq_parsed(exp, act) expect_x_eq_parsed(vstr, exp, act)
+#define expect_vsym_eq_parsed(exp, act) expect_x_eq_parsed(vsym, exp, act)
+#define expect_list_eq_parsed(exp, act) expect_x_eq_parsed(list, exp, act)
 #define expect_pair_eq_parsed(ecar, ecdr, act) expect_pair_eq(ecar, ecdr, parse_expr_string(act))
-#define expect_runtime_error_parsed(exp, act) expect_x_parsed(runtime_error, exp, act)
-
-#define expect_runtime_error_evaled(exp, act) expect_x_evaled(runtime_error, exp, act)
-
-TestSuite(lisp, .init = reset_environment);
+#define expect_runtime_error_parsed(exp, act) expect_runtime_error(exp, parse_expr_string(act))
+#define expect_runtime_error_evaled(exp, act) expect_runtime_error(exp, eval_string(act))
 
 Test(lisp, nil) {
     cr_expect(value_is_nil(Qnil));
@@ -119,6 +114,7 @@ Test(lisp, parse_string_list) {
                           "(\"abc\" \"def\")");
 }
 
+#define caaaar(x) (car(car(car(car(x)))))
 Test(lisp, cxr) {
     expect_vint_eq(42, caaaar(parse_expr_string("((((42))))")));
 }
@@ -133,12 +129,11 @@ Test(lisp, parse_dot) {
 
 Test(lisp, parse_peculiar) {
     expect_vint_eq_parsed(42, "+42");
-
     cr_expect(value_is_symbol(parse_expr_string("+")));
 }
 
 Test(lisp, parse_lambda) {
-    expect_list_eq_parsed(list(Vsym("lambda"), Qnil, V(42), Qundef),
+    expect_list_eq_parsed(list(value_of_symbol("lambda"), Qnil, V(42), Qundef),
                           "(lambda () 42)");
 }
 

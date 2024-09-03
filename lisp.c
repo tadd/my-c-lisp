@@ -152,22 +152,12 @@ inline bool value_is_string(Value v)
     return value_tag_is(v, TAG_STR);
 }
 
-inline bool value_is_cfunc(Value v)
-{
-    return value_tag_is(v, TAG_CFUNC);
-}
-
-inline bool value_is_closure(Value v)
-{
-    return value_tag_is(v, TAG_CLOSURE);
-}
-
 inline bool value_is_pair(Value v)
 {
     return value_tag_is(v, TAG_PAIR);
 }
 
-inline bool value_is_atom(Value v)
+static inline bool value_is_atom(Value v)
 {
     return !value_is_pair(v);
 }
@@ -177,17 +167,23 @@ inline bool value_is_nil(Value v)
     return v == Qnil;
 }
 
+static Type immediate_type_of(Value v)
+{
+    if (value_is_int(v))
+        return TYPE_INT;
+    if (value_is_symbol(v))
+        return TYPE_SYMBOL;
+    if (v == Qtrue || v == Qfalse)
+        return TYPE_BOOL;
+    if (v == Qundef)
+        return TYPE_UNDEF;
+    UNREACHABLE();
+}
+
 Type value_type_of(Value v)
 {
-    if (is_immediate(v)) {
-        if (value_is_int(v))
-            return TYPE_INT;
-        if (value_is_symbol(v))
-            return TYPE_SYMBOL;
-        if (v == Qtrue || v == Qfalse)
-            return TYPE_BOOL;
-        return TYPE_UNDEF;
-    }
+    if (is_immediate(v))
+        return immediate_type_of(v);
     ValueTag t = VALUE_TAG(v);
     switch (t) {
     case TAG_STR:
@@ -299,7 +295,7 @@ Value cons(Value car, Value cdr)
 static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
-ATTR_NORETURN
+ATTR(noreturn)
 static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
@@ -882,7 +878,7 @@ static Value apply_closure(Value *env, Value func, Value args)
     return eval_body(&clenv, cl->body);
 }
 
-ATTR_NORETURN ATTR(noinline)
+ATTR(noreturn) ATTR(noinline)
 static void jump(Continuation *cont)
 {
     memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
@@ -891,7 +887,7 @@ static void jump(Continuation *cont)
 
 #define GET_SP(p) volatile void *p = &p
 
-ATTR_NORETURN
+ATTR(noreturn)
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
@@ -1057,7 +1053,7 @@ char *stringify(Value v)
     return s;
 }
 
-Value reverse(Value v)
+static Value reverse(Value v)
 {
     Value l = Qnil;
     for (; v != Qnil; v = cdr(v))
@@ -1229,7 +1225,7 @@ static Value load_inner(const char *path)
 // Special Forms
 //
 
-#define UNUSED ATTR_UNUSED
+#define UNUSED ATTR(unused)
 
 static Value builtin_if(Value *env, Value args)
 {
@@ -1894,7 +1890,7 @@ static Value builtin_cputime(void) // in micro sec
     return value_of_int(n);
 }
 
-ATTR_CTOR
+ATTR(constructor)
 static void initialize(void)
 {
     static char basedir[PATH_MAX];
@@ -1954,11 +1950,4 @@ static void initialize(void)
     define_function(e, "for-each", builtin_for_each, -1);
 
     define_function(e, "_cputime", builtin_cputime, 0);
-}
-
-// for testing
-void reset_environment(void)
-{
-    toplevel_environment = Qnil;
-    initialize();
 }
