@@ -25,17 +25,13 @@ typedef enum {
 typedef struct Pair Pair;
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
-#define ANYARGS /*empty*/
-typedef Value (*cfunc_t)(ANYARGS);
+typedef Value (*cfunc_t)(/*ANYARGS*/);
 
 extern const Value Qnil, Qundef, Qfalse, Qtrue;
 
 bool value_is_int(Value v);
 bool value_is_symbol(Value v);
 bool value_is_string(Value v);
-bool value_is_cfunc(Value v);
-bool value_is_closure(Value v);
-bool value_is_atom(Value v);
 bool value_is_pair(Value v);
 bool value_is_nil(Value v);
 Type value_type_of(Value v);
@@ -52,38 +48,9 @@ Value value_of_string(const char *s);
 Value cons(Value car, Value cdr);
 Value list(Value v, ...); // terminate with Qundef
 int64_t length(Value list);
-Value reverse(Value v);
 
 Value car(Value v);
 Value cdr(Value v);
-Value caar(Value v); // 2
-Value cadr(Value v);
-Value cdar(Value v);
-Value cddr(Value v);
-Value caaar(Value v); // 3
-Value caadr(Value v);
-Value cadar(Value v);
-Value caddr(Value v);
-Value cdaar(Value v);
-Value cdadr(Value v);
-Value cddar(Value v);
-Value cdddr(Value v);
-Value caaaar(Value v); // 4
-Value caaadr(Value v);
-Value caadar(Value v);
-Value caaddr(Value v);
-Value cadaar(Value v);
-Value cadadr(Value v);
-Value caddar(Value v);
-Value cadddr(Value v);
-Value cdaaar(Value v);
-Value cdaadr(Value v);
-Value cdadar(Value v);
-Value cdaddr(Value v);
-Value cddaar(Value v);
-Value cddadr(Value v);
-Value cdddar(Value v);
-Value cddddr(Value v);
 
 void display(Value v);
 Value parse(const char *path);

@@ -114,6 +114,7 @@ Test(lisp, parse_string_list) {
                           "(\"abc\" \"def\")");
 }
 
+#define caaaar(x) (car(car(car(car(x)))))
 Test(lisp, cxr) {
     expect_vint_eq(42, caaaar(parse_expr_string("((((42))))")));
 }

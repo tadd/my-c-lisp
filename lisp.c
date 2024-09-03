@@ -152,12 +152,12 @@ inline bool value_is_string(Value v)
     return value_tag_is(v, TAG_STR);
 }
 
-inline bool value_is_cfunc(Value v)
+static inline bool value_is_cfunc(Value v)
 {
     return value_tag_is(v, TAG_CFUNC);
 }
 
-inline bool value_is_closure(Value v)
+static inline bool value_is_closure(Value v)
 {
     return value_tag_is(v, TAG_CLOSURE);
 }
@@ -167,7 +167,7 @@ inline bool value_is_pair(Value v)
     return value_tag_is(v, TAG_PAIR);
 }
 
-inline bool value_is_atom(Value v)
+static inline bool value_is_atom(Value v)
 {
     return !value_is_pair(v);
 }
@@ -1057,7 +1057,7 @@ char *stringify(Value v)
     return s;
 }
 
-Value reverse(Value v)
+static Value reverse(Value v)
 {
     Value l = Qnil;
     for (; v != Qnil; v = cdr(v))
