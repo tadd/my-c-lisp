@@ -167,19 +167,23 @@ inline bool value_is_nil(Value v)
     return v == Qnil;
 }
 
+static Type immediate_type_of(Value v)
+{
+    if (value_is_int(v))
+        return TYPE_INT;
+    if (value_is_symbol(v))
+        return TYPE_SYMBOL;
+    if (v == Qtrue || v == Qfalse)
+        return TYPE_BOOL;
+    if (v == Qundef)
+        return TYPE_UNDEF;
+    UNREACHABLE();
+}
+
 Type value_type_of(Value v)
 {
-    if (is_immediate(v)) {
-        if (value_is_int(v))
-            return TYPE_INT;
-        if (value_is_symbol(v))
-            return TYPE_SYMBOL;
-        if (v == Qtrue || v == Qfalse)
-            return TYPE_BOOL;
-        if (v == Qundef)
-            return TYPE_UNDEF;
-        UNREACHABLE();
-    }
+    if (is_immediate(v))
+        return immediate_type_of(v);
     ValueTag t = VALUE_TAG(v);
     switch (t) {
     case TAG_STR:
