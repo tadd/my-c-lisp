@@ -350,12 +350,14 @@ static inline Value list1(Value x)
     return cons(x, Qnil);
 }
 
-static Value append_at(Value last, Value elem)
+static void append_at(Value *last, Value elem, Value *head)
 {
     Value p = list1(elem);
-    if (last != Qnil)
-        PAIR(last)->cdr = p;
-    return p;
+    if (*last != Qnil)
+        PAIR(*last)->cdr = p;
+    *last = p;
+    if (*head == Qnil)
+        *head = *last;
 }
 
 Value list(Value v, ...)
@@ -363,11 +365,8 @@ Value list(Value v, ...)
     Value l = Qnil, last = l;
     va_list ap;
     va_start(ap, v);
-    for (; v != Qundef; v = va_arg(ap, Value)) {
-        last = append_at(last, v);
-        if (l == Qnil)
-            l = last;
-    }
+    for (; v != Qundef; v = va_arg(ap, Value))
+        append_at(&last, v, &l);
     va_end(ap);
     return l;
 }
@@ -726,9 +725,7 @@ static Value parse_list(Parser *p)
             return parse_dotted_pair(p, l, last);
         unget_token(p, t);
         Value e = parse_expr(p);
-        last = append_at(last, e);
-        if (l == Qnil)
-            l = last;
+        append_at(&last, e, &l);
     }
     return l;
 }
@@ -1056,9 +1053,7 @@ static Value iparse(FILE *in)
         Value expr = parse_expr(p);
         if (expr == Qundef)
             break;
-        last = append_at(last, expr);
-        if (v == Qnil)
-            v = last;
+        append_at(&last, expr, &v);
     }
     free(p);
     return v;
@@ -1109,11 +1104,8 @@ static Value eval_body(Value *env, Value body)
 static Value map_eval(Value *env, Value l)
 {
     Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append_at(last, ieval(env, car(l)));
-        if (mapped == Qnil)
-            mapped = last;
-    }
+    for (; l != Qnil; l = cdr(l))
+        append_at(&last, ieval(env, car(l)), &mapped);
     return mapped;
 }
 
@@ -1372,15 +1364,20 @@ static bool is_quoted_terminal(Value list)
         d != Qnil && cdr(d) == Qnil;
 }
 
-static Value splice_at(Value last, Value to_splice)
+static void splice_at(Value *last, Value to_splice, Value *ret)
 {
     if (to_splice == Qnil)
-        return last; // as is
+        goto set; // as is
     expect_type("unquote-splicing", TYPE_PAIR, to_splice);
-    if (last == Qnil)
-        return to_splice;
-    PAIR(last)->cdr = to_splice;
-    return last_pair(to_splice);
+    if (*last == Qnil)
+        *last = to_splice;
+    else {
+        PAIR(*last)->cdr = to_splice;
+        *last = last_pair(to_splice);
+    }
+ set:
+    if (*ret == Qnil)
+        *ret = *last;
 }
 
 static Value qq_list(Value *env, Value datum, int64_t depth)
@@ -1396,9 +1393,7 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
         Value elem = car(o);
         bool spliced = (value_is_pair(elem) && car(elem) == SYM_UNQUOTE_SPLICING);
         Value v = qq(env, elem, depth);
-        last = spliced ? splice_at(last, v) : append_at(last, v);
-        if (ret == Qnil)
-            ret = last;
+        spliced ? splice_at(&last, v, &ret) : append_at(&last, v, &ret);
     }
     return ret;
 }
@@ -1642,9 +1637,7 @@ static Value dup_list(Value l, Value *plast)
     Value dup = Qnil, last = Qnil;
     for (Value p = l; p != Qnil; p = cdr(p)) {
         expect_type("append", TYPE_PAIR, p);
-        last = append_at(last, car(p));
-        if (dup == Qnil)
-            dup = last;
+        append_at(&last, car(p), &dup);
     }
     *plast = last;
     return dup;
@@ -1751,9 +1744,7 @@ static Value apply_args(Value args)
 {
     Value heads = Qnil, last = Qnil, a, next;
     for (a = args; (next = cdr(a)) != Qnil; a = next) {
-        last = append_at(last, car(a));
-        if (heads == Qnil)
-            heads = last;
+        append_at(&last, car(a), &heads);
     }
     Value rest = car(a);
     expect_type("args on apply", TYPE_PAIR, rest);
@@ -1782,13 +1773,8 @@ static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
     for (Value p = ls, l; p != Qnil; p = cdr(p)) {
         if ((l = car(p)) == Qnil)
             return false;
-
-        lcars = append_at(lcars, car(l));
-        if (cars == Qnil)
-            cars = lcars;
-        lcdrs = append_at(lcdrs, cdr(l));
-        if (cdrs == Qnil)
-            cdrs = lcdrs;
+        append_at(&lcars, car(l), &cars);
+        append_at(&lcdrs, cdr(l), &cdrs);
     }
     *pcars = cars;
     *pcdrs = cdrs;
@@ -1805,9 +1791,7 @@ static Value builtin_map(Value *env, Value args)
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
         Value v = apply(env, proc, cars);
-        last = append_at(last, v);
-        if (ret == Qnil)
-            ret = last;
+        append_at(&last, v, &ret);
         lists = cdrs;
     }
     return ret;
