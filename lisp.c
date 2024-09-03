@@ -295,7 +295,7 @@ Value cons(Value car, Value cdr)
 static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
-ATTR_NORETURN
+ATTR(noreturn)
 static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
@@ -878,7 +878,7 @@ static Value apply_closure(Value *env, Value func, Value args)
     return eval_body(&clenv, cl->body);
 }
 
-ATTR_NORETURN ATTR(noinline)
+ATTR(noreturn) ATTR(noinline)
 static void jump(Continuation *cont)
 {
     memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
@@ -887,7 +887,7 @@ static void jump(Continuation *cont)
 
 #define GET_SP(p) volatile void *p = &p
 
-ATTR_NORETURN
+ATTR(noreturn)
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
@@ -1225,7 +1225,7 @@ static Value load_inner(const char *path)
 // Special Forms
 //
 
-#define UNUSED ATTR_UNUSED
+#define UNUSED ATTR(unused)
 
 static Value builtin_if(Value *env, Value args)
 {
@@ -1890,7 +1890,7 @@ static Value builtin_cputime(void) // in micro sec
     return value_of_int(n);
 }
 
-ATTR_CTOR
+ATTR(constructor)
 static void initialize(void)
 {
     static char basedir[PATH_MAX];
