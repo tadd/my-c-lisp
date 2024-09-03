@@ -1364,12 +1364,12 @@ static Value qq(Value *env, Value datum, int64_t depth)
         return datum;
     Value a = car(datum), d = cdr(datum);
     if (a == SYM_QUASIQUOTE) {
-        expect_nonnull("quasiquote in qq", d);
+        expect_nonnull("nested quasiquote", d);
         Value v = qq(env, car(d), depth + 1);
         return list2(a, v);
     }
     if (a == SYM_UNQUOTE || a == SYM_UNQUOTE_SPLICING) {
-        expect_nonnull("unquotes in qq", d);
+        expect_nonnull("unquotes in quasiquote", d);
         Value v = qq(env, car(d), depth - 1);
         return depth == 1 ? v : list2(a, v);
     }
@@ -1395,7 +1395,7 @@ static Value splice_at(Value last, Value to_splice)
 {
     if (to_splice == Qnil)
         return last; // as is
-    expect_type("quasiquote", TYPE_PAIR, to_splice);
+    expect_type("unquote-splicing", TYPE_PAIR, to_splice);
     if (last == Qnil)
         return to_splice;
     PAIR(last)->cdr = to_splice;
@@ -1406,18 +1406,15 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
     for (Value o = datum; o != Qnil; o = cdr(o)) {
-        if (!value_is_pair(o)) {
-            PAIR(last)->cdr = o;
+        bool is_atom = value_is_atom(o);
+        if (is_atom || is_quoted_terminal(o)) {
+            expect_nonnull("quasiquote", ret);
+            PAIR(last)->cdr = is_atom ? o : qq(env, o, depth);
             break;
         }
-        if (is_quoted_terminal(o)) {
-            expect_nonnull("list in qq", ret);
-            PAIR(last)->cdr = qq(env, o, depth);
-            break;
-        }
-        Value next = car(o);
-        bool spliced = (value_is_pair(next) && car(next) == SYM_UNQUOTE_SPLICING);
-        Value v = qq(env, next, depth);
+        Value elem = car(o);
+        bool spliced = (value_is_pair(elem) && car(elem) == SYM_UNQUOTE_SPLICING);
+        Value v = qq(env, elem, depth);
         last = spliced ? splice_at(last, v) : append_at(last, v);
         if (ret == Qnil)
             ret = last;
