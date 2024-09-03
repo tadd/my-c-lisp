@@ -332,13 +332,11 @@ static void expect_type_or(const char *header, Type e1, Type e2, Value v)
 
 // Lists: prepare for parsing
 
-// l: last pair
-static Value append_at(Value l, Value elem)
+static Value append_at(Value last, Value elem)
 {
     Value p = cons(elem, Qnil);
-    if (l == Qnil)
-        return p;
-    PAIR(l)->cdr = p;
+    if (last != Qnil)
+        PAIR(last)->cdr = p;
     return p;
 }
 
