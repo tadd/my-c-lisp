@@ -998,11 +998,11 @@ static Value eval_body(Value *env, Value body)
 
 static Value map_eval(Value *env, Value l)
 {
-    Value mapped = Qnil, last = Qnil;
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        last = append_at(last, ieval(env, car(p)));
-        if (mapped == Qnil)
-            mapped = last;
+    if (l == Qnil)
+        return Qnil;
+    Value mapped = list1(ieval(env, car(l)));
+    for (Value prev = mapped, p = l; (p = cdr(p)) != Qnil; prev = cdr(prev)) {
+        PAIR(prev)->cdr = list1(ieval(env, car(p)));
     }
     return mapped;
 }
@@ -2021,12 +2021,14 @@ static Value proc_procedure_p(UNUSED Value *env, Value o)
 
 static Value apply_args(Value args)
 {
-    Value heads = Qnil, last = Qnil, p, next;
-    for (p = args; (next = cdr(p)) != Qnil; p = next) {
-        last = append_at(last, car(p));
-        if (heads == Qnil)
-            heads = last;
+    Value first = car(args), p = cdr(args);
+    if (p == Qnil) {
+        expect_type("args on apply", TYPE_PAIR, first);
+        return first;
     }
+    Value heads = list1(first);
+    for (Value prev = heads, next; (next = cdr(p)) != Qnil; p = next, prev = cdr(prev))
+        PAIR(prev)->cdr = list1(car(p));
     Value rest = car(p);
     expect_type("args on apply", TYPE_PAIR, rest);
     return append2(heads, rest);
@@ -2066,16 +2068,14 @@ static Value proc_map(Value *env, Value args)
     expect_arity_range("map", 2, -1, args);
 
     Value proc = car(args);
-    Value lists = cdr(args);
-    Value last = Qnil, ret = Qnil;
+    Value ls = cdr(args);
     Value cars, cdrs;
-    while (cars_cdrs(lists, &cars, &cdrs)) {
-        Value v = apply(env, proc, cars);
-        last = append_at(last, v);
-        if (ret == Qnil)
-            ret = last;
-        lists = cdrs;
-    }
+    if (!cars_cdrs(ls, &cars, &cdrs))
+        return Qnil;
+    ls = cdrs;
+    Value ret = list1(apply(env, proc, cars));
+    for (Value prev = ret; cars_cdrs(ls, &cars, &cdrs); prev = cdr(prev), ls = cdrs)
+        PAIR(prev)->cdr = list1(apply(env, proc, cars));
     return ret;
 }
 
