@@ -1366,17 +1366,12 @@ static Value qq(Value *env, Value datum, int64_t depth)
     if (a == SYM_QUASIQUOTE) {
         expect_nonnull("quasiquote in qq", d);
         Value v = qq(env, car(d), depth + 1);
-        return list2(SYM_QUASIQUOTE, v);
+        return list2(a, v);
     }
-    if (a == SYM_UNQUOTE) {
-        expect_nonnull("unquote in qq", d);
+    if (a == SYM_UNQUOTE || a == SYM_UNQUOTE_SPLICING) {
+        expect_nonnull("unquotes in qq", d);
         Value v = qq(env, car(d), depth - 1);
-        return depth == 1 ? v : list2(SYM_UNQUOTE, v);
-    }
-    if (a == SYM_UNQUOTE_SPLICING) {
-        expect_nonnull("unquote-splicing in qq", d);
-        Value v = qq(env, car(d), depth - 1);
-        return depth == 1 ? v : list2(SYM_UNQUOTE_SPLICING, v);
+        return depth == 1 ? v : list2(a, v);
     }
     return qq_list(env, datum, depth);
 }
