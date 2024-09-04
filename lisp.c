@@ -332,9 +332,14 @@ static void expect_type_or(const char *header, Type e1, Type e2, Value v)
 
 // Lists: prepare for parsing
 
+static inline Value list1(Value x)
+{
+    return cons(x, Qnil);
+}
+
 static Value append_at(Value last, Value elem)
 {
-    Value p = cons(elem, Qnil);
+    Value p = list1(elem);
     if (last != Qnil)
         PAIR(last)->cdr = p;
     return p;
@@ -473,7 +478,7 @@ static Symbol intern(const char *name)
     }
     // or put at `i`
     Value s = value_of_string(name);
-    Value next = cons(s, Qnil);
+    Value next = list1(s);
     if (last == Qnil)
         symbol_names = next;
     else
@@ -846,7 +851,7 @@ static Value append2(Value l1, Value l2)
 
     Value ret = Qnil, prev = Qnil;
     for (Value h = l1; h != Qnil; h = cdr(h)) {
-        Value curr = cons(car(h), Qnil);
+        Value curr = list1(car(h));
         if (ret == Qnil)
             ret = curr;
         if (prev != Qnil)
@@ -1474,7 +1479,7 @@ static Value builtin_callcc(Value *env, Value f)
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
-    return apply_closure(env, cl, cons(c, Qnil));
+    return apply_closure(env, cl, list1(c));
 }
 
 //
