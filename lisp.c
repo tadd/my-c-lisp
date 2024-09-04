@@ -1812,13 +1812,14 @@ static Value builtin_procedure_p(UNUSED Value *env, Value o)
     return OF_BOOL(is_procedure(o));
 }
 
-static void cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
+static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
 {
     Value lcars = Qnil, lcdrs = Qnil;
     Value cars = Qnil , cdrs = Qnil;
     for (Value p = ls, l; p != Qnil; p = cdr(p)) {
         if ((l = car(p)) == Qnil)
-            break;
+            return false;
+
         lcars = append_at(lcars, car(l));
         if (cars == Qnil)
             cars = lcars;
@@ -1828,6 +1829,7 @@ static void cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
     }
     *pcars = cars;
     *pcdrs = cdrs;
+    return true;
 }
 
 static Value builtin_map(Value *env, Value args)
@@ -1836,11 +1838,9 @@ static Value builtin_map(Value *env, Value args)
 
     Value proc = car(args);
     Value lists = cdr(args);
-    int64_t l = length(car(lists));
     Value last = Qnil, ret = Qnil;
-    for (int64_t i = 0; i < l; i++) {
-        Value cars, cdrs;
-        cars_cdrs(lists, &cars, &cdrs);
+    Value cars, cdrs;
+    while (cars_cdrs(lists, &cars, &cdrs)) {
         Value v = apply(env, proc, cars);
         last = append_at(last, v);
         if (ret == Qnil)
@@ -1856,10 +1856,8 @@ static Value builtin_for_each(Value *env, Value args)
 
     Value proc = car(args);
     Value lists = cdr(args);
-    int64_t l = length(car(lists));
-    for (int64_t i = 0; i < l; i++) {
-        Value cars, cdrs;
-        cars_cdrs(lists, &cars, &cdrs);
+    Value cars, cdrs;
+    while (cars_cdrs(lists, &cars, &cdrs)) {
         apply(env, proc, cars);
         lists = cdrs;
     }
