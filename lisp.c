@@ -1913,6 +1913,7 @@ static void initialize(void)
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "lambda", builtin_lambda, -1);
     define_special(e, "call/cc", builtin_callcc, 1);
+    define_special(e, "call-with-current-continuation", builtin_callcc, 1); // alias
 
     define_function(e, "+", builtin_add, -1);
     define_function(e, "-", builtin_sub, -1);
