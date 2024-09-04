@@ -1776,15 +1776,15 @@ static void expect_proc(const char *header, Value v)
 
 static Value apply_args(Value args)
 {
-    if (cdr(args) == Qnil) // single-element list
-        return car(args);
     Value heads = Qnil, last = Qnil, a, next;
     for (a = args; (next = cdr(a)) != Qnil; a = next) {
         last = append_at(last, car(a));
         if (heads == Qnil)
             heads = last;
     }
-    return append2(heads, car(a));
+    Value rest = car(a);
+    expect_type("args on apply", TYPE_PAIR, rest);
+    return append2(heads, rest);
 }
 
 static Value builtin_apply(Value *env, Value args)
