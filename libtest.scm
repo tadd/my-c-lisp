@@ -1,16 +1,14 @@
 (define tests '())
 (define n-failure 0)
 (define n-success 0)
+(define test-name '())
 
 (define (describe name f)
-  (set! tests (cons (cons name f) tests)))
+  (set! tests `((,name . ,f) . ,tests)))
 ;;(define context describe)
 
 (define (display* . args)
-  (if (not (null? args))
-      (begin
-        (display (car args))
-        (apply display* (cdr args)))))
+  (for-each display args))
 
 (define (msg-proc-1 msg)
   (lambda (x)
@@ -22,11 +20,10 @@
     (display* " <" y ">")))
 
 (define fail-message-procs
-  (list
-   (cons > (msg-proc-2 "be >"))
-   (cons equal? (msg-proc-2 "be equal?"))
-   (cons eq? (msg-proc-2 "be eq?"))
-   (cons null? (msg-proc-1 "be null?"))))
+  `((,> . ,(msg-proc-2 "be >"))
+    (,equal? . ,(msg-proc-2 "be equal?"))
+    (,eq? . ,(msg-proc-2 "be eq?"))
+    (,null? . ,(msg-proc-1 "be null?"))))
 
 (define (succeed)
   (set! n-success (+ n-success 1)))
@@ -54,15 +51,8 @@
 (define (expect-f x)
   (expect eq? #f x))
 
-(define test-name '())
-
 (define (test-run)
-  (define (test-run-inner l)
-    (if (not (null? l))
-        (begin
-          (test-run-inner (cdr l))
-          (test-run-single (car l)))))
-  (test-run-inner tests)
+  (for-each test-run-single (reverse tests))
   (test-summarize))
 
 (define (test-run-single pair)
