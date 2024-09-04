@@ -53,22 +53,22 @@ typedef struct {
 typedef struct {
     ValueTag tag;
     int64_t arity;
-} Function;
+} Procedure;
 
 typedef struct {
-    Function func;
+    Procedure proc;
     cfunc_t cfunc;
 } CFunc;
 
 typedef struct {
-    Function func;
+    Procedure proc;
     Value env;
     Value params;
     Value body;
 } Closure;
 
 typedef struct {
-    Function func;
+    Procedure proc;
     volatile void *sp;
     void *shelter;
     size_t shelter_len;
@@ -79,7 +79,7 @@ typedef struct {
 #define VALUE_TAG(v) (*(ValueTag*)(v))
 #define PAIR(v) ((Pair *) v)
 #define STRING(v) ((String *) v)
-#define FUNCTION(v) ((Function *) v)
+#define PROCEDURE(v) ((Procedure *) v)
 #define CFUNC(v) ((CFunc *) v)
 #define CLOSURE(v) ((Closure *) v)
 #define CONTINUATION(v) ((Continuation *) v)
@@ -267,7 +267,7 @@ Value value_of_string(const char *s)
 static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
 {
     CFunc *f = obj_new(sizeof(CFunc), TAG_CFUNC);
-    f->func.arity = arity;
+    f->proc.arity = arity;
     f->cfunc = cfunc;
     return (Value) f;
 }
@@ -282,7 +282,7 @@ static Value value_of_special(cfunc_t cfunc, int64_t arity)
 static Value value_of_closure(Value env, Value params, Value body)
 {
     Closure *f = obj_new(sizeof(Closure), TAG_CLOSURE);
-    f->func.arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
+    f->proc.arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
     f->env = env;
     f->params = params;
     f->body = body;
@@ -809,11 +809,11 @@ static void expect_arity(int64_t expected, Value args)
                   expected, actual);
 }
 
-static Value apply_cfunc(Value *env, Value func, Value args)
+static Value apply_cfunc(Value *env, Value proc, Value args)
 {
     Value a[CFUNCARG_MAX];
-    CFunc *cf = CFUNC(func);
-    int64_t n = cf->func.arity;
+    CFunc *cf = CFUNC(proc);
+    int64_t n = cf->proc.arity;
     Value arg = args;
     for (int i = 0; i < n; i++) {
         a[i] = car(arg);
@@ -883,7 +883,7 @@ inline static void env_put(Value *env, Value name, Value val)
 static Value apply_closure(Value *env, Value proc, Value args)
 {
     Closure *cl = CLOSURE(proc);
-    int64_t arity = cl->func.arity;
+    int64_t arity = cl->proc.arity;
     Value clenv = append2(cl->env, *env), params = cl->params;
     if (arity == -1)
         env_put(&clenv, params, args);
@@ -920,7 +920,7 @@ static void apply_continuation(Value f, Value args)
 static Value apply(Value *env, Value proc, Value args)
 {
     expect_type("apply", TYPE_PROC, proc);
-    expect_arity(FUNCTION(proc)->arity, args);
+    expect_arity(PROCEDURE(proc)->arity, args);
     switch (VALUE_TAG(proc)) {
     case TAG_SPECIAL:
     case TAG_CFUNC:
@@ -1247,7 +1247,7 @@ static Value lambda(Value *env, Value params, Value body)
     return value_of_closure(*env, params, body);
 }
 
-static Value define_func_internal(Value *env, Value heads, Value body)
+static Value define_proc_internal(Value *env, Value heads, Value body)
 {
     Value ident = car(heads), params = cdr(heads);
     Value val = lambda(env, params, body);
@@ -1265,7 +1265,7 @@ static Value builtin_define(Value *env, Value args)
         expect_arity(2, args);
         return define_variable(env, head, cadr(args));
     case TYPE_PAIR:
-        return define_func_internal(env, head, cdr(args));
+        return define_proc_internal(env, head, cdr(args));
     default:
         runtime_error("define: expected first argument symbol or pair but got %s",
                       value_type_to_string(t));
@@ -1439,7 +1439,7 @@ static Value builtin_lambda(Value *env, Value args)
 static Value value_of_continuation(void)
 {
     Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
-    c->func.arity = 1; // by spec
+    c->proc.arity = 1; // by spec
     return (Value) c;
 }
 
@@ -1465,7 +1465,7 @@ static Value builtin_callcc(Value *env, Value f)
 }
 
 //
-// Built-in Functions: Arithmetic
+// Built-in Procedures: Arithmetic
 //
 
 static int64_t value_get_int(const char *header, Value v)
@@ -1612,7 +1612,7 @@ static Value builtin_not(UNUSED Value *env, Value x)
 }
 
 //
-// Built-in Functions: Lists and others
+// Built-in Procedures: Lists and others
 //
 
 static Value builtin_list(UNUSED Value *env, Value args)
@@ -1838,7 +1838,7 @@ static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
 }
 
 //
-// Built-in Functions: Extensions
+// Built-in Procedures: Extensions
 //
 
 static Value builtin_cputime(void) // in micro sec
