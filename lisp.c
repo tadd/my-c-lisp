@@ -1431,6 +1431,26 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
+static Value builtin_and(Value *env, Value args)
+{
+    Value last = Qtrue;
+    for (Value c = args; c != Qnil; c = cdr(c)) {
+        if ((last = ieval(env, car(c))) == Qfalse)
+            break;
+    }
+    return last;
+}
+
+static Value builtin_or(UNUSED Value *env, Value args)
+{
+    Value last = Qfalse;
+    for (Value c = args; c != Qnil; c = cdr(c)) {
+        if ((last = ieval(env, car(c))) != Qfalse)
+            break;
+    }
+    return last;
+}
+
 static Value builtin_lambda(Value *env, Value args)
 {
     return lambda(env, car(args), cdr(args));
@@ -1878,8 +1898,8 @@ static void initialize(void)
     // 4.2.1. Conditionals
     define_special(e, "cond", builtin_cond, -1);
     //- case
-    //- and
-    //- or
+    define_special(e, "and", builtin_and, -1);
+    define_special(e, "or", builtin_or, -1);
     // 4.2.2. Binding constructs
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
