@@ -28,19 +28,16 @@ static const char *TYPE_NAMES[] = {
     [TYPE_UNDEF] = "undef",
     [TYPE_PAIR] = "pair",
     [TYPE_STR] = "string",
-    [TYPE_CFUNC] = "C function",
-    [TYPE_SPECIAL] = "special form",
-    [TYPE_CLOSURE] = "closure",
-    [TYPE_CONTINUATION] = "continuation",
+    [TYPE_PROC] = "procedure",
 };
 
 typedef enum { // has the same values as Type
     TAG_PAIR    = TYPE_PAIR,
     TAG_STR     = TYPE_STR,
-    TAG_CFUNC   = TYPE_CFUNC,
-    TAG_SPECIAL = TYPE_SPECIAL, // almost a C Function
-    TAG_CLOSURE = TYPE_CLOSURE,
-    TAG_CONTINUATION = TYPE_CONTINUATION,
+    TAG_CFUNC   = TYPE_PROC + 1,
+    TAG_SPECIAL, // almost a C Function
+    TAG_CLOSURE,
+    TAG_CONTINUATION,
 } ValueTag;
 
 typedef struct Pair {
@@ -152,6 +149,21 @@ inline bool value_is_string(Value v)
     return value_tag_is(v, TAG_STR);
 }
 
+static inline bool value_is_procedure(Value v)
+{
+    if (is_immediate(v))
+        return false;
+    switch (VALUE_TAG(v)) {
+    case TAG_SPECIAL:
+    case TAG_CFUNC:
+    case TAG_CLOSURE:
+    case TAG_CONTINUATION:
+        return true;
+    default:
+        return false;
+    }
+}
+
 inline bool value_is_pair(Value v)
 {
     return value_tag_is(v, TAG_PAIR);
@@ -188,11 +200,12 @@ Type value_type_of(Value v)
     switch (t) {
     case TAG_STR:
     case TAG_PAIR:
+        return (Type) t;
     case TAG_CFUNC:
     case TAG_SPECIAL:
     case TAG_CLOSURE:
     case TAG_CONTINUATION:
-        return (Type) t;
+        return TYPE_PROC;
     }
     UNREACHABLE();
 }
@@ -867,9 +880,9 @@ inline static void env_put(Value *env, Value name, Value val)
     *env = cons(cons(name, val), *env);
 }
 
-static Value apply_closure(Value *env, Value func, Value args)
+static Value apply_closure(Value *env, Value proc, Value args)
 {
-    Closure *cl = CLOSURE(func);
+    Closure *cl = CLOSURE(proc);
     int64_t arity = cl->func.arity;
     Value clenv = append2(cl->env, *env), params = cl->params;
     if (arity == -1)
@@ -904,40 +917,18 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
-static bool is_procedure_type(Type t)
+static Value apply(Value *env, Value proc, Value args)
 {
-    switch (t) {
-    case TYPE_SPECIAL:
-    case TYPE_CFUNC:
-    case TYPE_CLOSURE:
-    case TYPE_CONTINUATION:
-        return true;
-    default:
-        return false;
-    }
-}
-
-static Type expect_applicative(const char *loc, Value v)
-{
-    Type t = value_type_of(v);
-    if (is_procedure_type(t))
-        return t;
-    runtime_error("type error in %s: expected applicative but got %s",
-                  loc, value_type_to_string(t));
-}
-
-static Value apply(Value *env, Value func, Value args)
-{
-    ValueTag tag = (ValueTag) expect_applicative("apply", func);
-    expect_arity(FUNCTION(func)->arity, args);
-    switch (tag) {
+    expect_type("apply", TYPE_PROC, proc);
+    expect_arity(FUNCTION(proc)->arity, args);
+    switch (VALUE_TAG(proc)) {
     case TAG_SPECIAL:
     case TAG_CFUNC:
-        return apply_cfunc(env, func, args);
+        return apply_cfunc(env, proc, args);
     case TAG_CLOSURE:
-        return apply_closure(env, func, args);
+        return apply_closure(env, proc, args);
     case TAG_CONTINUATION:
-        apply_continuation(func, args); // no return!
+        apply_continuation(proc, args); // no return!
     default:
         UNREACHABLE();
     }
@@ -1021,17 +1012,8 @@ static void fdisplay(FILE* f, Value v)
     case TYPE_STR:
         fprintf(f, "%s", value_to_string(v));
         break;
-    case TYPE_CFUNC:
-        fprintf(f, "<c-function>");
-        break;
-    case TYPE_SPECIAL:
-        fprintf(f, "<special>");
-        break;
-    case TYPE_CLOSURE:
-        fprintf(f, "<closure>");
-        break;
-    case TYPE_CONTINUATION:
-        fprintf(f, "<continuation>");
+    case TYPE_PROC:
+        fprintf(f, "<procedure>");
         break;
     case TYPE_UNDEF:
         fprintf(f, "<undef>");
@@ -1135,12 +1117,12 @@ static Value map_eval(Value *env, Value l)
     return mapped;
 }
 
-static Value eval_apply(Value *env, Value symfunc, Value args)
+static Value eval_apply(Value *env, Value symproc, Value args)
 {
-    Value func = ieval(env, symfunc);
-    if (!value_tag_is(func, TAG_SPECIAL))
+    Value proc = ieval(env, symproc);
+    if (!value_tag_is(proc, TAG_SPECIAL))
         args = map_eval(env, args);
-    return apply(env, func, args);
+    return apply(env, proc, args);
 }
 
 static Value ieval(Value *env, Value v)
@@ -1475,7 +1457,7 @@ static bool continuation_set(Value c)
 static Value builtin_callcc(Value *env, Value f)
 {
     Value proc = ieval(env, f);
-    expect_applicative("call/cc", proc);
+    expect_type("call/cc", TYPE_PROC, proc);
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
@@ -1765,20 +1747,6 @@ static Value builtin_load(UNUSED Value *env, Value path)
     return load_inner(value_to_string(path));
 }
 
-static void expect_proc(const char *header, Value v)
-{
-    Type t = value_type_of(v);
-    switch (t) {
-    case TYPE_CFUNC:
-    case TYPE_CLOSURE:
-    case TYPE_CONTINUATION:
-        return;
-    default:
-        runtime_error("type error in %s: expected procedure but got %s",
-                      header, value_type_to_string(t));
-    }
-}
-
 static Value apply_args(Value args)
 {
     Value heads = Qnil, last = Qnil, a, next;
@@ -1797,19 +1765,14 @@ static Value builtin_apply(Value *env, Value args)
     expect_arity_range("apply", 2, -1, args);
 
     Value proc = car(args);
-    expect_proc("apply", proc);
+    expect_type("apply", TYPE_PROC, proc);
     Value appargs = apply_args(cdr(args));
     return apply(env, proc, appargs);
 }
 
-static bool is_procedure(Value o)
-{
-    return is_procedure_type(value_type_of(o));
-}
-
 static Value builtin_procedure_p(UNUSED Value *env, Value o)
 {
-    return OF_BOOL(is_procedure(o));
+    return OF_BOOL(value_is_procedure(o));
 }
 
 static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)

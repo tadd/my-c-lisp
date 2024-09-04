@@ -16,10 +16,7 @@ typedef enum {
 // boxed (tagged)
     TYPE_PAIR,
     TYPE_STR,
-    TYPE_CFUNC,
-    TYPE_SPECIAL,
-    TYPE_CLOSURE,
-    TYPE_CONTINUATION,
+    TYPE_PROC,
 } Type;
 
 typedef struct Pair Pair;

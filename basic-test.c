@@ -172,6 +172,6 @@ Test(lisp, let) {
 }
 
 Test(lisp, applicable) {
-    expect_runtime_error_evaled("expected applicative", "(1 1)");
-    expect_runtime_error_evaled("expected applicative", "(() 1)");
+    expect_runtime_error_evaled("expected procedure", "(1 1)");
+    expect_runtime_error_evaled("expected procedure", "(() 1)");
 }

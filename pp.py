@@ -14,10 +14,7 @@ class ValuePrinter:
     TYPE_UNDEF
     TYPE_PAIR
     TYPE_STR
-    TYPE_CFUNC
-    TYPE_SPECIAL
-    TYPE_CLOSURE
-    TYPE_CONTINUATION
+    TYPE_PROC
     '''.split()
     TAGS = dict([[l, int(gdb.lookup_static_symbol(l).value())] for l in TAG_LABELS])
 
