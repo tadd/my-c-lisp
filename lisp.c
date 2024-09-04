@@ -1899,53 +1899,63 @@ static void initialize(void)
     SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
 
     Value *e = &toplevel_environment;
+    // 4. Expressions
+    // 4.1. Primitive expression types
+    define_special(e, "quote", builtin_quote, 1);
+    define_special(e, "lambda", builtin_lambda, -1);
     define_special(e, "if", builtin_if, -1);
-    define_special(e, "define", builtin_define, -1);
     define_special(e, "set!", builtin_set, 2);
+    // 4.2. Derived expression types
+    define_special(e, "cond", builtin_cond, -1);
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
-    define_special(e, "quote", builtin_quote, 1);
+    define_special(e, "begin", builtin_begin, -1);
     define_special(e, "quasiquote", builtin_quasiquote, 1);
     define_special(e, "unquote", builtin_unquote, 1);
     define_special(e, "unquote-splicing", builtin_unquote_splicing, 1);
-    define_special(e, "begin", builtin_begin, -1);
-    define_special(e, "cond", builtin_cond, -1);
-    define_special(e, "lambda", builtin_lambda, -1);
-    define_special(e, "call/cc", builtin_callcc, 1);
-    define_special(e, "call-with-current-continuation", builtin_callcc, 1); // alias
-
-    define_function(e, "+", builtin_add, -1);
-    define_function(e, "-", builtin_sub, -1);
-    define_function(e, "*", builtin_mul, -1);
-    define_function(e, "/", builtin_div, -1);
+    // 5. Program structure
+    // 5.2. Definitions
+    define_special(e, "define", builtin_define, -1);
+    // 6. Standard procedures
+    // 6.1. Equivalence predicates
+    define_function(e, "eq?", builtin_eq, 2);
+    define_function(e, "equal?", builtin_equal, 2);
+    // 6.2. Numbers
     define_function(e, "=", builtin_numeq, -1);
     define_function(e, "<", builtin_lt, -1);
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
+    define_function(e, "+", builtin_add, -1);
+    define_function(e, "*", builtin_mul, -1);
+    define_function(e, "-", builtin_sub, -1);
+    define_function(e, "/", builtin_div, -1);
     define_function(e, "modulo", builtin_modulo, 2);
+    // 6.3. Other data types
     define_function(e, "not", builtin_not, 1);
-
+    define_function(e, "cons", builtin_cons, 2);
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
-    define_function(e, "cons", builtin_cons, 2);
+    define_function(e, "null?", builtin_null, 1);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "length", builtin_length, 1);
-    define_function(e, "null?", builtin_null, 1);
-    define_function(e, "reverse", builtin_reverse, 1);
     define_function(e, "append", builtin_append, -1);
-    define_function(e, "display", builtin_display, 1);
-    define_function(e, "newline", builtin_newline, 0);
-    define_function(e, "print", builtin_print, 1);
-    define_function(e, "eq?", builtin_eq, 2);
-    define_function(e, "equal?", builtin_equal, 2);
+    define_function(e, "reverse", builtin_reverse, 1);
     define_function(e, "assq", builtin_assq, 2);
-    define_function(e, "load", builtin_load, 1);
-    define_function(e, "apply", builtin_apply, -1);
+    // 6.4. Control features
     define_function(e, "procedure?", builtin_procedure_p, 1);
+    define_function(e, "apply", builtin_apply, -1);
     define_function(e, "map", builtin_map, -1);
     define_function(e, "for-each", builtin_for_each, -1);
+    define_special(e, "call/cc", builtin_callcc, 1); // alias
+    define_special(e, "call-with-current-continuation", builtin_callcc, 1);
+    // 6.6. Input and output
+    define_function(e, "display", builtin_display, 1);
+    define_function(e, "newline", builtin_newline, 0);
+    define_function(e, "load", builtin_load, 1);
 
+    // Local Extensions
+    define_function(e, "print", builtin_print, 1); // like Gauche
     define_function(e, "_cputime", builtin_cputime, 0);
 }
