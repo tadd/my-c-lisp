@@ -63,7 +63,7 @@
 (describe "list" (lambda ()
   (expect null? '())
   (expect null? (list))
-  (let ((l (list 42 "foo")))
+  (let ((l '(42 "foo")))
     ;; (expect pair? l)
     (expect eq? (length l) 2)
     (expect eq? (car l) 42)
@@ -136,7 +136,7 @@
                   x)
                 x) 42)
   (expect equal? (let ((x 42) (y 10))
-                   (list x y)) '(42 10))))
+                   `(,x ,y)) '(42 10))))
 
 (describe "let body define" (lambda ()
   (expect eq? (let ((x 42))
@@ -156,7 +156,7 @@
 
 (describe "let*" (lambda ()
   (expect equal? (let* ((x 42) (y 10))
-                   (list x y)) '(42 10))))
+                   `(,x ,y)) '(42 10))))
 
 (describe "letrec" (lambda ()
   (define retval
@@ -177,7 +177,7 @@
   (expect-t (= 1 1 1 1 1 1 1 1 1 1))))
 
 (describe "lambda" (lambda ()
-  ;; (expect procedure? (lambda () 1))
+  (expect procedure? (lambda () 1))
   (expect eq? ((lambda () 42)) 42)
   (expect eq? ((lambda (x) (* 2 x)) 21) 42)
   (expect eq? ((lambda (x y) (* x y)) 3 14) 42)
@@ -248,7 +248,7 @@
                  ((lambda (x) x) 10)
                  x) 42) 42)
   (expect equal? ((lambda (x)
-                    ((lambda (y) (list x y))
+                    ((lambda (y) `(,x ,y))
                      10)) 42) '(42 10))))
 
 (describe "lambda recursion" (lambda ()
@@ -260,7 +260,7 @@
                 (f 0)) 1)))
 
 (describe "lambda variadic" (lambda ()
-  ;; (expect procedure? (lambda x 1))
+  (expect procedure? (lambda x 1))
   (expect eq? ((lambda x 42)) 42)
   (expect eq? ((lambda x (* 2 (car x))) 21) 42)
   (expect eq? ((lambda x (* (car x) (car (cdr x))))
@@ -452,13 +452,6 @@
   (let ((x 0))
     (for-each (lambda (a b) (set! x (+ a b))) '(1 2) '(4))
     (expect eq? x 5))))
-
-;; TODO
-(describe "force" (lambda () #t))
-(describe "delay" (lambda () #t))
-(describe "values" (lambda () #t))
-(describe "call-with-values" (lambda () #t))
-(describe "dynamic-wind" (lambda () #t))
 
 (describe "assq" (lambda ()
   (define alist '((10 . 1) (20 . 2) (30 . 3)))

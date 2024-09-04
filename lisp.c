@@ -1948,6 +1948,7 @@ static void initialize(void)
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
     // 6.2.5. Numerical operations
+    //-number?
     //-integer?
     define_function(e, "=", builtin_numeq, -1);
     define_function(e, "<", builtin_lt, -1);
