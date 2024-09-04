@@ -1,4 +1,4 @@
 *.o
 lisp
-test-lisp
+basic-test
 *-san
