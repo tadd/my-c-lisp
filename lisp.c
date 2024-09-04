@@ -1812,30 +1812,22 @@ static Value builtin_procedure_p(UNUSED Value *env, Value o)
     return OF_BOOL(is_procedure(o));
 }
 
-static Value cars(Value l)
+static void cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
 {
-    Value last = Qnil, ret = Qnil, q;
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        if ((q = car(p)) == Qnil)
-            return ret;
-        last = append_at(last, car(q));
-        if (ret == Qnil)
-            ret = last;
+    Value lcars = Qnil, lcdrs = Qnil;
+    Value cars = Qnil , cdrs = Qnil;
+    for (Value p = ls, l; p != Qnil; p = cdr(p)) {
+        if ((l = car(p)) == Qnil)
+            break;
+        lcars = append_at(lcars, car(l));
+        if (cars == Qnil)
+            cars = lcars;
+        lcdrs = append_at(lcdrs, cdr(l));
+        if (cdrs == Qnil)
+            cdrs = lcdrs;
     }
-    return ret;
-}
-
-static Value cdrs(Value l)
-{
-    Value last = Qnil, ret = Qnil, q;
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        if ((q = car(p)) == Qnil)
-            return ret;
-        last = append_at(last, cdr(q));
-        if (ret == Qnil)
-            ret = last;
-    }
-    return ret;
+    *pcars = cars;
+    *pcdrs = cdrs;
 }
 
 static Value builtin_map(Value *env, Value args)
@@ -1847,11 +1839,13 @@ static Value builtin_map(Value *env, Value args)
     int64_t l = length(car(lists));
     Value last = Qnil, ret = Qnil;
     for (int64_t i = 0; i < l; i++) {
-        Value v = apply(env, proc, cars(lists));
+        Value cars, cdrs;
+        cars_cdrs(lists, &cars, &cdrs);
+        Value v = apply(env, proc, cars);
         last = append_at(last, v);
         if (ret == Qnil)
             ret = last;
-        lists = cdrs(lists);
+        lists = cdrs;
     }
     return ret;
 }
@@ -1864,8 +1858,10 @@ static Value builtin_for_each(Value *env, Value args)
     Value lists = cdr(args);
     int64_t l = length(car(lists));
     for (int64_t i = 0; i < l; i++) {
-        apply(env, proc, cars(lists));
-        lists = cdrs(lists);
+        Value cars, cdrs;
+        cars_cdrs(lists, &cars, &cdrs);
+        apply(env, proc, cars);
+        lists = cdrs;
     }
     return Qnil;
 }
