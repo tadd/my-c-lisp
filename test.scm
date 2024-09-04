@@ -307,9 +307,13 @@
                 (define g (lambda () 42))
                 (f)) 42)))
 
-(describe "call/cc" (lambda ()
-  ;; Based on "yin-yang" in Kawa's test suite under the MIT license:
-  ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
+;; Above call/cc tests were from Kawa's test suite under the MIT license
+
+;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
+(describe "call/cc and lambda" (lambda ()
+  (expect eq? (call/cc (lambda (c) (0 (c 1)))) 1)))
+
+(describe "call/cc in-yo" (lambda ()
   (define r
     (let ((x ())
           (y 0)
@@ -318,7 +322,7 @@
        (lambda (escape)
          (let* ((in ((lambda (foo)
                        (set! x (cons y x))
-                       (if (= y 5)
+                       (if (= y 10)
                            (escape x)
                            (begin
                              (set! y 0)
@@ -329,7 +333,37 @@
                        foo)
                      (call/cc id))))
            (in yo))))))
-  (expect equal? r '(5 4 3 2 1 0))))
+  (expect equal? r '(10 9 8 7 6 5 4 3 2 1 0))))
+
+;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/sva40649.scm
+(describe "call/cc NPE" (lambda ()
+  (define (f1 f2) (f2))
+
+  (define (fa x)
+    (call/cc
+     (lambda (k)
+       (define (f3) x)
+       (f1 f3))))
+
+  (define (fb x)
+    (call/cc
+     (lambda (k)
+       (define (f3) x)
+       (f1 f3)
+       (+ 10 x))))
+
+  (define (fc x)
+    (call/cc
+     (lambda (k)
+       (define (f3) x)
+       (f1 f3)
+       (if (> x 0)
+           (k (+ 20 x)))
+       (+ 10 x))))
+
+  (expect eq? (fb 3) 13)
+  (expect eq? (fc 3) 23)))
+;; End of tests from Kawa
 
 (describe "eq" (lambda ()
   (expect-t (eq? #t #t))
