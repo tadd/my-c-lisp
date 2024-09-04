@@ -1899,50 +1899,107 @@ static void initialize(void)
     SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
 
     Value *e = &toplevel_environment;
+
     // 4. Expressions
+
     // 4.1. Primitive expression types
+    // 4.1.2. Literal expressions
     define_special(e, "quote", builtin_quote, 1);
+    // 4.1.4. Procedures
     define_special(e, "lambda", builtin_lambda, -1);
+    // 4.1.5. Conditionals
     define_special(e, "if", builtin_if, -1);
+    // 4.1.6. Assignments
     define_special(e, "set!", builtin_set, 2);
     // 4.2. Derived expression types
+    // 4.2.1. Conditionals
     define_special(e, "cond", builtin_cond, -1);
+    //- case
+    //- and
+    //- or
+    // 4.2.2. Binding constructs
     define_special(e, "let", builtin_let, -1);
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
+    // 4.2.3. Sequencing
     define_special(e, "begin", builtin_begin, -1);
+    // 4.2.4. Iteration
+    //- do
+    //- named let
+    // 4.2.6. Quasiquotation
     define_special(e, "quasiquote", builtin_quasiquote, 1);
     define_special(e, "unquote", builtin_unquote, 1);
     define_special(e, "unquote-splicing", builtin_unquote_splicing, 1);
+    // 4.3. Macros
+    // 4.3.2. Pattern language
+    //- syntax-rules
+
     // 5. Program structure
     // 5.2. Definitions
     define_special(e, "define", builtin_define, -1);
+    // 5.3. Syntax definitions
+    //- define-syntax
+
     // 6. Standard procedures
+
     // 6.1. Equivalence predicates
+    //- eqv?
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
+    // 6.2.5. Numerical operations
+    //-integer?
     define_function(e, "=", builtin_numeq, -1);
     define_function(e, "<", builtin_lt, -1);
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
+    //- zero?
+    //- positive?
+    //- negative?
+    //- odd?
+    //- even?
+    //- max
+    //- min
     define_function(e, "+", builtin_add, -1);
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "-", builtin_sub, -1);
     define_function(e, "/", builtin_div, -1);
+    //- abs
+    //- quotient
+    //- remainder
     define_function(e, "modulo", builtin_modulo, 2);
+    //- expt
     // 6.3. Other data types
+    // 6.3.1. Booleans
+    //- boolean?
     define_function(e, "not", builtin_not, 1);
+    // 6.3.2. Pairs and lists
+    //-pair?
     define_function(e, "cons", builtin_cons, 2);
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
+    //-set-car!
+    //-set-cdr!
     define_function(e, "null?", builtin_null, 1);
+    //-list?
     define_function(e, "list", builtin_list, -1);
     define_function(e, "length", builtin_length, 1);
     define_function(e, "append", builtin_append, -1);
     define_function(e, "reverse", builtin_reverse, 1);
+    //-list-ref
+    //-memq
+    //-memv
+    //-member
     define_function(e, "assq", builtin_assq, 2);
+    //-assv
+    //-assoc
+    // 6.3.3. Symbols
+    //-symbol?
+    // 6.3.5. Strings
+    //-string?
+    //-string-length
+    //-string=?
     // 6.4. Control features
     define_function(e, "procedure?", builtin_procedure_p, 1);
     define_function(e, "apply", builtin_apply, -1);
@@ -1950,9 +2007,20 @@ static void initialize(void)
     define_function(e, "for-each", builtin_for_each, -1);
     define_special(e, "call/cc", builtin_callcc, 1); // alias
     define_special(e, "call-with-current-continuation", builtin_callcc, 1);
+    //-values
+    //-call-with-values
+    //-dynamic-wind
+    // 6.5. Eval
+    //- eval
+    //- scheme-report-environment
+    //- null-environment
     // 6.6. Input and output
+    // 6.6.2. Input
+    //- read
+    // 6.6.3. Output
     define_function(e, "display", builtin_display, 1);
     define_function(e, "newline", builtin_newline, 0);
+    // 6.6.4. System interface
     define_function(e, "load", builtin_load, 1);
 
     // Local Extensions
