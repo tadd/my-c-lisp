@@ -81,6 +81,14 @@
   (expect equal? '(2 1) (reverse '(1 2)))
   (expect equal? '(3 2 1) (reverse '(1 2 3)))))
 
+(describe "pair?" (lambda ()
+  (expect pair? '())
+  (expect pair? '(1))
+  (expect pair? '(1 . 2))
+  (expect-f (pair? 1))
+  (expect-f (pair? 'a))
+  (expect-f (pair? #f))))
+
 (describe "cons etc" (lambda ()
   (expect equal? '(1 . 2) (cons 1 2))
   (expect eq? (car '(1 . 2)) 1)

@@ -1708,6 +1708,16 @@ static Value builtin_print(UNUSED Value *env, Value obj)
     return obj;
 }
 
+static Value builtin_pair_p(UNUSED Value *env, Value o)
+{
+    return OF_BOOL(value_is_pair(o));
+}
+
+static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
+{
+    return cons(car, cdr);
+}
+
 static Value builtin_car(UNUSED Value *env, Value pair)
 {
     expect_type("car", TYPE_PAIR, pair);
@@ -1718,11 +1728,6 @@ static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
     expect_type("cdr", TYPE_PAIR, pair);
     return cdr(pair);
-}
-
-static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
-{
-    return cons(car, cdr);
 }
 
 static Value builtin_eq(UNUSED Value *env, Value x, Value y)
@@ -1959,7 +1964,7 @@ static void initialize(void)
     //- boolean?
     define_function(e, "not", builtin_not, 1);
     // 6.3.2. Pairs and lists
-    //-pair?
+    define_function(e, "pair?", builtin_pair_p, 1);
     define_function(e, "cons", builtin_cons, 2);
     define_function(e, "car", builtin_car, 1);
     define_function(e, "cdr", builtin_cdr, 1);
