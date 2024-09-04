@@ -619,4 +619,6 @@
   (expect equal? `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(9))) '((foo 7) . 9))
   (expect equal? `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons))) '((foo 7) . cons))))
 
+;; (load "./test-callcc.scm")
+
 (test-run)
