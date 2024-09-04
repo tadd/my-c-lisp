@@ -24,9 +24,9 @@ test-c-san: basic-test-san
 	./$<
 
 test-scheme: lisp
-	./$< test/test.scm
+	./$< test.scm
 test-scheme-san: lisp-san
-	./$< test/test.scm
+	./$< test.scm
 
 clean:
 	rm -f lisp basic-test *-san *.o *.s

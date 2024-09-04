@@ -1,4 +1,4 @@
-(load "./lib.scm")
+(load "./libtest.scm")
 
 (describe "arithmetic literals" (lambda ()
   (expect eq? (+ 42 21) 63)
