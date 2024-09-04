@@ -358,6 +358,17 @@
 (describe "call/cc and lambda" (lambda ()
   (expect eq? (call/cc (lambda (c) (0 (c 1)))) 1)))
 
+(describe "call/cc retlec" (lambda ()
+  (define (f)
+    (letrec ((x (call/cc list))
+             (y (call/cc list)))
+      (cond ((procedure? x) (x (pair? y)))
+	    ((procedure? y) (y (pair? x))))
+      (let ((x (car x))
+            (y (car y)))
+        (and (call/cc x) (call/cc y) (call/cc x)))))
+  (expect-t (f))))
+
 (describe "call/cc in-yo" (lambda ()
   (define r
     (let ((x ())
