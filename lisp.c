@@ -917,18 +917,18 @@ static bool is_procedure_type(Type t)
     }
 }
 
-static Type expect_applicative(Value v)
+static Type expect_applicative(const char *loc, Value v)
 {
     Type t = value_type_of(v);
     if (is_procedure_type(t))
         return t;
-    runtime_error("type error in (eval): expected applicative but got %s",
-                  value_type_to_string(t));
+    runtime_error("type error in %s: expected applicative but got %s",
+                  loc, value_type_to_string(t));
 }
 
 static Value apply(Value *env, Value func, Value args)
 {
-    ValueTag tag = (ValueTag) expect_applicative(func);
+    ValueTag tag = (ValueTag) expect_applicative("apply", func);
     expect_arity(FUNCTION(func)->arity, args);
     switch (tag) {
     case TAG_SPECIAL:
@@ -1474,12 +1474,12 @@ static bool continuation_set(Value c)
 
 static Value builtin_callcc(Value *env, Value f)
 {
-    Value cl = ieval(env, f);
-    expect_type("call/cc", TYPE_CLOSURE, cl);
+    Value proc = ieval(env, f);
+    expect_applicative("call/cc", proc);
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
-    return apply_closure(env, cl, list1(c));
+    return apply(env, proc, list1(c));
 }
 
 //
@@ -2006,8 +2006,8 @@ static void initialize(void)
     define_function(e, "apply", builtin_apply, -1);
     define_function(e, "map", builtin_map, -1);
     define_function(e, "for-each", builtin_for_each, -1);
-    define_special(e, "call/cc", builtin_callcc, 1); // alias
-    define_special(e, "call-with-current-continuation", builtin_callcc, 1);
+    define_function(e, "call/cc", builtin_callcc, 1); // alias
+    define_function(e, "call-with-current-continuation", builtin_callcc, 1);
     //-values
     //-call-with-values
     //-dynamic-wind

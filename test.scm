@@ -307,6 +307,12 @@
                 (define g (lambda () 42))
                 (f)) 42)))
 
+(describe "call/cc applicable in call/cc" (lambda ()
+  (define (f)
+    (call/cc call/cc)
+    42)
+  (expect eq? (f) 42)))
+
 ;; Above call/cc tests were from Kawa's test suite under the MIT license
 
 ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
