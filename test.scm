@@ -421,7 +421,52 @@
   (expect eq? (fc 3) 23)))
 ;; End of tests from Kawa
 
-(describe "eq" (lambda ()
+(describe "eqv?" (lambda ()
+  (expect eqv? 'a 'a)
+  (expect-f (eqv? 'a 'b))
+  (expect eqv? 2 2)
+  (expect eqv? '() '())
+  (expect eqv? 100000000 100000000)
+  (expect-f (eqv? (cons 1 2) (cons 1 2)))
+  (expect-f (eqv? (lambda () 1)
+                  (lambda () 2)))
+  (expect-f (eqv? #f 'nil))
+  (let ((p (lambda (x) x)))
+    (expect eqv? p p))
+
+  (expect eqv? #t #t)
+  (expect eqv? #f #f)
+  (let ((s "foo"))
+    (expect eqv? s s))
+  (expect eqv? eqv? eqv?)
+  (expect-f (eqv? #t #f))
+  (expect-f (eqv? #f #t))
+  (expect-f (eqv? 1 2))
+  (expect-f (eqv? '() '(1)))
+  (expect-f (eqv? "a" "a"))
+  (expect-f (eqv? #f 'nil))))
+
+(describe "eqv? complicated" (lambda ()
+  (define gen-counter
+    (lambda ()
+      (let ((n 0))
+        (lambda () (set! n (+ n 1)) n))))
+  (let ((g (gen-counter)))
+    (expect eqv? g g))
+  (expect-f (eqv? (gen-counter) (gen-counter)))
+
+  (define gen-loser
+    (lambda ()
+      (let ((n 0))
+        (lambda () (set! n (+ n 1)) 27))))
+  (let ((g (gen-loser)))
+    (expect eqv? g g))
+
+  (letrec ((f (lambda () (if (eqv? f g) 'f 'both)))
+           (g (lambda () (if (eqv? f g) 'g 'both))))
+    (expect-f (eqv? f g)))))
+
+(describe "eq?" (lambda ()
   (expect-t (eq? #t #t))
   (expect-t (eq? #f #f))
   (expect-f (eq? #t #f))
