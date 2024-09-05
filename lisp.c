@@ -1474,9 +1474,8 @@ static bool continuation_set(Value c)
     return setjmp(cont->state);
 }
 
-static Value builtin_callcc(Value *env, Value f)
+static Value builtin_callcc(Value *env, Value proc)
 {
-    Value proc = ieval(env, f);
     expect_type("call/cc", TYPE_PROC, proc);
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
