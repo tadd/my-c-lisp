@@ -1004,20 +1004,15 @@ static Value ieval(Value *env, Value v)
     return eval_apply(env, car(v), cdr(v));
 }
 
-static Value eval_top(Value v)
-{
-    if (setjmp(jmp_runtime_error) != 0)
-        return Qundef;
-    INIT_STACK();
-    return eval_body(&toplevel_environment, v);
-}
-
 static Value iload(FILE *in)
 {
     Value l = iparse(in);
     if (l == Qundef)
         return Qundef;
-    return eval_top(l);
+    if (setjmp(jmp_runtime_error) != 0)
+        return Qundef;
+    INIT_STACK();
+    return eval_body(&toplevel_environment, l);
 }
 
 static Value iload_inner(FILE *in)
