@@ -715,8 +715,7 @@
 (describe "cputime" (lambda ()
   (let ((t (_cputime)))
   ;; (expect number? t)
-    (expect > t 0)
-    (expect-f (eq? t 0)))))
+    (expect > t 0))))
 
 ;; (load "./test-callcc.scm")
 
