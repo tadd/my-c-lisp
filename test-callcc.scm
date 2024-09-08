@@ -16,7 +16,7 @@
             (+ x y)))))
   (expect eq? (f) 0)))
 
-;; Cause: needs cadr
+;; Cause: bug?
 (describe "call/cc retlec and set!" (lambda ()
   (define (f)
     (letrec ((x (call/cc
