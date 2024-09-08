@@ -1548,12 +1548,14 @@ static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
 static Value builtin_car(UNUSED Value *env, Value pair)
 {
     expect_type("car", TYPE_PAIR, pair);
+    expect_nonnull("car", pair);
     return car(pair);
 }
 
 static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
     expect_type("cdr", TYPE_PAIR, pair);
+    expect_nonnull("car", pair);
     return cdr(pair);
 }
 
