@@ -147,7 +147,6 @@
                   (if #f 5 6)) 6)))
 
 ;; 4.1.6. Assignments
-;;define_special(e, "set!", builtin_set, 2);
 (describe "set!" (lambda ()
   (expect eq? 42 (begin
                    (define x 1)
