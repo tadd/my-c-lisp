@@ -487,7 +487,7 @@
   (expect-f (eq? '(1) '(1)))
   (expect-f (eq? '(1 '(2)) '(1 '(2))))))
 
-(describe "equal" (lambda ()
+(describe "equal?" (lambda ()
   (expect equal? 'a 'a)
   (expect equal? '(a) '(a))
   (expect equal? '(a (b) c) '(a (b) c))
