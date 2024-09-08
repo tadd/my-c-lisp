@@ -57,7 +57,6 @@ Value eval_string(const char *s);
 
 ATTR_MALLOC char *stringify(Value v);
 Value parse_string(const char *in);
-Value parse_expr_string(const char *in);
 
 const char *error_message(void);
 

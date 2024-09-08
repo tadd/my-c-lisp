@@ -955,18 +955,6 @@ Value parse(const char *path)
     return retval;
 }
 
-Value parse_expr_string(const char *in)
-{
-    if (setjmp(jmp_parse_error) != 0)
-        return Qundef;
-    FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Parser *p = parser_new(f);
-    Value v = parse_expr(p);
-    free(p);
-    fclose(f);
-    return v;
-}
-
 Value parse_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");

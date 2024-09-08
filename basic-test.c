@@ -69,6 +69,14 @@
 #define expect_runtime_error_parsed(exp, act) expect_runtime_error(exp, parse_expr_string(act))
 #define expect_runtime_error_evaled(exp, act) expect_runtime_error(exp, eval_string(act))
 
+static Value parse_expr_string(const char *in)
+{
+    Value v = parse_string(in);
+    if (v == Qundef || v == Qnil)
+        return v;
+    return car(v);
+}
+
 Test(lisp, nil) {
     cr_expect(value_is_nil(Qnil));
 }
