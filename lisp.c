@@ -267,15 +267,14 @@ static inline Value list1(Value x)
 
 static Symbol intern(const char *name)
 {
-    int64_t i;
-    Value l = symbol_names;
     Value last = Qnil;
+    int64_t i = 0;
     // find
-    for (i = 0; l != Qnil; l = cdr(l), i++) {
-        Value v = car(l);
+    for (Value p = symbol_names; p != Qnil; last = p, p = cdr(p)) {
+        Value v = car(p);
         if (strcmp(STRING(v)->body, name) == 0)
             return i;
-        last = l;
+        i++;
     }
     // or put at `i`
     Value s = value_of_string(name);
@@ -821,8 +820,8 @@ static Value append2(Value l1, Value l2)
         return l2;
 
     Value ret = Qnil, prev = Qnil;
-    for (Value h = l1; h != Qnil; h = cdr(h)) {
-        Value curr = list1(car(h));
+    for (Value p = l1; p != Qnil; p = cdr(p)) {
+        Value curr = list1(car(p));
         if (ret == Qnil)
             ret = curr;
         if (prev != Qnil)
@@ -843,8 +842,8 @@ static Value apply_closure(Value *env, Value proc, Value args)
     if (arity == -1)
         env_put(&clenv, params, args);
     else {
-        for (; args != Qnil; args = cdr(args), params = cdr(params))
-            env_put(&clenv, car(params), car(args));
+        for (Value p = args; p != Qnil; p = cdr(p), params = cdr(params))
+            env_put(&clenv, car(params), car(p));
     }
     return eval_body(&clenv, cl->body);
 }
@@ -919,12 +918,12 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static Value reverse(Value v)
+static Value reverse(Value l)
 {
-    Value l = Qnil;
-    for (; v != Qnil; v = cdr(v))
-        l = cons(car(v), l);
-    return l;
+    Value ret = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p))
+        ret = cons(car(p), ret);
+    return ret;
 }
 
 static Value iparse(FILE *in)
@@ -971,16 +970,16 @@ static Value ieval(Value *env, Value v); // internal
 static Value eval_body(Value *env, Value body)
 {
     Value last = Qnil;
-    for (Value b = body; b != Qnil; b = cdr(b))
-        last = ieval(env, car(b));
+    for (Value p = body; p != Qnil; p = cdr(p))
+        last = ieval(env, car(p));
     return last;
 }
 
 static Value map_eval(Value *env, Value l)
 {
     Value mapped = Qnil, last = Qnil;
-    for (; l != Qnil; l = cdr(l)) {
-        last = append_at(last, ieval(env, car(l)));
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        last = append_at(last, ieval(env, car(p)));
         if (mapped == Qnil)
             mapped = last;
     }
@@ -1122,8 +1121,8 @@ static Value builtin_cond(Value *env, Value clauses)
 {
     expect_arity_range("cond", 1, -1, clauses);
 
-    for (; clauses != Qnil; clauses = cdr(clauses)) {
-        Value clause = car(clauses);
+    for (Value p = clauses; p != Qnil; p = cdr(p)) {
+        Value clause = car(p);
         expect_type("cond", TYPE_PAIR, clause);
         Value test = car(clause);
         Value exprs = cdr(clause);
@@ -1139,8 +1138,8 @@ static Value builtin_cond(Value *env, Value clauses)
 static Value builtin_and(Value *env, Value args)
 {
     Value last = Qtrue;
-    for (Value c = args; c != Qnil; c = cdr(c)) {
-        if ((last = ieval(env, car(c))) == Qfalse)
+    for (Value p = args; p != Qnil; p = cdr(p)) {
+        if ((last = ieval(env, car(p))) == Qfalse)
             break;
     }
     return last;
@@ -1149,8 +1148,8 @@ static Value builtin_and(Value *env, Value args)
 static Value builtin_or(UNUSED Value *env, Value args)
 {
     Value last = Qfalse;
-    for (Value c = args; c != Qnil; c = cdr(c)) {
-        if ((last = ieval(env, car(c))) != Qfalse)
+    for (Value p = args; p != Qnil; p = cdr(p)) {
+        if ((last = ieval(env, car(p))) != Qfalse)
             break;
     }
     return last;
@@ -1164,8 +1163,8 @@ static Value builtin_let(Value *env, Value args)
     expect_type_twin("let", TYPE_PAIR, bindings, body);
 
     Value letenv = *env;
-    for (; bindings != Qnil; bindings = cdr(bindings)) {
-        Value b = car(bindings);
+    for (Value p = bindings; p != Qnil; p = cdr(p)) {
+        Value b = car(p);
         if (b == Qnil)
             continue;
         expect_type("let", TYPE_PAIR, b);
@@ -1185,12 +1184,12 @@ static Value builtin_letrec(Value *env, Value args)
     expect_type_twin("letrec", TYPE_PAIR, bindings, body);
 
     Value letenv = *env;
-    for (Value b = bindings; b != Qnil; b = cdr(b)) {
-        Value p = car(b);
-        expect_type("letrec", TYPE_PAIR, p);
-        Value ident = car(p);
+    for (Value p = bindings; p != Qnil; p = cdr(p)) {
+        Value b = car(p);
+        expect_type("letrec", TYPE_PAIR, b);
+        Value ident = car(b);
         expect_type("letrec", TYPE_SYMBOL, ident);
-        Value val = ieval(&letenv, cadr(p));
+        Value val = ieval(&letenv, cadr(b));
         env_put(&letenv, ident, val);
     }
     if (body == Qnil)
@@ -1262,14 +1261,14 @@ static Value splice_at(Value last, Value to_splice)
 static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
-    for (Value o = datum; o != Qnil; o = cdr(o)) {
-        bool is_atom = value_is_atom(o);
-        if (is_atom || is_quoted_terminal(o)) {
+    for (Value p = datum; p != Qnil; p = cdr(p)) {
+        bool is_atom = value_is_atom(p);
+        if (is_atom || is_quoted_terminal(p)) {
             expect_nonnull("quasiquote", ret);
-            PAIR(last)->cdr = is_atom ? o : qq(env, o, depth);
+            PAIR(last)->cdr = is_atom ? p : qq(env, p, depth);
             break;
         }
-        Value elem = car(o);
+        Value elem = car(p);
         bool spliced = (value_is_pair(elem) && car(elem) == SYM_UNQUOTE_SPLICING);
         Value v = qq(env, elem, depth);
         last = spliced ? splice_at(last, v) : append_at(last, v);
@@ -1443,8 +1442,8 @@ static Value builtin_ge(UNUSED Value *env, Value args)
 static Value builtin_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
-    for (Value l = args; l != Qnil; l = cdr(l))
-        y += value_get_int("+", car(l));
+    for (Value p = args; p != Qnil; p = cdr(p))
+        y += value_get_int("+", car(p));
     return value_of_int(y);
 }
 
@@ -1459,16 +1458,16 @@ static Value builtin_sub(UNUSED Value *env, Value args)
     else {
         y = value_get_int("-", car(args));
     }
-    for (Value l = rest; l != Qnil; l = cdr(l))
-        y -= value_get_int("-", car(l));
+    for (Value p = rest; p != Qnil; p = cdr(p))
+        y -= value_get_int("-", car(p));
     return value_of_int(y);
 }
 
 static Value builtin_mul(UNUSED Value *env, Value args)
 {
     int64_t y = 1;
-    for (Value l = args; l != Qnil; l = cdr(l))
-        y *= value_get_int("*", car(l));
+    for (Value p = args; p != Qnil; p = cdr(p))
+        y *= value_get_int("*", car(p));
     return value_of_int(y);
 }
 
@@ -1482,8 +1481,8 @@ static Value builtin_div(UNUSED Value *env, Value args)
         rest = args;
     else
         y = value_get_int("/", car(args));
-    for (Value l = rest; l != Qnil; l = cdr(l)) {
-        int64_t x = value_get_int("/", car(l));
+    for (Value p = rest; p != Qnil; p = cdr(p)) {
+        int64_t x = value_get_int("/", car(p));
         if (x == 0)
             runtime_error("/: divided by zero");
         y /= x;
@@ -1577,10 +1576,10 @@ static Value builtin_list(UNUSED Value *env, Value args)
 
 int64_t length(Value list)
 {
-    int64_t l = 0;
-    for (; list != Qnil; list = cdr(list))
-        l++;
-    return l;
+    int64_t len = 0;
+    for (Value p = list; p != Qnil; p = cdr(p))
+        len++;
+    return len;
 }
 
 static Value builtin_length(UNUSED Value *env, Value list)
@@ -1605,18 +1604,18 @@ static Value dup_list(Value l, Value *plast)
 static Value builtin_append(UNUSED Value *env, Value args)
 {
     Value l = Qnil, last = Qnil;
-    Value a, next;
-    for (a = args; a != Qnil; a = next) {
-        if ((next = cdr(a)) == Qnil)
+    Value p, next;
+    for (p = args; p != Qnil; p = next) {
+        if ((next = cdr(p)) == Qnil)
             break;
-        Value dup = dup_list(car(a), &last);
+        Value dup = dup_list(car(p), &last);
         l = append2(l, dup);
     }
-    if (a != Qnil) {
+    if (p != Qnil) {
         if (l == Qnil)
-            l = car(a);
+            l = car(p);
         else
-            PAIR(last)->cdr = car(a);
+            PAIR(last)->cdr = car(p);
     }
     return l;
 }
@@ -1651,13 +1650,13 @@ static Value builtin_procedure_p(UNUSED Value *env, Value o)
 
 static Value apply_args(Value args)
 {
-    Value heads = Qnil, last = Qnil, a, next;
-    for (a = args; (next = cdr(a)) != Qnil; a = next) {
-        last = append_at(last, car(a));
+    Value heads = Qnil, last = Qnil, p, next;
+    for (p = args; (next = cdr(p)) != Qnil; p = next) {
+        last = append_at(last, car(p));
         if (heads == Qnil)
             heads = last;
     }
-    Value rest = car(a);
+    Value rest = car(p);
     expect_type("args on apply", TYPE_PAIR, rest);
     return append2(heads, rest);
 }
