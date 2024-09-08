@@ -139,8 +139,12 @@
   (expect eq? (if #f 1 2) 2)))
 
 (describe "if composed" (lambda ()
-  (expect eq? (if (if #t 1 #f) (if #t 3 4) (if #t 5 6)) 3)
-  (expect eq? (if (if #f 1 #f) (if #f 3 4) (if #f 5 6)) 6)))
+  (expect eq? (if (if #t 1 #f)
+                  (if #t 3 4)
+                  (if #t 5 6)) 3)
+  (expect eq? (if (if #f 1 #f)
+                  (if #f 3 4)
+                  (if #f 5 6)) 6)))
 
 ;; 4.1.6. Assignments
 ;;define_special(e, "set!", builtin_set, 2);
@@ -153,9 +157,13 @@
 ;; 4.2. Derived expression types
 ;; 4.2.1. Conditionals
 (describe "cond" (lambda ()
-  (expect eq? (cond (#f 1) (#t 2) (else 3)) 2)
-  (expect eq? (cond (#f 1) (else 3)) 3)
-  (expect eq? (cond (#f) (2)) 2)))
+  (expect eq? (cond (#f 1)
+                    (#t 2)
+                    (else 3)) 2)
+  (expect eq? (cond (#f 1)
+                    (else 3)) 3)
+  (expect eq? (cond (#f)
+                    (2)) 2)))
 
 (describe "and" (lambda ()
   (expect-t (and))
