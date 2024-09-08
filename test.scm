@@ -518,8 +518,9 @@
   (expect-f #f)))
 
 (describe "not" (lambda ()
-  (expect-t #t) ;;FIXME
-))
+  (expect not #f)
+  (expect not (not #t))
+  (expect not (not (not #f)))))
 
 ;; 6.3.2. Pairs and lists
 (describe "pair?" (lambda ()
