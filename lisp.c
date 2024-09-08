@@ -921,13 +921,7 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static Value reverse(Value l)
-{
-    Value ret = Qnil;
-    for (Value p = l; p != Qnil; p = cdr(p))
-        ret = cons(car(p), ret);
-    return ret;
-}
+static Value reverse(Value l);
 
 static Value iparse(FILE *in)
 {
@@ -1336,14 +1330,14 @@ static Value builtin_define(Value *env, Value args)
 }
 
 // 6.1. Equivalence predicates
-static Value builtin_eqv(UNUSED Value *env, Value x, Value y)
+static inline bool eq(Value x, Value y)
 {
-    return OF_BOOL(x == y);
+    return x == y;
 }
 
 static Value builtin_eq(UNUSED Value *env, Value x, Value y)
 {
-    return OF_BOOL(x == y);
+    return OF_BOOL(eq(x, y));
 }
 
 static bool equal(Value x, Value y)
@@ -1630,10 +1624,50 @@ static Value builtin_append(UNUSED Value *env, Value args)
     return l;
 }
 
+static Value reverse(Value l)
+{
+    Value ret = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p))
+        ret = cons(car(p), ret);
+    return ret;
+}
+
 static Value builtin_reverse(UNUSED Value *env, Value list)
 {
     expect_type("reverse", TYPE_PAIR, list);
     return reverse(list);
+}
+
+static Value memq(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value e = car(p);
+        if (eq(e, key))
+            return p;
+    }
+    return Qfalse;
+}
+
+static Value builtin_memq(UNUSED Value *env, Value obj, Value list)
+{
+    expect_type("assq", TYPE_PAIR, list);
+    return memq(obj, list);
+}
+
+static Value member(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value e = car(p);
+        if (equal(e, key))
+            return p;
+    }
+    return Qfalse;
+}
+
+static Value builtin_member(UNUSED Value *env, Value obj, Value list)
+{
+    expect_type("assq", TYPE_PAIR, list);
+    return member(obj, list);
 }
 
 static Value assq(Value key, Value l)
@@ -1925,7 +1959,7 @@ static void initialize(void)
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    define_function(e, "eqv?", builtin_eqv, 2);
+    define_function(e, "eqv?", builtin_eq, 2); // alias
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
@@ -1973,9 +2007,9 @@ static void initialize(void)
     define_function(e, "append", builtin_append, -1);
     define_function(e, "reverse", builtin_reverse, 1);
     //-list-ref
-    //-memq
-    //-memv
-    //-member
+    define_function(e, "memq", builtin_memq, 2);
+    define_function(e, "memv", builtin_memq, 2); // alias
+    define_function(e, "member", builtin_member, 2); // alias
     define_function(e, "assq", builtin_assq, 2);
     //-assv
     //-assoc

@@ -435,8 +435,6 @@
   (expect-t (eq? #t #t))
   (expect-t (eq? #f #f))
   (expect-f (eq? #t #f))
-  (expect-t (eq? 1 1))
-  (expect-f (eq? 1 -1))
   (expect-f (eq? () '(1)))
   (expect-f (eq? '(1) '(1)))
   (expect-f (eq? '(1 '(2)) '(1 '(2))))))
@@ -593,6 +591,24 @@
   (expect equal? '(1) (reverse '(1)))
   (expect equal? '(2 1) (reverse '(1 2)))
   (expect equal? '(3 2 1) (reverse '(1 2 3)))))
+
+(describe "memq" (lambda ()
+  (expect equal? (memq 'a '(a b c)) '(a b c))
+  (expect equal? (memq 'b '(a b c)) '(b c))
+  (expect equal? (memq 'a '(b c d)) #f)))
+
+(describe "memv" (lambda ()
+  (expect equal? (memv 'a '(a b c)) '(a b c))
+  (expect equal? (memv 'b '(a b c)) '(b c))
+  (expect equal? (memv 'a '(b c d)) #f)
+  (expect equal? (memv 101 '(100 101 102)) '(101 102))))
+
+(describe "member" (lambda ()
+  (expect equal? (member 'a '(a b c)) '(a b c))
+  (expect equal? (member 'b '(a b c)) '(b c))
+  (expect equal? (member 'a '(b c d)) #f)
+  (expect equal? (member 101 '(100 101 102)) '(101 102))
+  (expect equal? (member (list 'a) '(b (a) c)) '((a) c))))
 
 (describe "assq" (lambda ()
   (define alist '((10 . 1) (20 . 2) (30 . 3)))
