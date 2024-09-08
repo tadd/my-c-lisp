@@ -1045,7 +1045,6 @@ static FILE *open_loadable(const char *path)
     return in;
 }
 
-// Current spec: path is always relative
 Value load(const char *path)
 {
     FILE *in = open_loadable(path);
@@ -1833,6 +1832,7 @@ static Value builtin_newline(void)
 // 6.6.4. System interface
 static Value builtin_load(UNUSED Value *env, Value path)
 {
+    // Current spec: path is always relative
     return load_inner(value_to_string(path));
 }
 
