@@ -1144,7 +1144,7 @@ static Value eval_top(Value v)
 
 Value eval(Value v)
 {
-    return eval_top(list(v));
+    return eval_top(list1(v));
 }
 
 static Value iload(FILE *in)
