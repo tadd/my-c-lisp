@@ -1210,7 +1210,7 @@ static Value builtin_begin(Value *env, Value body)
 static inline void expect_nonnull(const char *msg, Value l)
 {
     if (l == Qnil)
-        runtime_error("%s: expected non-null?: %s", msg, stringify(l));
+        runtime_error("%s: expected non-null?", msg);
 }
 
 static Value qq_list(Value *env, Value datum, int64_t depth);
