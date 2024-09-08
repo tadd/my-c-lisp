@@ -1006,9 +1006,9 @@ static Value ieval(Value *env, Value v)
 
 static Value eval_top(Value v)
 {
-    INIT_STACK();
     if (setjmp(jmp_runtime_error) != 0)
         return Qundef;
+    INIT_STACK();
     return eval_body(&toplevel_environment, v);
 }
 
