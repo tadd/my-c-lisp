@@ -1555,7 +1555,7 @@ static Value builtin_car(UNUSED Value *env, Value pair)
 static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
     expect_type("cdr", TYPE_PAIR, pair);
-    expect_nonnull("car", pair);
+    expect_nonnull("cdr", pair);
     return cdr(pair);
 }
 
