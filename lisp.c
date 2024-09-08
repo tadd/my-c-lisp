@@ -1053,11 +1053,9 @@ static FILE *open_loadable(const char *path)
 // Current spec: path is always relative
 Value load(const char *path)
 {
-    const char *basedir_saved = load_basedir;
     FILE *in = open_loadable(path);
     Value retval = iload(in);
     fclose(in);
-    load_basedir = basedir_saved;
     return retval;
 }
 
