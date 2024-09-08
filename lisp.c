@@ -1012,11 +1012,6 @@ static Value eval_top(Value v)
     return eval_body(&toplevel_environment, v);
 }
 
-Value eval(Value v)
-{
-    return eval_top(list1(v));
-}
-
 static Value iload(FILE *in)
 {
     Value l = iparse(in);
