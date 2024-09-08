@@ -241,7 +241,7 @@ static const char *name_nth(Value list, int64_t n)
 static const char *unintern(Symbol sym)
 {
     const char *name = name_nth(symbol_names, (int64_t) sym);
-    if (name == NULL) // fatal; known symbol should have name
+    if (name == NULL) // fatal; every known symbols should have a name
         error("symbol %lu not found", sym);
     return name;
 }
@@ -1704,7 +1704,6 @@ static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
     for (Value p = ls, l; p != Qnil; p = cdr(p)) {
         if ((l = car(p)) == Qnil)
             return false;
-
         lcars = append_at(lcars, car(l));
         if (cars == Qnil)
             cars = lcars;
