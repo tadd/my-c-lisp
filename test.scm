@@ -64,7 +64,7 @@
   (expect null? '())
   (expect null? (list))
   (let ((l '(42 "foo")))
-    ;; (expect pair? l)
+    (expect pair? l)
     (expect eq? (length l) 2)
     (expect eq? (car l) 42)
     (expect equal? (car (cdr l)) "foo"))))
