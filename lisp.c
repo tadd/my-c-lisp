@@ -1333,6 +1333,11 @@ static Value builtin_define(Value *env, Value args)
 }
 
 // 6.1. Equivalence predicates
+static Value builtin_eqv(UNUSED Value *env, Value x, Value y)
+{
+    return OF_BOOL(x == y);
+}
+
 static Value builtin_eq(UNUSED Value *env, Value x, Value y)
 {
     return OF_BOOL(x == y);
@@ -1908,7 +1913,7 @@ static void initialize(void)
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    //- eqv?
+    define_function(e, "eqv?", builtin_eqv, 2);
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
