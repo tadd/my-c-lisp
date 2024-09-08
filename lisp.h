@@ -49,14 +49,13 @@ int64_t length(Value list);
 Value car(Value v);
 Value cdr(Value v);
 
+ATTR_MALLOC char *stringify(Value v);
 void display(Value v);
 Value parse(const char *path);
+Value parse_string(const char *in);
 Value load(const char *path);
 Value eval(Value v);
 Value eval_string(const char *s);
-
-ATTR_MALLOC char *stringify(Value v);
-Value parse_string(const char *in);
 
 const char *error_message(void);
 
