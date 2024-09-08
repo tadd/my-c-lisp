@@ -164,6 +164,24 @@
   (expect eq? (cond (#f)
                     (2)) 2)))
 
+(describe "case" (lambda ()
+  (expect equal? (case 3
+                   ((0 1) 2)
+                   ((2 3) 4)
+                   (else 5)) 4)
+  (expect equal? (case 4
+                   ((0 1) 2)
+                   ((2 3) 4)
+                   (else 5)) 5)
+  (expect equal? (case 'c
+                   ((a b c) 1)
+                   ((d e) 2)
+                   (else 3)) 1)
+  (expect equal? (case 'f
+                   ((a b c) 1)
+                   ((d e) 2)
+                   (else 3)) 3)))
+
 (describe "and" (lambda ()
   (expect-t (and))
   (expect-t (and #t))

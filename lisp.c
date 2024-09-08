@@ -1132,6 +1132,25 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
+static Value memq(Value key, Value l);
+
+static Value builtin_case(Value *env, Value args)
+{
+    expect_arity_range("case", 2, -1, args);
+    Value key = ieval(env, car(args)), clauses = cdr(args);
+
+    for (Value p = clauses; p != Qnil; p = cdr(p)) {
+        Value clause = car(p);
+        expect_type("case", TYPE_PAIR, clause);
+        Value data = car(clause), exprs = cdr(clause);
+        if (data == SYM_ELSE)
+            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+        if (memq(key, data) != Qfalse)
+            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+    }
+    return Qnil;
+}
+
 static Value builtin_and(Value *env, Value args)
 {
     Value last = Qtrue;
@@ -1930,6 +1949,7 @@ static void initialize(void)
     // 4.2. Derived expression types
     // 4.2.1. Conditionals
     define_special(e, "cond", builtin_cond, -1);
+    define_special(e, "case", builtin_case, -1);
     //- case
     define_special(e, "and", builtin_and, -1);
     define_special(e, "or", builtin_or, -1);
