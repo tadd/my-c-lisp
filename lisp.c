@@ -227,8 +227,24 @@ inline Symbol value_to_symbol(Value v)
     return (Symbol) (v >> FLAG_NBIT);
 }
 
-static Symbol intern(const char *s);
-static const char *unintern(Symbol sym);
+static const char *name_nth(Value list, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++) {
+        list = cdr(list);
+        if (list == Qnil)
+            return NULL;
+    }
+    Value name = car(list);
+    return STRING(name)->body;
+}
+
+static const char *unintern(Symbol sym)
+{
+    const char *name = name_nth(symbol_names, (int64_t) sym);
+    if (name == NULL) // fatal; every known symbols should have a name
+        error("symbol %lu not found", sym);
+    return name;
+}
 
 inline const char *value_to_string(Value v)
 {
@@ -242,6 +258,33 @@ inline const char *value_to_string(Value v)
 inline Value value_of_int(int64_t i)
 {
     return (Value) i << 1U | 1U;
+}
+
+static inline Value list1(Value x)
+{
+    return cons(x, Qnil);
+}
+
+static Symbol intern(const char *name)
+{
+    int64_t i;
+    Value l = symbol_names;
+    Value last = Qnil;
+    // find
+    for (i = 0; l != Qnil; l = cdr(l), i++) {
+        Value v = car(l);
+        if (strcmp(STRING(v)->body, name) == 0)
+            return i;
+        last = l;
+    }
+    // or put at `i`
+    Value s = value_of_string(name);
+    Value next = list1(s);
+    if (last == Qnil)
+        symbol_names = next;
+    else
+        PAIR(last)->cdr = next;
+    return i;
 }
 
 inline Value value_of_symbol(const char *s)
@@ -289,14 +332,7 @@ static Value value_of_closure(Value env, Value params, Value body)
     return (Value) f;
 }
 
-// `cons` is well-known name than "value_of_pair"
-Value cons(Value car, Value cdr)
-{
-    Pair *p = obj_new(sizeof(Pair), TAG_PAIR);
-    p->car = car;
-    p->cdr = cdr;
-    return (Value) p;
-}
+// and `cons` is well-known name than "value_of_pair"
 
 //
 // Errors
@@ -341,35 +377,6 @@ static void expect_type_or(const char *header, Type e1, Type e2, Value v)
     runtime_error("type error in %s: expected %s or %s but got %s",
                   header, value_type_to_string(e1), value_type_to_string(e2),
                   value_type_to_string(t));
-}
-
-// Lists: prepare for parsing
-
-static inline Value list1(Value x)
-{
-    return cons(x, Qnil);
-}
-
-static Value append_at(Value last, Value elem)
-{
-    Value p = list1(elem);
-    if (last != Qnil)
-        PAIR(last)->cdr = p;
-    return p;
-}
-
-Value list(Value v, ...)
-{
-    Value l = Qnil, last = l;
-    va_list ap;
-    va_start(ap, v);
-    for (; v != Qundef; v = va_arg(ap, Value)) {
-        last = append_at(last, v);
-        if (l == Qnil)
-            l = last;
-    }
-    va_end(ap);
-    return l;
 }
 
 //
@@ -475,47 +482,6 @@ static Token get_token_string(Parser *p)
     }
     *pbuf = '\0';
     return TOK_STR(buf);
-}
-
-static Symbol intern(const char *name)
-{
-    int64_t i;
-    Value l = symbol_names;
-    Value last = Qnil;
-    // find
-    for (i = 0; l != Qnil; l = cdr(l), i++) {
-        Value v = car(l);
-        if (strcmp(STRING(v)->body, name) == 0)
-            return i;
-        last = l;
-    }
-    // or put at `i`
-    Value s = value_of_string(name);
-    Value next = list1(s);
-    if (last == Qnil)
-        symbol_names = next;
-    else
-        PAIR(last)->cdr = next;
-    return i;
-}
-
-static const char *name_nth(Value list, int64_t n)
-{
-    for (int64_t i = 0; i < n; i++) {
-        list = cdr(list);
-        if (list == Qnil)
-            return NULL;
-    }
-    Value name = car(list);
-    return STRING(name)->body;
-}
-
-static const char *unintern(Symbol sym)
-{
-    const char *name = name_nth(symbol_names, (int64_t) sym);
-    if (name == NULL) // fatal; known symbol should have name
-        error("symbol %lu not found", sym);
-    return name;
 }
 
 static inline bool is_initial(int c)
@@ -645,16 +611,6 @@ static void unget_token(Parser *p, Token t)
     p->prev_token = t;
 }
 
-inline Value car(Value v)
-{
-    return PAIR(v)->car;
-}
-
-inline Value cdr(Value v)
-{
-    return PAIR(v)->cdr;
-}
-
 #define DEF_CXR(x, y) Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
 #define DEF_CXR1(x) DEF_CXR(a, x) DEF_CXR(d, x)
 #define DEF_CXR2(x) DEF_CXR1(a ## x) DEF_CXR1(d ## x)
@@ -663,8 +619,6 @@ inline Value cdr(Value v)
 #define DEF_CXRS() DEF_CXR2() DEF_CXR3() DEF_CXR4()
 
 DEF_CXRS()
-
-static Value parse_expr(Parser *p);
 
 static const char *token_stringify(Token t)
 {
@@ -701,6 +655,8 @@ static const char *token_stringify(Token t)
     return buf;
 }
 
+static Value parse_expr(Parser *p);
+
 static Value parse_dotted_pair(Parser *p, Value l, Value last)
 {
     if (l == Qnil)
@@ -711,6 +667,14 @@ static Value parse_dotted_pair(Parser *p, Value l, Value last)
         parse_error(p, "')'", "'%s'", token_stringify(t));
     PAIR(last)->cdr = e;
     return l;
+}
+
+static Value append_at(Value last, Value elem)
+{
+    Value p = list1(elem);
+    if (last != Qnil)
+        PAIR(last)->cdr = p;
+    return p;
 }
 
 static Value parse_list(Parser *p)
@@ -783,14 +747,6 @@ static Parser *parser_new(FILE *in)
     return p;
 }
 
-int64_t length(Value list)
-{
-    int64_t l = 0;
-    for (; list != Qnil; list = cdr(list))
-        l++;
-    return l;
-}
-
 static void expect_arity_range(const char *func, int64_t min, int64_t max, Value args)
 {
     int64_t actual = length(args);
@@ -852,8 +808,10 @@ static Value apply_cfunc(Value *env, Value proc, Value args)
 #endif
 }
 
-static Value ieval(Value *env, Value v); // internal
-static Value eval_body(Value *env, Value body);
+inline static void env_put(Value *env, Value name, Value val)
+{
+    *env = cons(cons(name, val), *env);
+}
 
 static Value append2(Value l1, Value l2)
 {
@@ -875,10 +833,7 @@ static Value append2(Value l1, Value l2)
     return ret;
 }
 
-inline static void env_put(Value *env, Value name, Value val)
-{
-    *env = cons(cons(name, val), *env);
-}
+static Value eval_body(Value *env, Value body);
 
 static Value apply_closure(Value *env, Value proc, Value args)
 {
@@ -934,15 +889,7 @@ static Value apply(Value *env, Value proc, Value args)
     }
 }
 
-static Value assq(Value key, Value l)
-{
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        Value entry = car(p);
-        if (value_is_pair(entry) && car(entry) == key)
-            return entry;
-    }
-    return Qfalse;
-}
+static Value assq(Value key, Value l);
 
 static void expect_cfunc_arity(int64_t actual)
 {
@@ -970,72 +917,6 @@ static Value lookup(Value env, Value name)
     if (found == Qfalse)
         runtime_error("unbound variable: %s", value_to_string(name));
     return cdr(found);
-}
-
-static void fdisplay(FILE* f, Value v);
-
-static void display_list(FILE *f, Value v)
-{
-    for (;;) {
-        Pair *p = PAIR(v);
-        fdisplay(f, p->car);
-        v = p->cdr;
-        if (v == Qnil)
-            break;
-        fprintf(f, " ");
-        if (value_is_atom(v)) {
-            fprintf(f, ". ");
-            fdisplay(f, v);
-            break;
-        }
-    }
-}
-
-static void fdisplay(FILE* f, Value v)
-{
-    switch (value_type_of(v)) {
-    case TYPE_BOOL:
-        fprintf(f, "%s", v == Qtrue ? "#t" : "#f");
-        break;
-    case TYPE_INT:
-        fprintf(f, "%"PRId64, value_to_int(v));
-        break;
-    case TYPE_SYMBOL:
-        fprintf(f, "'%s", value_to_string(v));
-        break;
-    case TYPE_PAIR:
-        fprintf(f, "(");
-        if (v != Qnil)
-            display_list(f, v);
-        fprintf(f, ")");
-        break;
-    case TYPE_STR:
-        fprintf(f, "%s", value_to_string(v));
-        break;
-    case TYPE_PROC:
-        fprintf(f, "<procedure>");
-        break;
-    case TYPE_UNDEF:
-        fprintf(f, "<undef>");
-        break;
-    }
-}
-
-void display(Value v)
-{
-    fdisplay(stdout, v);
-}
-
-char *stringify(Value v)
-{
-    char *s;
-    size_t size;
-    FILE *stream = open_memstream(&s, &size);
-    if (stream == NULL)
-        return NULL;
-    fdisplay(stream, v);
-    fclose(stream);
-    return s;
 }
 
 static Value reverse(Value v)
@@ -1097,6 +978,7 @@ Value parse_string(const char *in)
 //
 // Evaluation
 //
+static Value ieval(Value *env, Value v); // internal
 
 static Value eval_body(Value *env, Value body)
 {
@@ -1207,11 +1089,33 @@ static Value load_inner(const char *path)
 }
 
 //
-// Special Forms
+// Built-in Procedures / Syntax
 //
-
 #define UNUSED ATTR(unused)
 
+// 4.1. Primitive expression types
+// 4.1.2. Literal expressions
+static Value builtin_quote(UNUSED Value *env, Value datum)
+{
+    return datum;
+}
+
+// 4.1.4. Procedures
+static Value lambda(Value *env, Value params, Value body)
+{
+    expect_type_or("lambda", TYPE_PAIR, TYPE_SYMBOL, params);
+    expect_type("lambda", TYPE_PAIR, body);
+    if (body == Qnil)
+        runtime_error("lambda: one or more expressions needed in body");
+    return value_of_closure(*env, params, body);
+}
+
+static Value builtin_lambda(Value *env, Value args)
+{
+    return lambda(env, car(args), cdr(args));
+}
+
+// 4.1.5. Conditionals
 static Value builtin_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, args);
@@ -1225,53 +1129,7 @@ static Value builtin_if(Value *env, Value args)
     return ieval(env, car(els));
 }
 
-static Value define_variable(Value *env, Value ident, Value expr)
-{
-    expect_type("define", TYPE_SYMBOL, ident);
-
-    Value val = ieval(env, expr), found;
-    if (env == &toplevel_environment &&
-        (found = assq(ident, *env)) != Qfalse) {
-        PAIR(found)->cdr = val; // set!
-    } else
-        env_put(env, ident, val); // prepend new
-    return Qnil;
-}
-
-static Value lambda(Value *env, Value params, Value body)
-{
-    expect_type_or("lambda", TYPE_PAIR, TYPE_SYMBOL, params);
-    expect_type("lambda", TYPE_PAIR, body);
-    if (body == Qnil)
-        runtime_error("lambda: one or more expressions needed in body");
-    return value_of_closure(*env, params, body);
-}
-
-static Value define_proc_internal(Value *env, Value heads, Value body)
-{
-    Value ident = car(heads), params = cdr(heads);
-    Value val = lambda(env, params, body);
-    return define_variable(env, ident, val);
-}
-
-static Value builtin_define(Value *env, Value args)
-{
-    if (args == Qnil)
-        runtime_error("define: wrong number of arguments: expected 1+");
-    Value head = car(args);
-    Type t = value_type_of(head);
-    switch (t) {
-    case TYPE_SYMBOL:
-        expect_arity(2, args);
-        return define_variable(env, head, cadr(args));
-    case TYPE_PAIR:
-        return define_proc_internal(env, head, cdr(args));
-    default:
-        runtime_error("define: expected first argument symbol or pair but got %s",
-                      value_type_to_string(t));
-    }
-}
-
+// 4.1.6. Assignments
 static Value builtin_set(Value *env, Value ident, Value expr)
 {
     expect_type("set!", TYPE_SYMBOL, ident);
@@ -1283,6 +1141,47 @@ static Value builtin_set(Value *env, Value ident, Value expr)
     return Qnil;
 }
 
+// 4.2. Derived expression types
+// 4.2.1. Conditionals
+static Value builtin_cond(Value *env, Value clauses)
+{
+    expect_arity_range("cond", 1, -1, clauses);
+
+    for (; clauses != Qnil; clauses = cdr(clauses)) {
+        Value clause = car(clauses);
+        expect_type("cond", TYPE_PAIR, clause);
+        Value test = car(clause);
+        Value exprs = cdr(clause);
+        if (test == SYM_ELSE)
+            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+        Value t = ieval(env, test);
+        if (t != Qfalse)
+            return exprs == Qnil ? t : eval_body(env, exprs);
+    }
+    return Qnil;
+}
+
+static Value builtin_and(Value *env, Value args)
+{
+    Value last = Qtrue;
+    for (Value c = args; c != Qnil; c = cdr(c)) {
+        if ((last = ieval(env, car(c))) == Qfalse)
+            break;
+    }
+    return last;
+}
+
+static Value builtin_or(UNUSED Value *env, Value args)
+{
+    Value last = Qfalse;
+    for (Value c = args; c != Qnil; c = cdr(c)) {
+        if ((last = ieval(env, car(c))) != Qfalse)
+            break;
+    }
+    return last;
+}
+
+// 4.2.2. Binding constructs
 static Value builtin_let(Value *env, Value args)
 {
     Value bindings = car(args);
@@ -1324,11 +1223,13 @@ static Value builtin_letrec(Value *env, Value args)
     return eval_body(&letenv, body);
 }
 
-static Value builtin_quote(UNUSED Value *env, Value datum)
+// 4.2.3. Sequencing
+static Value builtin_begin(Value *env, Value body)
 {
-    return datum;
+    return eval_body(env, body);
 }
 
+// 4.2.6. Quasiquotation
 static inline void expect_nonnull(const char *msg, Value l)
 {
     if (l == Qnil)
@@ -1408,140 +1309,91 @@ static Value builtin_quasiquote(Value *env, Value datum)
     return qq(env, datum, 1);
 }
 
-static Value builtin_begin(Value *env, Value body)
+static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
 {
-    return eval_body(env, body);
+    runtime_error("unquote: applied out of quasiquote (`)");
 }
 
-static Value builtin_cond(Value *env, Value clauses)
+static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
 {
-    expect_arity_range("cond", 1, -1, clauses);
+    runtime_error("unquote-splicing: applied out of quasiquote (`)");
+}
 
-    for (; clauses != Qnil; clauses = cdr(clauses)) {
-        Value clause = car(clauses);
-        expect_type("cond", TYPE_PAIR, clause);
-        Value test = car(clause);
-        Value exprs = cdr(clause);
-        if (test == SYM_ELSE)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
-        Value t = ieval(env, test);
-        if (t != Qfalse)
-            return exprs == Qnil ? t : eval_body(env, exprs);
-    }
+// 5.2. Definitions
+static Value define_variable(Value *env, Value ident, Value expr)
+{
+    expect_type("define", TYPE_SYMBOL, ident);
+
+    Value val = ieval(env, expr), found;
+    if (env == &toplevel_environment &&
+        (found = assq(ident, *env)) != Qfalse) {
+        PAIR(found)->cdr = val; // set!
+    } else
+        env_put(env, ident, val); // prepend new
     return Qnil;
 }
 
-static Value builtin_and(Value *env, Value args)
+static Value define_proc_internal(Value *env, Value heads, Value body)
 {
-    Value last = Qtrue;
-    for (Value c = args; c != Qnil; c = cdr(c)) {
-        if ((last = ieval(env, car(c))) == Qfalse)
-            break;
+    Value ident = car(heads), params = cdr(heads);
+    Value val = lambda(env, params, body);
+    return define_variable(env, ident, val);
+}
+
+static Value builtin_define(Value *env, Value args)
+{
+    if (args == Qnil)
+        runtime_error("define: wrong number of arguments: expected 1+");
+    Value head = car(args);
+    Type t = value_type_of(head);
+    switch (t) {
+    case TYPE_SYMBOL:
+        expect_arity(2, args);
+        return define_variable(env, head, cadr(args));
+    case TYPE_PAIR:
+        return define_proc_internal(env, head, cdr(args));
+    default:
+        runtime_error("define: expected first argument symbol or pair but got %s",
+                      value_type_to_string(t));
     }
-    return last;
 }
 
-static Value builtin_or(UNUSED Value *env, Value args)
+// 6.1. Equivalence predicates
+static Value builtin_eq(UNUSED Value *env, Value x, Value y)
 {
-    Value last = Qfalse;
-    for (Value c = args; c != Qnil; c = cdr(c)) {
-        if ((last = ieval(env, car(c))) != Qfalse)
-            break;
+    return OF_BOOL(x == y);
+}
+
+static bool equal(Value x, Value y)
+{
+    if (x == y)
+        return true;
+    Type tx = value_type_of(x), ty = value_type_of(y);
+    if (tx != ty)
+        return false;
+    switch (tx) {
+    case TYPE_PAIR:
+        if (x == Qnil || y == Qnil)
+            return false;
+        return equal(car(x), car(y)) &&
+               equal(cdr(x), cdr(y));
+    case TYPE_STR:
+        return (strcmp(STRING(x)->body, STRING(y)->body) == 0);
+    default:
+        return false;
     }
-    return last;
 }
 
-static Value builtin_lambda(Value *env, Value args)
+static Value builtin_equal(UNUSED Value *env, Value x, Value y)
 {
-    return lambda(env, car(args), cdr(args));
+    return OF_BOOL(equal(x, y));
 }
 
-static Value value_of_continuation(void)
-{
-    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
-    c->proc.arity = 1; // by spec
-    return (Value) c;
-}
-
-static bool continuation_set(Value c)
-{
-    GET_SP(sp); // must be the first!
-    Continuation *cont = CONTINUATION(c);
-    cont->sp = sp;
-    cont->shelter_len = stack_base - sp;
-    cont->shelter = xmalloc(cont->shelter_len);
-    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
-    return setjmp(cont->state);
-}
-
-static Value builtin_callcc(Value *env, Value proc)
-{
-    expect_type("call/cc", TYPE_PROC, proc);
-    Value c = value_of_continuation();
-    if (continuation_set(c) != 0)
-        return CONTINUATION(c)->retval;
-    return apply(env, proc, list1(c));
-}
-
-//
-// Built-in Procedures: Arithmetic
-//
-
+// 6.2.5. Numerical operations
 static int64_t value_get_int(const char *header, Value v)
 {
     expect_type(header, TYPE_INT, v);
     return value_to_int(v);
-}
-
-static Value builtin_add(UNUSED Value *env, Value args)
-{
-    int64_t y = 0;
-    for (Value l = args; l != Qnil; l = cdr(l))
-        y += value_get_int("+", car(l));
-    return value_of_int(y);
-}
-
-static Value builtin_sub(UNUSED Value *env, Value args)
-{
-    expect_arity_range("-", 1, -1, args);
-
-    Value rest = cdr(args);
-    int64_t y = 0;
-    if (rest == Qnil)
-        rest = args;
-    else {
-        y = value_get_int("-", car(args));
-    }
-    for (Value l = rest; l != Qnil; l = cdr(l))
-        y -= value_get_int("-", car(l));
-    return value_of_int(y);
-}
-
-static Value builtin_mul(UNUSED Value *env, Value args)
-{
-    int64_t y = 1;
-    for (Value l = args; l != Qnil; l = cdr(l))
-        y *= value_get_int("*", car(l));
-    return value_of_int(y);
-}
-
-static Value builtin_div(UNUSED Value *env, Value args)
-{
-    expect_arity_range("/", 1, -1, args);
-
-    Value rest = cdr(args);
-    int64_t y = 1;
-    if (rest == Qnil)
-        rest = args;
-    else
-        y = value_get_int("/", car(args));
-    for (Value l = rest; l != Qnil; l = cdr(l)) {
-        int64_t x = value_get_int("/", car(l));
-        if (x == 0)
-            runtime_error("/: divided by zero");
-        y /= x;
-    }
-    return value_of_int(y);
 }
 
 static Value builtin_numeq(UNUSED Value *env, Value args)
@@ -1613,6 +1465,57 @@ static Value builtin_ge(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
+static Value builtin_add(UNUSED Value *env, Value args)
+{
+    int64_t y = 0;
+    for (Value l = args; l != Qnil; l = cdr(l))
+        y += value_get_int("+", car(l));
+    return value_of_int(y);
+}
+
+static Value builtin_sub(UNUSED Value *env, Value args)
+{
+    expect_arity_range("-", 1, -1, args);
+
+    Value rest = cdr(args);
+    int64_t y = 0;
+    if (rest == Qnil)
+        rest = args;
+    else {
+        y = value_get_int("-", car(args));
+    }
+    for (Value l = rest; l != Qnil; l = cdr(l))
+        y -= value_get_int("-", car(l));
+    return value_of_int(y);
+}
+
+static Value builtin_mul(UNUSED Value *env, Value args)
+{
+    int64_t y = 1;
+    for (Value l = args; l != Qnil; l = cdr(l))
+        y *= value_get_int("*", car(l));
+    return value_of_int(y);
+}
+
+static Value builtin_div(UNUSED Value *env, Value args)
+{
+    expect_arity_range("/", 1, -1, args);
+
+    Value rest = cdr(args);
+    int64_t y = 1;
+    if (rest == Qnil)
+        rest = args;
+    else
+        y = value_get_int("/", car(args));
+    for (Value l = rest; l != Qnil; l = cdr(l)) {
+        int64_t x = value_get_int("/", car(l));
+        if (x == 0)
+            runtime_error("/: divided by zero");
+        y /= x;
+    }
+    return value_of_int(y);
+}
+
 static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("modulo", y);
@@ -1625,24 +1528,51 @@ static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
     return value_of_int(c);
 }
 
+// 6.3.1. Booleans
 static Value builtin_not(UNUSED Value *env, Value x)
 {
     return OF_BOOL(x == Qfalse);
 }
 
-//
-// Built-in Procedures: Lists and others
-//
-
-static Value builtin_list(UNUSED Value *env, Value args)
+// 6.3.2. Pairs and lists
+static Value builtin_pair_p(UNUSED Value *env, Value o)
 {
-    return args;
+    return OF_BOOL(value_is_pair(o));
 }
 
-static Value builtin_length(UNUSED Value *env, Value list)
+Value cons(Value car, Value cdr)
 {
-    expect_type("length", TYPE_PAIR, list);
-    return value_of_int(length(list));
+    Pair *p = obj_new(sizeof(Pair), TAG_PAIR);
+    p->car = car;
+    p->cdr = cdr;
+    return (Value) p;
+}
+
+inline Value car(Value v)
+{
+    return PAIR(v)->car;
+}
+
+inline Value cdr(Value v)
+{
+    return PAIR(v)->cdr;
+}
+
+static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
+{
+    return cons(car, cdr);
+}
+
+static Value builtin_car(UNUSED Value *env, Value pair)
+{
+    expect_type("car", TYPE_PAIR, pair);
+    return car(pair);
+}
+
+static Value builtin_cdr(UNUSED Value *env, Value pair)
+{
+    expect_type("cdr", TYPE_PAIR, pair);
+    return cdr(pair);
 }
 
 static Value builtin_null(UNUSED Value *env, Value list)
@@ -1650,10 +1580,38 @@ static Value builtin_null(UNUSED Value *env, Value list)
     return OF_BOOL(list == Qnil);
 }
 
-static Value builtin_reverse(UNUSED Value *env, Value list)
+// C API-level utility
+Value list(Value v, ...)
 {
-    expect_type("reverse", TYPE_PAIR, list);
-    return reverse(list);
+    Value l = Qnil, last = l;
+    va_list ap;
+    va_start(ap, v);
+    for (; v != Qundef; v = va_arg(ap, Value)) {
+        last = append_at(last, v);
+        if (l == Qnil)
+            l = last;
+    }
+    va_end(ap);
+    return l;
+}
+
+static Value builtin_list(UNUSED Value *env, Value args)
+{
+    return args;
+}
+
+int64_t length(Value list)
+{
+    int64_t l = 0;
+    for (; list != Qnil; list = cdr(list))
+        l++;
+    return l;
+}
+
+static Value builtin_length(UNUSED Value *env, Value list)
+{
+    expect_type("length", TYPE_PAIR, list);
+    return value_of_int(length(list));
 }
 
 static Value dup_list(Value l, Value *plast)
@@ -1688,77 +1646,21 @@ static Value builtin_append(UNUSED Value *env, Value args)
     return l;
 }
 
-static Value builtin_display(UNUSED Value *env, Value obj)
+static Value builtin_reverse(UNUSED Value *env, Value list)
 {
-    display(obj);
-    return obj;
+    expect_type("reverse", TYPE_PAIR, list);
+    return reverse(list);
 }
 
-static Value builtin_newline(void)
+static Value assq(Value key, Value l)
 {
-    puts("");
-    return Qnil;
-}
-
-static Value builtin_print(UNUSED Value *env, Value obj)
-{
-    display(obj);
-    puts("");
-    return obj;
-}
-
-static Value builtin_pair_p(UNUSED Value *env, Value o)
-{
-    return OF_BOOL(value_is_pair(o));
-}
-
-static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
-{
-    return cons(car, cdr);
-}
-
-static Value builtin_car(UNUSED Value *env, Value pair)
-{
-    expect_type("car", TYPE_PAIR, pair);
-    return car(pair);
-}
-
-static Value builtin_cdr(UNUSED Value *env, Value pair)
-{
-    expect_type("cdr", TYPE_PAIR, pair);
-    return cdr(pair);
-}
-
-static Value builtin_eq(UNUSED Value *env, Value x, Value y)
-{
-    return OF_BOOL(x == y);
-}
-
-static bool equal(Value x, Value y)
-{
-    if (x == y)
-        return true;
-    Type tx = value_type_of(x), ty = value_type_of(y);
-    if (tx != ty)
-        return false;
-    switch (tx) {
-    case TYPE_PAIR:
-        if (x == Qnil || y == Qnil)
-            return false;
-        return equal(car(x), car(y)) &&
-               equal(cdr(x), cdr(y));
-    case TYPE_STR:
-        return (strcmp(STRING(x)->body, STRING(y)->body) == 0);
-    default:
-        return false;
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value entry = car(p);
+        if (value_is_pair(entry) && car(entry) == key)
+            return entry;
     }
+    return Qfalse;
 }
-
-static Value builtin_equal(UNUSED Value *env, Value x, Value y)
-{
-    return OF_BOOL(equal(x, y));
-}
-
 
 static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
 {
@@ -1766,9 +1668,10 @@ static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
     return assq(obj, alist);
 }
 
-static Value builtin_load(UNUSED Value *env, Value path)
+// 6.4. Control features
+static Value builtin_procedure_p(UNUSED Value *env, Value o)
 {
-    return load_inner(value_to_string(path));
+    return OF_BOOL(value_is_procedure(o));
 }
 
 static Value apply_args(Value args)
@@ -1794,11 +1697,6 @@ static Value builtin_apply(Value *env, Value args)
     return apply(env, proc, appargs);
 }
 
-static Value builtin_procedure_p(UNUSED Value *env, Value o)
-{
-    return OF_BOOL(value_is_procedure(o));
-}
-
 static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
 {
     Value lcars = Qnil, lcdrs = Qnil;
@@ -1806,7 +1704,6 @@ static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
     for (Value p = ls, l; p != Qnil; p = cdr(p)) {
         if ((l = car(p)) == Qnil)
             return false;
-
         lcars = append_at(lcars, car(l));
         if (cars == Qnil)
             cars = lcars;
@@ -1851,19 +1748,125 @@ static Value builtin_for_each(Value *env, Value args)
     return Qnil;
 }
 
-static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
+static Value value_of_continuation(void)
 {
-    runtime_error("unquote: applied out of quasiquote (`)");
+    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
+    c->proc.arity = 1; // by spec
+    return (Value) c;
 }
 
-static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
+static bool continuation_set(Value c)
 {
-    runtime_error("unquote-splicing: applied out of quasiquote (`)");
+    GET_SP(sp); // must be the first!
+    Continuation *cont = CONTINUATION(c);
+    cont->sp = sp;
+    cont->shelter_len = stack_base - sp;
+    cont->shelter = xmalloc(cont->shelter_len);
+    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
+    return setjmp(cont->state);
 }
 
-//
-// Built-in Procedures: Extensions
-//
+static Value builtin_callcc(Value *env, Value proc)
+{
+    expect_type("call/cc", TYPE_PROC, proc);
+    Value c = value_of_continuation();
+    if (continuation_set(c) != 0)
+        return CONTINUATION(c)->retval;
+    return apply(env, proc, list1(c));
+}
+
+// 6.6.3. Output
+static void fdisplay(FILE* f, Value v);
+
+static void display_list(FILE *f, Value v)
+{
+    for (;;) {
+        Pair *p = PAIR(v);
+        fdisplay(f, p->car);
+        v = p->cdr;
+        if (v == Qnil)
+            break;
+        fprintf(f, " ");
+        if (value_is_atom(v)) {
+            fprintf(f, ". ");
+            fdisplay(f, v);
+            break;
+        }
+    }
+}
+
+static void fdisplay(FILE* f, Value v)
+{
+    switch (value_type_of(v)) {
+    case TYPE_BOOL:
+        fprintf(f, "%s", v == Qtrue ? "#t" : "#f");
+        break;
+    case TYPE_INT:
+        fprintf(f, "%"PRId64, value_to_int(v));
+        break;
+    case TYPE_SYMBOL:
+        fprintf(f, "'%s", value_to_string(v));
+        break;
+    case TYPE_PAIR:
+        fprintf(f, "(");
+        if (v != Qnil)
+            display_list(f, v);
+        fprintf(f, ")");
+        break;
+    case TYPE_STR:
+        fprintf(f, "%s", value_to_string(v));
+        break;
+    case TYPE_PROC:
+        fprintf(f, "<procedure>");
+        break;
+    case TYPE_UNDEF:
+        fprintf(f, "<undef>");
+        break;
+    }
+}
+
+char *stringify(Value v)
+{
+    char *s;
+    size_t size;
+    FILE *stream = open_memstream(&s, &size);
+    if (stream == NULL)
+        return NULL;
+    fdisplay(stream, v);
+    fclose(stream);
+    return s;
+}
+
+void display(Value v)
+{
+    fdisplay(stdout, v);
+}
+
+static Value builtin_display(UNUSED Value *env, Value obj)
+{
+    display(obj);
+    return obj;
+}
+
+static Value builtin_newline(void)
+{
+    puts("");
+    return Qnil;
+}
+
+// 6.6.4. System interface
+static Value builtin_load(UNUSED Value *env, Value path)
+{
+    return load_inner(value_to_string(path));
+}
+
+// Local Extensions
+static Value builtin_print(UNUSED Value *env, Value obj)
+{
+    display(obj);
+    puts("");
+    return obj;
+}
 
 static Value builtin_cputime(void) // in micro sec
 {
