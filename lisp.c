@@ -110,7 +110,8 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING;
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING,
+    SYM_RARROW;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -389,6 +390,7 @@ typedef enum {
     TOK_TYPE_GRAVE,
     TOK_TYPE_COMMA,
     TOK_TYPE_SPLICE,
+    TOK_TYPE_RARROW,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -411,6 +413,7 @@ static const Token
     TOK_GRAVE = TOK(GRAVE),
     TOK_COMMA = TOK(COMMA),
     TOK_SPLICE = TOK(SPLICE),
+    TOK_RARROW = TOK(RARROW),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -594,6 +597,12 @@ static Token get_token(Parser *p)
     }
     if (c == '-' || c == '+')
         return get_token_after_sign(p, c);
+    if (c == '=') {
+        int c2 = fgetc(p->in);
+        if (c2 == '>')
+            return TOK_RARROW;
+        ungetc(c2, p->in);
+    }
     if (isdigit(c)) {
         ungetc(c, p->in);
         return get_token_int(p, 1);
@@ -641,6 +650,8 @@ static const char *token_stringify(Token t)
         return ",@";
     case TOK_TYPE_DOT:
         return ".";
+    case TOK_TYPE_RARROW:
+        return "=>";
     case TOK_TYPE_INT:
         snprintf(buf, sizeof(buf), "%"PRId64, value_to_int(t.value));
         break;
@@ -728,6 +739,8 @@ static Value parse_expr(Parser *p)
         return parse_quoted(p, SYM_UNQUOTE);
     case TOK_TYPE_SPLICE:
         return parse_quoted(p, SYM_UNQUOTE_SPLICING);
+    case TOK_TYPE_RARROW:
+        return SYM_RARROW;
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -1114,29 +1127,48 @@ static Value builtin_set(Value *env, Value ident, Value expr)
 
 // 4.2. Derived expression types
 // 4.2.1. Conditionals
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    expect_type("case", TYPE_PAIR, l);
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?", msg);
+}
+
+static inline void expect_null(const char *msg, Value l)
+{
+    if (l != Qnil)
+        runtime_error("%s: expected null?", msg);
+}
+
+static Value eval_recipient(Value *env, Value test, Value recipients)
+{
+    expect_nonnull("recipient in cond", recipients);
+    Value recipient = ieval(env, car(recipients)), rest = cdr(recipients);
+    expect_null("end of => in cond", rest);
+    return apply(env, recipient, list1(test));
+}
+
 static Value builtin_cond(Value *env, Value clauses)
 {
     expect_arity_range("cond", 1, -1, clauses);
 
     for (Value p = clauses; p != Qnil; p = cdr(p)) {
         Value clause = car(p);
-        expect_type("cond", TYPE_PAIR, clause);
+        expect_nonnull("clause in cond", clause);
         Value test = car(clause);
         Value exprs = cdr(clause);
         if (test == SYM_ELSE)
             return eval_body(env, exprs);
         Value t = ieval(env, test);
-        if (t != Qfalse)
-            return exprs == Qnil ? t : eval_body(env, exprs);
+        if (t != Qfalse) {
+            if (exprs == Qnil)
+                return t;
+            if (car(exprs) == SYM_RARROW)
+                return eval_recipient(env, t, cdr(exprs));
+            return eval_body(env, exprs);
+        }
     }
     return Qnil;
-}
-
-static inline void expect_nonnull(const char *msg, Value l)
-{
-    expect_type("case", TYPE_PAIR, l);
-    if (l == Qnil)
-        runtime_error("%s: expected non-null?", msg);
 }
 
 static Value memq(Value key, Value l);
@@ -1946,6 +1978,7 @@ static void initialize(void)
     SYM_QUASIQUOTE = value_of_symbol("quasiquote");
     SYM_UNQUOTE = value_of_symbol("unquote");
     SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
+    SYM_RARROW = value_of_symbol("=>");
 
     Value *e = &toplevel_environment;
 
