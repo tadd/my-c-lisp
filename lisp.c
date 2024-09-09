@@ -455,13 +455,48 @@ static void get_line_column(Parser *p, int64_t *line, int64_t *col)
     *col = loc - last_newline;
 }
 
-static Token get_token_int(Parser *p, int sign)
+static void skip_token_atmosphere(Parser *p)
 {
-    int64_t i;
-    int n = fscanf(p->in, "%"SCNd64, &i);
-    if (n != 1)
-        parse_error(p, "integer", "invalid string");
-    return TOK_INT(sign * i);
+    int c;
+    for (;;) {
+        c = fgetc(p->in);
+        if (isspace(c))
+            continue; // skip
+        if (c == ';') {
+            do {
+                c = fgetc(p->in);
+            } while (c != '\n' && c != EOF);
+            continue;
+        }
+        break;
+    }
+    ungetc(c, p->in);
+}
+
+static Token get_token_comma_or_splice(Parser *p)
+{
+    int c = fgetc(p->in);
+    if (c == '@')
+        return TOK_SPLICE;
+    ungetc(c, p->in);
+    return TOK_COMMA;
+}
+
+static bool get_token_expect(Parser *p, const char *expected)
+{
+    for (const char *s = expected; *s != '\0'; s++) {
+        int c = fgetc(p->in);
+        if (c != *s) {
+            ungetc(c, p->in);
+            return false;
+        }
+    }
+    return true;
+}
+
+static Token get_token_dot_or_ellipsis(Parser *p)
+{
+    return get_token_expect(p, "..") ? TOK_IDENT("...") : TOK_DOT;
 }
 
 static Token get_token_string(Parser *p)
@@ -482,6 +517,41 @@ static Token get_token_string(Parser *p)
     }
     *pbuf = '\0';
     return TOK_STR(buf);
+}
+
+static Token get_token_constant(Parser *p)
+{
+    int c = fgetc(p->in);
+    switch (c) {
+    case 't':
+        return TOK_CONST(Qtrue);
+    case 'f':
+        return TOK_CONST(Qfalse);
+    default:
+        parse_error(p, "constants", "#%c", c);
+    }
+}
+
+static Token get_token_int(Parser *p, int sign)
+{
+    int64_t i;
+    int n = fscanf(p->in, "%"SCNd64, &i);
+    if (n != 1)
+        parse_error(p, "integer", "invalid string");
+    return TOK_INT(sign * i);
+}
+
+static Token get_token_after_sign(Parser *p, int csign)
+{
+    int c = fgetc(p->in);
+    int dig = isdigit(c);
+    ungetc(c, p->in);
+    if (dig) {
+        int sign = csign == '-' ? -1 : 1;
+        return get_token_int(p, sign);
+    }
+    char ident[] = { csign, '\0' };
+    return TOK_IDENT(ident);
 }
 
 static inline bool is_special_initial(int c)
@@ -529,76 +599,6 @@ static Token get_token_ident(Parser *p)
     return TOK_IDENT(buf);
 }
 
-static Token get_token_after_sign(Parser *p, int csign)
-{
-    int c = fgetc(p->in);
-    int dig = isdigit(c);
-    ungetc(c, p->in);
-    if (dig) {
-        int sign = csign == '-' ? -1 : 1;
-        return get_token_int(p, sign);
-    }
-    char ident[] = { csign, '\0' };
-    return TOK_IDENT(ident);
-}
-
-static void skip_token_atmosphere(Parser *p)
-{
-    int c;
-    for (;;) {
-        c = fgetc(p->in);
-        if (isspace(c))
-            continue; // skip
-        if (c == ';') {
-            do {
-                c = fgetc(p->in);
-            } while (c != '\n' && c != EOF);
-            continue;
-        }
-        break;
-    }
-    ungetc(c, p->in);
-}
-
-static Token get_token_comma_or_splice(Parser *p)
-{
-    int c = fgetc(p->in);
-    if (c == '@')
-        return TOK_SPLICE;
-    ungetc(c, p->in);
-    return TOK_COMMA;
-}
-
-static bool get_token_expect(Parser *p, const char *expected)
-{
-    for (const char *s = expected; *s != '\0'; s++) {
-        int c = fgetc(p->in);
-        if (c != *s) {
-            ungetc(c, p->in);
-            return false;
-        }
-    }
-    return true;
-}
-
-static Token get_token_dot_or_ellipsis(Parser *p)
-{
-    return get_token_expect(p, "..") ? TOK_IDENT("...") : TOK_DOT;
-}
-
-static Token get_token_constant(Parser *p)
-{
-    int c = fgetc(p->in);
-    switch (c) {
-    case 't':
-        return TOK_CONST(Qtrue);
-    case 'f':
-        return TOK_CONST(Qfalse);
-    default:
-        parse_error(p, "constants", "#%c", c);
-    }
-}
-
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TOK_TYPE_EOF)  {
@@ -606,7 +606,6 @@ static Token get_token(Parser *p)
         p->prev_token = TOK_EOF;
         return t;
     }
-
     skip_token_atmosphere(p);
     int c = fgetc(p->in);
     switch (c) {
