@@ -272,6 +272,30 @@
                    x)
                  x) 1)))
 
+(describe "named let" (lambda ()
+  (expect equal? (let fact () 42) 42)
+  (expect equal? (let fact ((n 42)) n) 42)
+  (expect equal?
+          (let fact ((n 5))
+            (if (< n 2)
+                n
+                (* n (fact (- n 1)))))
+          120)
+  (expect equal?
+          (let loop ((numbers '(3 -2 1 6 -5))
+                     (nonneg '())
+                     (neg '()))
+            (cond ((null? numbers) (list nonneg neg))
+                  ((>= (car numbers) 0)
+                   (loop (cdr numbers)
+                         (cons (car numbers) nonneg)
+                         neg))
+                  ((< (car numbers) 0)
+                   (loop (cdr numbers)
+                         nonneg
+                         (cons (car numbers) neg)))))
+          '((6 1 3) (-5 -2)))))
+
 (describe "let*" (lambda ()
   (expect equal? (let* ((x 42) (y 10))
                    `(,x ,y)) '(42 10))))
@@ -848,6 +872,39 @@
                        (5 -1 4 3)
                        (4 5 -1 3)
                        (5 4 -1 3)))))
+
+;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/unreach1.scm
+(describe "call/cc unreached 1" (lambda ()
+  (define (f)
+    (call/cc
+     (lambda (return)
+       (let l ()
+         (return #f)
+         (l))))
+    #t)
+  (expect-t (f))))
+
+;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/unreach2.scm
+(describe "call/cc unreached 2" (lambda ()
+  (define (f)
+    (call/cc
+     (lambda (return)
+       (let ((a 1))
+         (let loop ((a a))
+           (let ((finish (lambda (a) (return #f))))
+             (finish a)
+             (let ((a 2))
+               (loop a))))))))
+  (expect-f (f))))
+
+;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/sva35362.scm
+(describe "call/cc unused" (lambda ()
+  (define (f)
+    (call/cc
+     (lambda (return)
+       (let l ()
+         (l)))))
+  (expect-t #t))) ;; never executed
 
 ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/sva40649.scm
 (describe "call/cc NPE" (lambda ()

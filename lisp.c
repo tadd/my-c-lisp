@@ -1209,12 +1209,48 @@ static Value builtin_or(UNUSED Value *env, Value args)
 }
 
 // 4.2.2. Binding constructs
+static Value transpose_2xn(Value ls) // 2 * n
+{
+    Value firsts = Qnil, seconds = Qnil;
+    Value lfirsts = Qnil, lseconds = Qnil;
+    for (Value p = ls; p != Qnil; p = cdr(p)) {
+        Value l = car(p);
+        expect_arity(2, l);
+        lfirsts = append_at(lfirsts, car(l));
+        lseconds = append_at(lseconds, cadr(l));
+        if (firsts == Qnil) {
+            firsts = lfirsts;
+            seconds = lseconds;
+        }
+    }
+    return list2(firsts, seconds);
+}
+
+static Value define_variable(Value *env, Value ident, Value expr);
+
+static Value named_let(Value *env, Value var, Value bindings, Value body)
+{
+    Value tr = transpose_2xn(bindings);
+    Value params = car(tr), symargs = cadr(tr);
+    Value args = map_eval(env, symargs);
+    Value proc = lambda(env, params, body);
+    Value letenv = *env;
+    define_variable(&letenv, var, proc);
+    return apply(&letenv, proc, args);
+}
+
 static Value builtin_let(Value *env, Value args)
 {
-    Value bindings = car(args);
+    expect_arity_range("let", 2, -1, args);
+    Value bind_or_var = car(args);
     Value body = cdr(args);
-    expect_type_twin("let", TYPE_PAIR, bindings, body);
+    expect_type("let", TYPE_PAIR, body);
 
+    if (value_is_symbol(bind_or_var))
+        return named_let(env, bind_or_var, car(body), cdr(body));
+
+    Value bindings = bind_or_var;
+    expect_type("let", TYPE_PAIR, bindings);
     Value letenv = *env;
     for (Value p = bindings; p != Qnil; p = cdr(p)) {
         Value b = car(p);
@@ -1232,6 +1268,7 @@ static Value builtin_let(Value *env, Value args)
 
 static Value builtin_letrec(Value *env, Value args)
 {
+    expect_arity_range("letrec", 2, -1, args);
     Value bindings = car(args);
     Value body = cdr(args);
     expect_type_twin("letrec", TYPE_PAIR, bindings, body);

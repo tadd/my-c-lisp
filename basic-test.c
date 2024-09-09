@@ -173,10 +173,8 @@ Test(lisp, set) {
 }
 
 Test(lisp, let) {
-    expect_runtime_error_evaled("one or more expressions",
-                                "(let ((x 42)))");
-    expect_runtime_error_evaled("one or more expressions",
-                                "(let ((x 42) (y 100)))");
+    expect_runtime_error_evaled("but got 1", "(let ((x 42)))");
+    expect_runtime_error_evaled("but got 1", "(let ((x 42) (y 100)))");
 }
 
 Test(lisp, applicable) {
