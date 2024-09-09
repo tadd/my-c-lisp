@@ -486,9 +486,13 @@ static Token get_token_string(Parser *p)
 
 static inline bool is_special_initial(int c)
 {
-    return c == '!' || c == '$' || c == '%' || c == '&' || c == '*' || c == '/' ||
-        c == ':' || c == '<' || c == '=' || c == '>' || c == '?' || c == '^' ||
-        c ==  '_' || c == '~';
+    switch (c) {
+    case '!': case '$': case '%': case '&': case '*': case '/': case ':':
+    case '<': case '=': case '>': case '?': case '^': case '_': case '~':
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline bool is_initial(int c)
