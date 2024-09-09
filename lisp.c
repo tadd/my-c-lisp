@@ -1924,16 +1924,14 @@ static void fdisplay(FILE* f, Value v)
         fprintf(f, "%"PRId64, value_to_int(v));
         break;
     case TYPE_SYMBOL:
-        fprintf(f, "'%s", value_to_string(v));
+    case TYPE_STR:
+        fprintf(f, "%s", value_to_string(v));
         break;
     case TYPE_PAIR:
         fprintf(f, "(");
         if (v != Qnil)
             display_list(f, v);
         fprintf(f, ")");
-        break;
-    case TYPE_STR:
-        fprintf(f, "%s", value_to_string(v));
         break;
     case TYPE_PROC:
         fprintf(f, "<procedure>");

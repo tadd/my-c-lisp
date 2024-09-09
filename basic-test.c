@@ -91,7 +91,7 @@ Test(lisp, printing) {
     expect_stringify("42", value_of_int(42));
     expect_stringify("-42", value_of_int(-42));
 
-    expect_stringify("'foo", value_of_symbol("foo"));
+    expect_stringify("foo", value_of_symbol("foo"));
 
     expect_stringify("(1)", cons(V(1), Qnil));
     expect_stringify("(1 . 2)", cons(V(1), V(2)));
