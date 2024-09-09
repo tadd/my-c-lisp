@@ -770,7 +770,6 @@
            (in yo))))))
   (expect equal? r '(10 9 8 7 6 5 4 3 2 1 0))))
 
-;; Cause: case
 (describe "call/cc each other" (lambda ()
   (define r #f)
   (define a #f)
@@ -806,7 +805,6 @@
   (expect eq? (f1) 28)
   (expect eq? (f2) 28)))
 
-;; Cause: case
 (describe "call/cc lazy callframe" (lambda ()
   (define (f)
     (let ((k1 #f)
