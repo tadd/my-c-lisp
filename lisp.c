@@ -1124,7 +1124,7 @@ static Value builtin_cond(Value *env, Value clauses)
         Value test = car(clause);
         Value exprs = cdr(clause);
         if (test == SYM_ELSE)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+            return eval_body(env, exprs);
         Value t = ieval(env, test);
         if (t != Qfalse)
             return exprs == Qnil ? t : eval_body(env, exprs);
