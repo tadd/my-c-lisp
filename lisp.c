@@ -390,7 +390,6 @@ typedef enum {
     TOK_TYPE_GRAVE,
     TOK_TYPE_COMMA,
     TOK_TYPE_SPLICE,
-    TOK_TYPE_RARROW,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -413,7 +412,6 @@ static const Token
     TOK_GRAVE = TOK(GRAVE),
     TOK_COMMA = TOK(COMMA),
     TOK_SPLICE = TOK(SPLICE),
-    TOK_RARROW = TOK(RARROW),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -486,17 +484,26 @@ static Token get_token_string(Parser *p)
     return TOK_STR(buf);
 }
 
+static inline bool is_special_initial(int c)
+{
+    return c == '!' || c == '$' || c == '%' || c == '&' || c == '*' || c == '/' ||
+        c == ':' || c == '<' || c == '=' || c == '>' || c == '?' || c == '^' ||
+        c ==  '_' || c == '~';
+}
+
 static inline bool is_initial(int c)
 {
-    return isalpha(c) ||
-        c == '*' || c == '/' || c == '<' || c == '=' || c == '>' || c == '_';
+    return isalpha(c) || is_special_initial(c);
+}
+
+static inline bool is_special_subsequent(int c)
+{
+    return c == '+' || c == '-' || c == '.' || c == '@';
 }
 
 static inline bool is_subsequent(int c)
 {
-    return isalpha(c) || isdigit(c) ||
-        c == '*' || c == '/' || c == '-' || c == '.' || c == '!' || c == '=' ||
-        c == '?';
+    return is_initial(c) || isdigit(c) || is_special_subsequent(c);
 }
 
 static Token get_token_ident(Parser *p)
@@ -590,18 +597,13 @@ static Token get_token(Parser *p)
         if (c == 'f')
             return TOK_CONST(Qfalse);
         parse_error(p, "constants", "#%c", c);
+    case '+':
+    case '-':
+        return get_token_after_sign(p, c);
     case EOF:
         return TOK_EOF;
     default:
         break;
-    }
-    if (c == '-' || c == '+')
-        return get_token_after_sign(p, c);
-    if (c == '=') {
-        int c2 = fgetc(p->in);
-        if (c2 == '>')
-            return TOK_RARROW;
-        ungetc(c2, p->in);
     }
     if (isdigit(c)) {
         ungetc(c, p->in);
@@ -650,8 +652,6 @@ static const char *token_stringify(Token t)
         return ",@";
     case TOK_TYPE_DOT:
         return ".";
-    case TOK_TYPE_RARROW:
-        return "=>";
     case TOK_TYPE_INT:
         snprintf(buf, sizeof(buf), "%"PRId64, value_to_int(t.value));
         break;
@@ -739,8 +739,6 @@ static Value parse_expr(Parser *p)
         return parse_quoted(p, SYM_UNQUOTE);
     case TOK_TYPE_SPLICE:
         return parse_quoted(p, SYM_UNQUOTE_SPLICING);
-    case TOK_TYPE_RARROW:
-        return SYM_RARROW;
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
