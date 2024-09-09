@@ -1559,6 +1559,31 @@ static Value builtin_ge(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
+static Value builtin_zero_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj) && value_to_int(obj) == 0);
+}
+
+static Value builtin_positive_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj) && value_to_int(obj) > 0);
+}
+
+static Value builtin_negative_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj) && value_to_int(obj) < 0);
+}
+
+static Value builtin_odd_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) != 0);
+}
+
+static Value builtin_even_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) == 0);
+}
+
 static Value builtin_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
@@ -2100,11 +2125,11 @@ static void initialize(void)
     define_function(e, ">", builtin_gt, -1);
     define_function(e, "<=", builtin_le, -1);
     define_function(e, ">=", builtin_ge, -1);
-    //- zero?
-    //- positive?
-    //- negative?
-    //- odd?
-    //- even?
+    define_function(e, "zero?", builtin_zero_p, 1);
+    define_function(e, "positive?", builtin_positive_p, 1);
+    define_function(e, "negative?", builtin_negative_p, 1);
+    define_function(e, "odd?", builtin_odd_p, 1);
+    define_function(e, "even?", builtin_even_p, 1);
     //- max
     //- min
     define_function(e, "+", builtin_add, -1);
