@@ -1,26 +1,12 @@
-# def highlight(s):
-#     return "\033[36m" + s + "\033[m"
-
 def cfuncall(name, *args):
     func = gdb.lookup_global_symbol(name).value()
     return func(*args)
 
 class ValuePrinter:
     TYPE = gdb.lookup_type('Value')
-    TAG_LABELS = '''
-    TYPE_BOOL
-    TYPE_INT
-    TYPE_SYMBOL
-    TYPE_UNDEF
-    TYPE_PAIR
-    TYPE_STR
-    TYPE_PROC
-    '''.split()
-    TAGS = dict([[l, int(gdb.lookup_static_symbol(l).value())] for l in TAG_LABELS])
 
     def __init__(self, val):
         self.val = val
-        #self.tag = int(cfuncall('VALUE_TAG', val));
 
     def to_string(self):
         return cfuncall('stringify', self.val)
