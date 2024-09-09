@@ -1,10 +1,10 @@
 (load "./libtest.scm")
 
 (describe "parsing comments" (lambda ()
-  (expect eq? 1 1 ; foo
-              )
-  (expect eq? 2 2 ;;bar
-              )
+  (expect eqv? 1 1 ; foo
+               )
+  (expect eqv? 2 2 ;;bar
+               )
   (expect equal? '(1 2) '(1 ;;; ?? ;;;
                           2))))
 
@@ -16,7 +16,7 @@
   (expect equal? '(1 2) (list 1 2))))
 
 (describe "quote" (lambda ()
-  (expect eq? '10 10)
+  (expect eqv? '10 10)
   (expect eq? '() ())
   (expect equal? '(1 2 3) (list 1 2 3))
   (expect eq? 'foooo (quote foooo))
@@ -31,81 +31,81 @@
 ;; 4.1.4. Procedures
 (describe "lambda" (lambda ()
   (expect procedure? (lambda () 1))
-  (expect eq? ((lambda () 42)) 42)
-  (expect eq? ((lambda (x) (* 2 x)) 21) 42)
-  (expect eq? ((lambda (x y) (* x y)) 3 14) 42)
-  (expect eq? (begin
-                (define mul (lambda (x y) (* x y)))
-                (mul 3 14)) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda () a))) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda ()
-                   ((lambda () a))))) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda (a) a) 10)
+  (expect eqv? ((lambda () 42)) 42)
+  (expect eqv? ((lambda (x) (* 2 x)) 21) 42)
+  (expect eqv? ((lambda (x y) (* x y)) 3 14) 42)
+  (expect eqv? (begin
+                 (define mul (lambda (x y) (* x y)))
+                 (mul 3 14)) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda () a))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda ()
+                    ((lambda () a))))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda (a) a) 10)
                    a) 42)))
 
 (describe "lambda2" (lambda ()
-  (expect eq? (begin
-                (define a 42)
-                (define f (lambda () a))
-                (define g (lambda () f))
-                ((g))) 42)
-  (expect eq? (begin
-                (define a 42)
-                (define f (lambda () a))
-                (((lambda () f)))) 42)
-  (expect eq? (begin
-                (define a 42)
-                (define f (lambda ()
-                            (lambda () a)))
-                (define g (f))
-                (g)) 42)
-  (expect eq? (begin
-                (define a 42)
-                (((lambda ()
-                    (lambda () a))))) 42)
-  (expect eq? (begin
-                (define a 42)
-                (define f (lambda () a))
-                ((((lambda ()
-                     (lambda () f)))))) 42)
-  (expect eq? (((lambda ()
-                  42
-                  (lambda () 42)))) 42)
-  (expect eq? ((((lambda ()
+  (expect eqv? (begin
+                 (define a 42)
+                 (define f (lambda () a))
+                 (define g (lambda () f))
+                 ((g))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 (define f (lambda () a))
+                 (((lambda () f)))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 (define f (lambda ()
+                             (lambda () a)))
+                 (define g (f))
+                 (g)) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 (((lambda ()
+                     (lambda () a))))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 (define f (lambda () a))
+                 ((((lambda ()
+                      (lambda () f)))))) 42)
+  (expect eqv? (((lambda ()
                    42
-                   (lambda ()
-                     (lambda () 42)))))) 42)))
+                   (lambda () 42)))) 42)
+  (expect eqv? ((((lambda ()
+                    42
+                    (lambda ()
+                      (lambda () 42)))))) 42)))
 
 (describe "lambda is let" (lambda ()
-  (expect eq? ((lambda (x) x) 42) 42)
-  (expect eq? ((lambda (x y) (+ x y)) 42 21) 63)
-  (expect eq? ((lambda (x)
-                 ((lambda (y) (+ x y))
-                  21)) 42) 63)
-  (expect eq? ((lambda (x)
-                 ((lambda (x) x) 1))
-               42) 1)
-  (expect eq? ((lambda (x)
-                    ((lambda (y) y)
-                     x)) 42) 42)
-  (expect eq? ((lambda (x)
-                 ((lambda (x) x)
-                  x)) 42) 42)
-  (expect eq? ((lambda (x)
-                 ((lambda (x) x) 10)
-                 x) 42) 42)
+  (expect eqv? ((lambda (x) x) 42) 42)
+  (expect eqv? ((lambda (x y) (+ x y)) 42 21) 63)
+  (expect eqv? ((lambda (x)
+                  ((lambda (y) (+ x y))
+                   21)) 42) 63)
+  (expect eqv? ((lambda (x)
+                  ((lambda (x) x) 1))
+                42) 1)
+  (expect eqv? ((lambda (x)
+                  ((lambda (y) y)
+                   x)) 42) 42)
+  (expect eqv? ((lambda (x)
+                  ((lambda (x) x)
+                   x)) 42) 42)
+  (expect eqv? ((lambda (x)
+                  ((lambda (x) x) 10)
+                  x) 42) 42)
   (expect equal? ((lambda (x)
                     ((lambda (y) `(,x ,y))
                      10)) 42) '(42 10))))
 
 (describe "lambda recursion" (lambda ()
-  (expect eq? (begin
+  (expect eqv? (begin
                 (define f (lambda (x)
                             (if (> x 0)
                                 x
@@ -114,55 +114,55 @@
 
 (describe "lambda variadic" (lambda ()
   (expect procedure? (lambda x 1))
-  (expect eq? ((lambda x 42)) 42)
-  (expect eq? ((lambda x (* 2 (car x))) 21) 42)
-  (expect eq? ((lambda x (* (car x) (car (cdr x))))
-               3 14) 42)
-  (expect eq? (begin
-                (define mul (lambda x (* (car x) (car (cdr x)))))
-                (mul 3 14)) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda x a))) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda x ((lambda x a))))) 42)
-  (expect eq? (begin
-                (define a 42)
-                ((lambda a (car a)) 10)
-                a) 42)))
+  (expect eqv? ((lambda x 42)) 42)
+  (expect eqv? ((lambda x (* 2 (car x))) 21) 42)
+  (expect eqv? ((lambda x (* (car x) (car (cdr x))))
+                3 14) 42)
+  (expect eqv? (begin
+                 (define mul (lambda x (* (car x) (car (cdr x)))))
+                 (mul 3 14)) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda x a))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda x ((lambda x a))))) 42)
+  (expect eqv? (begin
+                 (define a 42)
+                 ((lambda a (car a)) 10)
+                 a) 42)))
 
 ;; 4.1.5. Conditionals
 (describe "if" (lambda ()
-  (expect eq? (if #t 1) 1)
-  (expect eq? (if #t 1 2) 1)
-  (expect eq? (if #f 1 2) 2)))
+  (expect eqv? (if #t 1) 1)
+  (expect eqv? (if #t 1 2) 1)
+  (expect eqv? (if #f 1 2) 2)))
 
 (describe "if composed" (lambda ()
-  (expect eq? (if (if #t 1 #f)
-                  (if #t 3 4)
-                  (if #t 5 6)) 3)
-  (expect eq? (if (if #f 1 #f)
-                  (if #f 3 4)
-                  (if #f 5 6)) 6)))
+  (expect eqv? (if (if #t 1 #f)
+                   (if #t 3 4)
+                   (if #t 5 6)) 3)
+  (expect eqv? (if (if #f 1 #f)
+                   (if #f 3 4)
+                   (if #f 5 6)) 6)))
 
 ;; 4.1.6. Assignments
 (describe "set!" (lambda ()
-  (expect eq? 42 (begin
-                   (define x 1)
-                   (set! x 42)
-                   x))))
+  (expect eqv? 42 (begin
+                    (define x 1)
+                    (set! x 42)
+                    x))))
 
 ;; 4.2. Derived expression types
 ;; 4.2.1. Conditionals
 (describe "cond" (lambda ()
-  (expect eq? (cond (#f 1)
-                    (#t 2)
-                    (else 3)) 2)
-  (expect eq? (cond (#f 1)
-                    (else 3)) 3)
-  (expect eq? (cond (#f)
-                    (2)) 2)
+  (expect eqv? (cond (#f 1)
+                     (#t 2)
+                     (else 3)) 2)
+  (expect eqv? (cond (#f 1)
+                     (else 3)) 3)
+  (expect eqv? (cond (#f)
+                     (2)) 2)
   (expect eq? (cond ((> 3 2) 'greater)
                     ((< 3 2) 'less))
               'greater)
@@ -170,9 +170,9 @@
                     ((< 3 3) 'less)
                     (else 'equal))
               'equal)
-  (expect eq? (cond ((assv 'b '((a 1) (b 2))) => cadr)
+  (expect eqv? (cond ((assv 'b '((a 1) (b 2))) => cadr)
                     (else #f))
-              2)))
+               2)))
 
 (describe "case" (lambda ()
   (expect equal? (case 3
@@ -206,7 +206,7 @@
   (expect-t (and))
   (expect-t (and #t))
   (expect eq? (and and) and)
-  (expect eq? (and 1) 1)
+  (expect eqv? (and 1) 1)
   (expect eq? (and 1 "2" 'three) 'three)
   (expect-f (and #f))
   (expect-f (and 1 #f))
@@ -221,11 +221,11 @@
   (expect-f (or))
   (expect-t (or #t))
   (expect eq? (or or) or)
-  (expect eq? 1 (or 1))
-  (expect eq? (or 1 "2" 'three) 1)
+  (expect eqv? 1 (or 1))
+  (expect eqv? (or 1 "2" 'three) 1)
   (expect-f (or #f))
   (expect-f (or #f #f))
-  (expect eq? (or #f 1) 1)
+  (expect eqv? (or #f 1) 1)
   (expect eq? (or 'one 2 #f) 'one)
   (define b #t)
   (define (f) (set! b #f) #t)
@@ -235,42 +235,42 @@
 
 ;; 4.2.2. Binding constructs
 (describe "let" (lambda ()
-  (expect eq? (let ((x 42)) x) 42)
-  (expect eq? (let ((x 42) (y 21)) (+ x y)) 63)
-  (expect eq? (let ((x 42))
-                (let ((y 21))
-                  (+ x y))) 63)
-  (expect eq? (let ((x 42))
-                  (let ((x 1))
-                    x)) 1)
-  (expect eq? (let ((x 42))
-                (let ((y x))
-                  y)) 42)
-  (expect eq? (let ((x 42))
-                   (let ((x x))
-                     x)) 42)
-  (expect eq? (let ((x 42))
-                (let ((x 10))
-                  x)
-                x) 42)
+  (expect eqv? (let ((x 42)) x) 42)
+  (expect eqv? (let ((x 42) (y 21)) (+ x y)) 63)
+  (expect eqv? (let ((x 42))
+                 (let ((y 21))
+                   (+ x y))) 63)
+  (expect eqv? (let ((x 42))
+                 (let ((x 1))
+                   x)) 1)
+  (expect eqv? (let ((x 42))
+                 (let ((y x))
+                   y)) 42)
+  (expect eqv? (let ((x 42))
+                 (let ((x x))
+                   x)) 42)
+  (expect eqv? (let ((x 42))
+                 (let ((x 10))
+                   x)
+                 x) 42)
   (expect equal? (let ((x 42) (y 10))
                    `(,x ,y)) '(42 10))))
 
 (describe "let body define" (lambda ()
-  (expect eq? (let ((x 42))
-                (define x 2)
-                x) 2)
-  (expect eq? (begin
-                (define x 1)
-                (let ((x 42))
-                  (define x 2)
-                  x)) 2)
-  (expect eq? (begin
-                (define x 1)
-                (let ()
-                  (define x 2)
-                  x)
-                x) 1)))
+  (expect eqv? (let ((x 42))
+                 (define x 2)
+                 x) 2)
+  (expect eqv? (begin
+                 (define x 1)
+                 (let ((x 42))
+                   (define x 2)
+                   x)) 2)
+  (expect eqv? (begin
+                 (define x 1)
+                 (let ()
+                   (define x 2)
+                   x)
+                 x) 1)))
 
 (describe "let*" (lambda ()
   (expect equal? (let* ((x 42) (y 10))
@@ -293,7 +293,7 @@
 
 ;; 4.2.3. Sequencing
 (describe "begin" (lambda ()
-  (expect eq? (begin 1 2 3) 3)))
+  (expect eqv? (begin 1 2 3) 3)))
 
 ;; 4.2.6. Quasiquotation
 (describe "quasiquote basic" (lambda ()
@@ -306,7 +306,7 @@
   (expect equal? `(1 2) (quasiquote (1 2)))))
 
 (describe "quasiquote" (lambda ()
-  (expect eq? `10 10)
+  (expect eqv? `10 10)
   (expect equal? `"abc" "abc")
   (expect equal? `#t #t)
   (expect eq? `() ())
@@ -327,7 +327,7 @@
 
 (describe "quasiquote unquote" (lambda ()
   (expect eq? `,() ())
-  (expect eq? `,10 10)
+  (expect eqv? `,10 10)
   (expect eq? let `,let)
   (expect equal? `(,1 ,2 ,3) (list 1 2 3))
   (let ((x 40))
@@ -382,34 +382,34 @@
 ;; 5. Program structure
 ;; 5.2. Definitions
 (describe "define variable" (lambda ()
-  (expect eq? 42 (begin
-                   (define x 42)
-                   x))
-  (expect eq? -42 (begin
-                    (define x (* -1 42))
-                    x))))
+  (expect eqv? 42 (begin
+                    (define x 42)
+                    x))
+  (expect eqv? -42 (begin
+                     (define x (* -1 42))
+                     x))))
 
 (describe "define function" (lambda ()
-  (expect eq? 42 (begin
-                   (define (f) 42)
-                   (f)))
-  (expect eq? -42 (begin
-                    (define (f x) (* -1 x))
-                    (f 42)))))
+  (expect eqv? 42 (begin
+                    (define (f) 42)
+                    (f)))
+  (expect eqv? -42 (begin
+                     (define (f x) (* -1 x))
+                     (f 42)))))
 
 (describe "define function variadic" (lambda ()
-  (expect eq? 42 (begin
-                   (define (f . a) 42)
-                   (f)))
-  (expect eq? -42 (begin
-                    (define (f . a) (* -1 (car a)))
-                    (f 42)))))
+  (expect eqv? 42 (begin
+                    (define (f . a) 42)
+                    (f)))
+  (expect eqv? -42 (begin
+                     (define (f . a) (* -1 (car a)))
+                     (f 42)))))
 
 (describe "define and lambda" (lambda ()
-  (expect eq? (begin
-                (define f (lambda () (g)))
-                (define g (lambda () 42))
-                (f)) 42)))
+  (expect eqv? (begin
+                 (define f (lambda () (g)))
+                 (define g (lambda () 42))
+                 (f)) 42)))
 
 ;; 6. Standard procedures
 ;; 6.1. Equivalence predicates
@@ -533,26 +533,26 @@
   (expect-f (>= 4 3 2 3))))
 
 (describe "+" (lambda ()
-  (expect eq? (+ 42 21) 63)))
+  (expect eqv? (+ 42 21) 63)))
 
 (describe "-" (lambda ()
-  (expect eq? (- 42 21) 21)))
+  (expect eqv? (- 42 21) 21)))
 
 (describe "*" (lambda ()
-  (expect eq? (* 4 2) 8)))
+  (expect eqv? (* 4 2) 8)))
 
 (describe "/" (lambda ()
-  (expect eq? (/ 4 2) 2)))
+  (expect eqv? (/ 4 2) 2)))
 
 (describe "arithmetic" (lambda ()
-  (expect eq? (+ (+ 40 2) 21) 63)
-  (expect eq? (+ (- 40 4) (* 3 (/ 100 50))) 42)))
+  (expect eqv? (+ (+ 40 2) 21) 63)
+  (expect eqv? (+ (- 40 4) (* 3 (/ 100 50))) 42)))
 
 (describe "modulo" (lambda ()
-  (expect eq? (modulo 13 4) 1)
-  (expect eq? (modulo -13 4) 3)
-  (expect eq? (modulo 13 -4) -3)
-  (expect eq? (modulo -13 -4) -1)))
+  (expect eqv? (modulo 13 4) 1)
+  (expect eqv? (modulo -13 4) 3)
+  (expect eqv? (modulo 13 -4) -3)
+  (expect eqv? (modulo -13 -4) -1)))
 
 ;; 6.3. Other data types
 ;; 6.3.1. Booleans
@@ -578,10 +578,10 @@
   (expect equal? '(1 . 2) (cons 1 2))))
 
 (describe "car" (lambda ()
-  (expect eq? (car '(1 . 2)) 1)))
+  (expect eqv? (car '(1 . 2)) 1)))
 
 (describe "cdr" (lambda ()
-  (expect eq? (cdr '(1 . 2)) 2)))
+  (expect eqv? (cdr '(1 . 2)) 2)))
 
 (describe "cxxr" (lambda ()
   (define l '(1 2 3 4))
@@ -600,14 +600,14 @@
   (expect null? (list))
   (let ((l '(42 "foo")))
     (expect pair? l)
-    (expect eq? (length l) 2)
-    (expect eq? (car l) 42)
+    (expect eqv? (length l) 2)
+    (expect eqv? (car l) 42)
     (expect equal? (car (cdr l)) "foo"))))
 
 (describe "length" (lambda ()
-  (expect eq? (length '()) 0)
-  (expect eq? (length '(1)) 1)
-  (expect eq? (length '(1 2 3 4)) 4)))
+  (expect eqv? (length '()) 0)
+  (expect eqv? (length '(1)) 1)
+  (expect eqv? (length '(1 2 3 4)) 4)))
 
 (describe "append" (lambda ()
   (expect null? (append))
@@ -717,25 +717,25 @@
     (expect eq? x 'g))
   (let ((x 0))
     (for-each (lambda (n) (set! x (* n n))) '(1 2 3 4 5))
-    (expect eq? x 25))
+    (expect eqv? x 25))
   (let ((x 0))
     (for-each (lambda (a b) (set! x (+ a b))) '(1 2 3) '(4 5 6))
-    (expect eq? x 9))
+    (expect eqv? x 9))
   (let ((x 0))
     (for-each (lambda (a b) (set! x (+ a b))) '(1 2) '(4))
-    (expect eq? x 5))))
+    (expect eqv? x 5))))
 
 (describe "call/cc applicable in call/cc" (lambda ()
   (define (f)
     (call/cc call/cc)
     42)
-  (expect eq? (f) 42)))
+  (expect eqv? (f) 42)))
 
 ;; Above call/cc tests were from Kawa's test suite under the MIT license
 
 ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/r5rs_pitfall.scm
 (describe "call/cc and lambda" (lambda ()
-  (expect eq? (call/cc (lambda (c) (0 (c 1)))) 1)))
+  (expect eqv? (call/cc (lambda (c) (0 (c 1)))) 1)))
 
 (describe "call/cc retlec" (lambda ()
   (define (f)
@@ -802,8 +802,8 @@
         ((3) (b 7))
         ((4) (c 4)))
       r))
-  (expect eq? (f1) 28)
-  (expect eq? (f2) 28)))
+  (expect eqv? (f1) 28)
+  (expect eqv? (f2) 28)))
 
 (describe "call/cc lazy callframe" (lambda ()
   (define (f)
@@ -875,8 +875,8 @@
            (k (+ 20 x)))
        (+ 10 x))))
 
-  (expect eq? (fb 3) 13)
-  (expect eq? (fc 3) 23)))
+  (expect eqv? (fb 3) 13)
+  (expect eqv? (fc 3) 23)))
 ;; End of tests from Kawa
 
 ;; Local Extensions
