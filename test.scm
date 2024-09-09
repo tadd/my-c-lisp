@@ -272,6 +272,28 @@
                    x)
                  x) 1)))
 
+(describe "named let" (lambda ()
+  (expect equal?
+          (let fact ((n 5))
+            (if (< n 2)
+                n
+                (* n (fact (- n 1)))))
+          120)
+  (expect equal?
+          (let loop ((numbers '(3 -2 1 6 -5))
+                     (nonneg '())
+                     (neg '()))
+            (cond ((null? numbers) (list nonneg neg))
+                  ((>= (car numbers) 0)
+                   (loop (cdr numbers)
+                         (cons (car numbers) nonneg)
+                         neg))
+                  ((< (car numbers) 0)
+                   (loop (cdr numbers)
+                         nonneg
+                         (cons (car numbers) neg)))))
+          '((6 1 3) (-5 -2)))))
+
 (describe "let*" (lambda ()
   (expect equal? (let* ((x 42) (y 10))
                    `(,x ,y)) '(42 10))))
