@@ -569,16 +569,21 @@ static Token get_token_comma_or_splice(Parser *p)
     return TOK_COMMA;
 }
 
-static Token get_token_dot_or_ellipsis(Parser *p)
+static bool get_token_expect(Parser *p, const char *expected)
 {
-    for (int i = 0; i < 2; i++) {
+    for (const char *s = expected; *s != '\0'; s++) {
         int c = fgetc(p->in);
-        if (c != '.') {
+        if (c != *s) {
             ungetc(c, p->in);
-            return TOK_DOT;
+            return false;
         }
     }
-    return TOK_IDENT("...");
+    return true;
+}
+
+static Token get_token_dot_or_ellipsis(Parser *p)
+{
+    return get_token_expect(p, "..") ? TOK_IDENT("...") : TOK_DOT;
 }
 
 static Token get_token(Parser *p)
