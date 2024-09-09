@@ -1667,7 +1667,7 @@ static Value memq(Value key, Value l)
 
 static Value builtin_memq(UNUSED Value *env, Value obj, Value list)
 {
-    expect_type("assq", TYPE_PAIR, list);
+    expect_type("memq", TYPE_PAIR, list);
     return memq(obj, list);
 }
 
@@ -1683,7 +1683,7 @@ static Value member(Value key, Value l)
 
 static Value builtin_member(UNUSED Value *env, Value obj, Value list)
 {
-    expect_type("assq", TYPE_PAIR, list);
+    expect_type("member", TYPE_PAIR, list);
     return member(obj, list);
 }
 
