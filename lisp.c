@@ -586,6 +586,19 @@ static Token get_token_dot_or_ellipsis(Parser *p)
     return get_token_expect(p, "..") ? TOK_IDENT("...") : TOK_DOT;
 }
 
+static Token get_token_constant(Parser *p)
+{
+    int c = fgetc(p->in);
+    switch (c) {
+    case 't':
+        return TOK_CONST(Qtrue);
+    case 'f':
+        return TOK_CONST(Qfalse);
+    default:
+        parse_error(p, "constants", "#%c", c);
+    }
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TOK_TYPE_EOF)  {
@@ -612,12 +625,7 @@ static Token get_token(Parser *p)
     case '"':
         return get_token_string(p);
     case '#':
-        c = fgetc(p->in);
-        if (c == 't')
-            return TOK_CONST(Qtrue);
-        if (c == 'f')
-            return TOK_CONST(Qfalse);
-        parse_error(p, "constants", "#%c", c);
+        return get_token_constant(p);
     case '+':
     case '-':
         return get_token_after_sign(p, c);
