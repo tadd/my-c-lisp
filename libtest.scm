@@ -12,18 +12,19 @@
 
 (define (msg-proc-1 msg)
   (lambda (x)
-    (display* "<" x "> to " msg)))
+    (display* "<" x "> to be " msg)))
 
 (define (msg-proc-2 msg)
   (lambda (x y)
     ((msg-proc-1 msg) x)
-    (display* " <" y ">")))
+    (display* " to <" y ">")))
 
 (define fail-message-procs
-  `((,> . ,(msg-proc-2 "be >"))
-    (,equal? . ,(msg-proc-2 "be equal?"))
-    (,eq? . ,(msg-proc-2 "be eq?"))
-    (,null? . ,(msg-proc-1 "be null?"))))
+  `((,> . ,(msg-proc-2 ">"))
+    (,equal? . ,(msg-proc-2 "equal?"))
+    (,eq? . ,(msg-proc-2 "eq?"))
+    (,eqv? . ,(msg-proc-2 "eqv?"))
+    (,null? . ,(msg-proc-1 "null?"))))
 
 (define (succeed)
   (set! n-success (+ n-success 1)))
