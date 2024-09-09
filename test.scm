@@ -273,6 +273,8 @@
                  x) 1)))
 
 (describe "named let" (lambda ()
+  (expect equal? (let fact () 42) 42)
+  (expect equal? (let fact ((n 42)) n) 42)
   (expect equal?
           (let fact ((n 5))
             (if (< n 2)
