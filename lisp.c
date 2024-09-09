@@ -2058,14 +2058,13 @@ static void initialize(void)
     define_special(e, "and", builtin_and, -1);
     define_special(e, "or", builtin_or, -1);
     // 4.2.2. Binding constructs
-    define_special(e, "let", builtin_let, -1);
+    define_special(e, "let", builtin_let, -1); // with named let in 4.2.4.
     define_special(e, "let*", builtin_let, -1); // alias
     define_special(e, "letrec", builtin_letrec, -1);
     // 4.2.3. Sequencing
     define_special(e, "begin", builtin_begin, -1);
     // 4.2.4. Iteration
     //- do
-    //- named let
     // 4.2.6. Quasiquotation
     define_special(e, "quasiquote", builtin_quasiquote, 1);
     define_special(e, "unquote", builtin_unquote, 1);
