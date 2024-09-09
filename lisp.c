@@ -1703,6 +1703,22 @@ static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
     return assq(obj, alist);
 }
 
+static Value assoc(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value entry = car(p);
+        if (value_is_pair(entry) && equal(car(entry), key))
+            return entry;
+    }
+    return Qfalse;
+}
+
+static Value builtin_assoc(UNUSED Value *env, Value obj, Value alist)
+{
+    expect_type("assoc", TYPE_PAIR, alist);
+    return assoc(obj, alist);
+}
+
 // 6.4. Control features
 static Value builtin_procedure_p(UNUSED Value *env, Value o)
 {
@@ -2027,10 +2043,10 @@ static void initialize(void)
     //-list-ref
     define_function(e, "memq", builtin_memq, 2);
     define_function(e, "memv", builtin_memq, 2); // alias
-    define_function(e, "member", builtin_member, 2); // alias
+    define_function(e, "member", builtin_member, 2);
     define_function(e, "assq", builtin_assq, 2);
-    //-assv
-    //-assoc
+    define_function(e, "assv", builtin_assq, 2); // alias
+    define_function(e, "assoc", builtin_assoc, 2); // alias
     // 6.3.3. Symbols
     //-symbol?
     // 6.3.5. Strings
