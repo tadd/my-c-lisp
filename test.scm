@@ -208,8 +208,8 @@
                  'consonant)))
 
 (describe "and" (lambda ()
-  (expect-t (and))
-  (expect-t (and #t))
+  (expect and)
+  (expect and #t)
   (expect eq? (and and) and)
   (expect eqv? (and 1) 1)
   (expect eq? (and 1 "2" 'three) 'three)
@@ -224,7 +224,7 @@
 
 (describe "or" (lambda ()
   (expect-f (or))
-  (expect-t (or #t))
+  (expect or #t)
   (expect eq? (or or) or)
   (expect eqv? 1 (or 1))
   (expect eqv? (or 1 "2" 'three) 1)
@@ -499,8 +499,8 @@
   (let ((p (lambda (x) x)))
     (expect eq? p p))
 
-  (expect-t (eq? #t #t))
-  (expect-t (eq? #f #f))
+  (expect eq? #t #t)
+  (expect eq? #f #f)
   (expect-f (eq? #t #f))
   (expect-f (eq? () '(1)))
   (expect-f (eq? '(1) '(1)))
@@ -513,18 +513,18 @@
   (expect equal? "abc" "abc")
   (expect equal? 2 2)
 
-  (expect-t (equal? #t #t))
-  (expect-t (equal? #f #f))
+  (expect equal? #t #t)
+  (expect equal? #f #f)
   (expect-f (equal? #t #f))
   (expect-f (equal? 1 -1))
-  (expect-t (equal? () ()))
+  (expect equal? () ())
   (expect-f (equal? () '(1)))
   (expect-t (let ((x '(1)))
               (equal? x x)))
   (expect-t (let ((p (lambda (x) x)))
               (equal? p p)))
-  (expect-t (equal? "abc" "abc"))
-  (expect-t (equal? "\"" "\""))
+  (expect equal? "abc" "abc")
+  (expect equal? "\"" "\"")
   (expect-f (equal? "abc" "abd"))
   (expect-f (equal? "abc\"" "\""))))
 
@@ -563,33 +563,33 @@
   (expect-f (integer? integer?))))
 
 (describe "=" (lambda ()
-  (expect-t (= 42 42))
-  (expect-t (= 0 0 0 0 0))
+  (expect = 42 42)
+  (expect = 0 0 0 0 0)
 
   (expect-f (= 42 0))
   (expect-f (= 0 0 0 0 42))))
 
 (describe "<" (lambda ()
-  (expect-t (< 2 4))
-  (expect-t (< 2 3 4 5))
+  (expect < 2 4)
+  (expect < 2 3 4 5)
   (expect-f (< 2 0))
   (expect-f (< 2 3 4 4))))
 
 (describe ">" (lambda ()
-  (expect-t (> 3 2))
-  (expect-t (> 4 3 2 1))
+  (expect > 3 2)
+  (expect > 4 3 2 1)
   (expect-f (> 0 1))
   (expect-f (> 4 3 2 2))))
 
 (describe "<=" (lambda ()
-  (expect-t (<= 2 4))
-  (expect-t (<= 2 3 4 4))
+  (expect <= 2 4)
+  (expect <= 2 3 4 4)
   (expect-f (<= 2 0))
   (expect-f (<= 2 3 4 3))))
 
 (describe ">=" (lambda ()
-  (expect-t (>= 3 2))
-  (expect-t (>= 4 3 2 2))
+  (expect >= 3 2)
+  (expect >= 4 3 2 2)
   (expect-f (>= 0 1))
   (expect-f (>= 4 3 2 3))))
 
@@ -755,8 +755,8 @@
   (expect equal? (cadddr l) 4)))
 
 (describe "null?" (lambda ()
-  (expect-t (null? ()))
-  (expect-t (null? (list)))
+  (expect null? ())
+  (expect null? (list))
   (expect-f (null? '(1)))
   (expect-f (null? 1))))
 
@@ -881,9 +881,9 @@
 
 ;; 6.4. Control features
 (describe "procedure?" (lambda ()
-  (expect-t (procedure? car))
+  (expect procedure? car)
   (expect-f (procedure? 'car))
-  (expect-t (procedure? (lambda (x) (* x x))))
+  (expect procedure? (lambda (x) (* x x)))
   (expect-f (procedure? '(lambda (x) (* x x))))
   (expect-t (call/cc (lambda (c) (procedure? c))))))
 
@@ -1069,12 +1069,12 @@
 
 ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/sva35362.scm
 (describe "call/cc unused" (lambda ()
-  (define (f)
+  (define (f) ;; never called
     (call/cc
      (lambda (return)
        (let l ()
          (l)))))
-  (expect-t #t))) ;; never executed
+  (expect-t #t)))
 
 ;; https://gitlab.com/kashell/Kawa/-/blob/master/testsuite/sva40649.scm
 (describe "call/cc NPE" (lambda ()
