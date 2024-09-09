@@ -110,7 +110,8 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING;
+static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING,
+    SYM_RARROW;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -389,6 +390,7 @@ typedef enum {
     TOK_TYPE_GRAVE,
     TOK_TYPE_COMMA,
     TOK_TYPE_SPLICE,
+    TOK_TYPE_RARROW,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -411,6 +413,7 @@ static const Token
     TOK_GRAVE = TOK(GRAVE),
     TOK_COMMA = TOK(COMMA),
     TOK_SPLICE = TOK(SPLICE),
+    TOK_RARROW = TOK(RARROW),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -594,6 +597,12 @@ static Token get_token(Parser *p)
     }
     if (c == '-' || c == '+')
         return get_token_after_sign(p, c);
+    if (c == '=') {
+        int c2 = fgetc(p->in);
+        if (c2 == '>')
+            return TOK_RARROW;
+        ungetc(c2, p->in);
+    }
     if (isdigit(c)) {
         ungetc(c, p->in);
         return get_token_int(p, 1);
@@ -641,6 +650,8 @@ static const char *token_stringify(Token t)
         return ",@";
     case TOK_TYPE_DOT:
         return ".";
+    case TOK_TYPE_RARROW:
+        return "=>";
     case TOK_TYPE_INT:
         snprintf(buf, sizeof(buf), "%"PRId64, value_to_int(t.value));
         break;
@@ -728,6 +739,8 @@ static Value parse_expr(Parser *p)
         return parse_quoted(p, SYM_UNQUOTE);
     case TOK_TYPE_SPLICE:
         return parse_quoted(p, SYM_UNQUOTE_SPLICING);
+    case TOK_TYPE_RARROW:
+        return SYM_RARROW;
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -921,13 +934,7 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static Value reverse(Value l)
-{
-    Value ret = Qnil;
-    for (Value p = l; p != Qnil; p = cdr(p))
-        ret = cons(car(p), ret);
-    return ret;
-}
+static Value reverse(Value l);
 
 static Value iparse(FILE *in)
 {
@@ -1120,20 +1127,64 @@ static Value builtin_set(Value *env, Value ident, Value expr)
 
 // 4.2. Derived expression types
 // 4.2.1. Conditionals
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    expect_type("case", TYPE_PAIR, l);
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?", msg);
+}
+
+static inline void expect_null(const char *msg, Value l)
+{
+    if (l != Qnil)
+        runtime_error("%s: expected null?", msg);
+}
+
+static Value eval_recipient(Value *env, Value test, Value recipients)
+{
+    expect_nonnull("recipient in cond", recipients);
+    Value recipient = ieval(env, car(recipients)), rest = cdr(recipients);
+    expect_null("end of => in cond", rest);
+    return apply(env, recipient, list1(test));
+}
+
 static Value builtin_cond(Value *env, Value clauses)
 {
     expect_arity_range("cond", 1, -1, clauses);
 
     for (Value p = clauses; p != Qnil; p = cdr(p)) {
         Value clause = car(p);
-        expect_type("cond", TYPE_PAIR, clause);
+        expect_nonnull("clause in cond", clause);
         Value test = car(clause);
         Value exprs = cdr(clause);
         if (test == SYM_ELSE)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+            return eval_body(env, exprs);
         Value t = ieval(env, test);
-        if (t != Qfalse)
-            return exprs == Qnil ? t : eval_body(env, exprs);
+        if (t != Qfalse) {
+            if (exprs == Qnil)
+                return t;
+            if (car(exprs) == SYM_RARROW)
+                return eval_recipient(env, t, cdr(exprs));
+            return eval_body(env, exprs);
+        }
+    }
+    return Qnil;
+}
+
+static Value memq(Value key, Value l);
+
+static Value builtin_case(Value *env, Value args)
+{
+    expect_arity_range("case", 2, -1, args);
+    Value key = ieval(env, car(args)), clauses = cdr(args);
+
+    for (Value p = clauses; p != Qnil; p = cdr(p)) {
+        Value clause = car(p);
+        expect_nonnull("case", clause);
+        Value data = car(clause), exprs = cdr(clause);
+        expect_nonnull("case", exprs);
+        if (data == SYM_ELSE || memq(key, data) != Qfalse)
+            return eval_body(env, exprs);
     }
     return Qnil;
 }
@@ -1207,12 +1258,6 @@ static Value builtin_begin(Value *env, Value body)
 }
 
 // 4.2.6. Quasiquotation
-static inline void expect_nonnull(const char *msg, Value l)
-{
-    if (l == Qnil)
-        runtime_error("%s: expected non-null?", msg);
-}
-
 static Value qq_list(Value *env, Value datum, int64_t depth);
 
 static Value qq(Value *env, Value datum, int64_t depth)
@@ -1336,14 +1381,14 @@ static Value builtin_define(Value *env, Value args)
 }
 
 // 6.1. Equivalence predicates
-static Value builtin_eqv(UNUSED Value *env, Value x, Value y)
+static inline bool eq(Value x, Value y)
 {
-    return OF_BOOL(x == y);
+    return x == y;
 }
 
 static Value builtin_eq(UNUSED Value *env, Value x, Value y)
 {
-    return OF_BOOL(x == y);
+    return OF_BOOL(eq(x, y));
 }
 
 static bool equal(Value x, Value y)
@@ -1547,14 +1592,12 @@ static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
 
 static Value builtin_car(UNUSED Value *env, Value pair)
 {
-    expect_type("car", TYPE_PAIR, pair);
     expect_nonnull("car", pair);
     return car(pair);
 }
 
 static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
-    expect_type("cdr", TYPE_PAIR, pair);
     expect_nonnull("cdr", pair);
     return cdr(pair);
 }
@@ -1630,10 +1673,50 @@ static Value builtin_append(UNUSED Value *env, Value args)
     return l;
 }
 
+static Value reverse(Value l)
+{
+    Value ret = Qnil;
+    for (Value p = l; p != Qnil; p = cdr(p))
+        ret = cons(car(p), ret);
+    return ret;
+}
+
 static Value builtin_reverse(UNUSED Value *env, Value list)
 {
     expect_type("reverse", TYPE_PAIR, list);
     return reverse(list);
+}
+
+static Value memq(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value e = car(p);
+        if (eq(e, key))
+            return p;
+    }
+    return Qfalse;
+}
+
+static Value builtin_memq(UNUSED Value *env, Value obj, Value list)
+{
+    expect_type("memq", TYPE_PAIR, list);
+    return memq(obj, list);
+}
+
+static Value member(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value e = car(p);
+        if (equal(e, key))
+            return p;
+    }
+    return Qfalse;
+}
+
+static Value builtin_member(UNUSED Value *env, Value obj, Value list)
+{
+    expect_type("member", TYPE_PAIR, list);
+    return member(obj, list);
 }
 
 static Value assq(Value key, Value l)
@@ -1650,6 +1733,22 @@ static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
 {
     expect_type("assq", TYPE_PAIR, alist);
     return assq(obj, alist);
+}
+
+static Value assoc(Value key, Value l)
+{
+    for (Value p = l; p != Qnil; p = cdr(p)) {
+        Value entry = car(p);
+        if (value_is_pair(entry) && equal(car(entry), key))
+            return entry;
+    }
+    return Qfalse;
+}
+
+static Value builtin_assoc(UNUSED Value *env, Value obj, Value alist)
+{
+    expect_type("assoc", TYPE_PAIR, alist);
+    return assoc(obj, alist);
 }
 
 // 6.4. Control features
@@ -1879,6 +1978,7 @@ static void initialize(void)
     SYM_QUASIQUOTE = value_of_symbol("quasiquote");
     SYM_UNQUOTE = value_of_symbol("unquote");
     SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
+    SYM_RARROW = value_of_symbol("=>");
 
     Value *e = &toplevel_environment;
 
@@ -1896,6 +1996,7 @@ static void initialize(void)
     // 4.2. Derived expression types
     // 4.2.1. Conditionals
     define_special(e, "cond", builtin_cond, -1);
+    define_special(e, "case", builtin_case, -1);
     //- case
     define_special(e, "and", builtin_and, -1);
     define_special(e, "or", builtin_or, -1);
@@ -1925,7 +2026,7 @@ static void initialize(void)
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    define_function(e, "eqv?", builtin_eqv, 2);
+    define_function(e, "eqv?", builtin_eq, 2); // alias
     define_function(e, "eq?", builtin_eq, 2);
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
@@ -1973,12 +2074,12 @@ static void initialize(void)
     define_function(e, "append", builtin_append, -1);
     define_function(e, "reverse", builtin_reverse, 1);
     //-list-ref
-    //-memq
-    //-memv
-    //-member
+    define_function(e, "memq", builtin_memq, 2);
+    define_function(e, "memv", builtin_memq, 2); // alias
+    define_function(e, "member", builtin_member, 2);
     define_function(e, "assq", builtin_assq, 2);
-    //-assv
-    //-assoc
+    define_function(e, "assv", builtin_assq, 2); // alias
+    define_function(e, "assoc", builtin_assoc, 2); // alias
     // 6.3.3. Symbols
     //-symbol?
     // 6.3.5. Strings
