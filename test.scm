@@ -148,10 +148,10 @@
 
 ;; 4.1.6. Assignments
 (describe "set!" (lambda ()
-  (expect eqv? 42 (begin
-                    (define x 1)
-                    (set! x 42)
-                    x))))
+  (expect eqv? (begin
+                 (define x 1)
+                 (set! x 42)
+                 x) 42)))
 
 ;; 4.2. Derived expression types
 ;; 4.2.1. Conditionals
@@ -382,28 +382,28 @@
 ;; 5. Program structure
 ;; 5.2. Definitions
 (describe "define variable" (lambda ()
-  (expect eqv? 42 (begin
-                    (define x 42)
-                    x))
-  (expect eqv? -42 (begin
-                     (define x (* -1 42))
-                     x))))
+  (expect eqv? (begin
+                 (define x 42)
+                 x) 42)
+  (expect eqv? (begin
+                 (define x (* -1 42))
+                 x) -42)))
 
 (describe "define function" (lambda ()
-  (expect eqv? 42 (begin
-                    (define (f) 42)
-                    (f)))
-  (expect eqv? -42 (begin
-                     (define (f x) (* -1 x))
-                     (f 42)))))
+  (expect eqv? (begin
+                 (define (f) 42)
+                 (f)) 42)
+  (expect eqv? (begin
+                 (define (f x) (* -1 x))
+                 (f 42)) -42)))
 
 (describe "define function variadic" (lambda ()
-  (expect eqv? 42 (begin
-                    (define (f . a) 42)
-                    (f)))
-  (expect eqv? -42 (begin
-                     (define (f . a) (* -1 (car a)))
-                     (f 42)))))
+  (expect eqv? (begin
+                 (define (f . a) 42)
+                 (f)) 42)
+  (expect eqv? (begin
+                 (define (f . a) (* -1 (car a)))
+                 (f 42)) -42)))
 
 (describe "define and lambda" (lambda ()
   (expect eqv? (begin
