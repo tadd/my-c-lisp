@@ -1132,6 +1132,13 @@ static Value builtin_cond(Value *env, Value clauses)
     return Qnil;
 }
 
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    expect_type("case", TYPE_PAIR, l);
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?", msg);
+}
+
 static Value memq(Value key, Value l);
 
 static Value builtin_case(Value *env, Value args)
@@ -1141,12 +1148,11 @@ static Value builtin_case(Value *env, Value args)
 
     for (Value p = clauses; p != Qnil; p = cdr(p)) {
         Value clause = car(p);
-        expect_type("case", TYPE_PAIR, clause);
+        expect_nonnull("case", clause);
         Value data = car(clause), exprs = cdr(clause);
-        if (data == SYM_ELSE)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
-        if (memq(key, data) != Qfalse)
-            return exprs == Qnil ? Qtrue : eval_body(env, exprs);
+        expect_nonnull("case", exprs);
+        if (data == SYM_ELSE || memq(key, data) != Qfalse)
+            return eval_body(env, exprs);
     }
     return Qnil;
 }
@@ -1220,12 +1226,6 @@ static Value builtin_begin(Value *env, Value body)
 }
 
 // 4.2.6. Quasiquotation
-static inline void expect_nonnull(const char *msg, Value l)
-{
-    if (l == Qnil)
-        runtime_error("%s: expected non-null?", msg);
-}
-
 static Value qq_list(Value *env, Value datum, int64_t depth);
 
 static Value qq(Value *env, Value datum, int64_t depth)
@@ -1560,14 +1560,12 @@ static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
 
 static Value builtin_car(UNUSED Value *env, Value pair)
 {
-    expect_type("car", TYPE_PAIR, pair);
     expect_nonnull("car", pair);
     return car(pair);
 }
 
 static Value builtin_cdr(UNUSED Value *env, Value pair)
 {
-    expect_type("cdr", TYPE_PAIR, pair);
     expect_nonnull("cdr", pair);
     return cdr(pair);
 }
