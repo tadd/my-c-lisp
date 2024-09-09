@@ -2018,6 +2018,7 @@ static void initialize(void)
     //- syntax-rules
 
     // 5. Program structure
+
     // 5.2. Definitions
     define_special(e, "define", builtin_define, -1);
     // 5.3. Syntax definitions
