@@ -8,6 +8,11 @@
   (expect equal? '(1 2) '(1 ;;; ?? ;;;
                           2))))
 
+(describe "peculiar identifiers" (lambda ()
+  (expect eq? '+ '+)
+  (expect eq? '- '-)
+  (expect eq? '... '...)))
+
 ;; 4.1. Primitive expression types
 ;; 4.1.2. Literal expressions
 (describe "quote basic" (lambda ()

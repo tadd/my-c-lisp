@@ -565,6 +565,18 @@ static Token get_token_comma_or_splice(Parser *p)
     return TOK_COMMA;
 }
 
+static Token get_token_dot_or_ellipsis(Parser *p)
+{
+    for (int i = 0; i < 2; i++) {
+        int c = fgetc(p->in);
+        if (c != '.') {
+            ungetc(c, p->in);
+            return TOK_DOT;
+        }
+    }
+    return TOK_IDENT("...");
+}
+
 static Token get_token(Parser *p)
 {
     if (p->prev_token.type != TOK_TYPE_EOF)  {
@@ -587,7 +599,7 @@ static Token get_token(Parser *p)
     case ',':
         return get_token_comma_or_splice(p);
     case '.':
-        return TOK_DOT;
+        return get_token_dot_or_ellipsis(p);
     case '"':
         return get_token_string(p);
     case '#':
