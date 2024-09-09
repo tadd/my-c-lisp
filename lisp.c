@@ -1211,6 +1211,7 @@ static Value builtin_or(UNUSED Value *env, Value args)
 // 4.2.2. Binding constructs
 static Value builtin_let(Value *env, Value args)
 {
+    expect_arity_range("let", 2, -1, args);
     Value bindings = car(args);
     Value body = cdr(args);
     expect_type_twin("let", TYPE_PAIR, bindings, body);
@@ -1232,6 +1233,7 @@ static Value builtin_let(Value *env, Value args)
 
 static Value builtin_letrec(Value *env, Value args)
 {
+    expect_arity_range("letrec", 2, -1, args);
     Value bindings = car(args);
     Value body = cdr(args);
     expect_type_twin("letrec", TYPE_PAIR, bindings, body);
