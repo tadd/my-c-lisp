@@ -530,6 +530,22 @@
 
 ;; 6.2. Numbers
 ;; 6.2.5. Numerical operations
+(describe "integer?" (lambda ()
+  (expect integer? 0)
+  (expect integer? 1)
+  (expect integer? 100000)
+  (expect integer? -0)
+  (expect integer? -1)
+  (expect integer? -1000000)
+
+  (expect-f (integer? 'a))
+  (expect-f (integer? '()))
+  (expect-f (integer? '(1)))
+  (expect-f (integer? "1"))
+  (expect-f (integer? #t))
+  (expect-f (integer? #f))
+  (expect-f (integer? integer?))))
+
 (describe "=" (lambda ()
   (expect-t (= 42 42))
   (expect-t (= 0 0 0 0 0))

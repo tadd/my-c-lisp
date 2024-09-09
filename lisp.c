@@ -1485,6 +1485,11 @@ static int64_t value_get_int(const char *header, Value v)
     return value_to_int(v);
 }
 
+static Value builtin_integer_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_int(obj));
+}
+
 static Value builtin_numeq(UNUSED Value *env, Value args)
 {
     expect_arity_range("=", 2, -1, args);
@@ -2088,8 +2093,8 @@ static void initialize(void)
     define_function(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
     // 6.2.5. Numerical operations
-    //-number?
-    //-integer?
+    define_function(e, "number?", builtin_integer_p, 1); // alias
+    define_function(e, "integer?", builtin_integer_p, 1);
     define_function(e, "=", builtin_numeq, -1);
     define_function(e, "<", builtin_lt, -1);
     define_function(e, ">", builtin_gt, -1);
