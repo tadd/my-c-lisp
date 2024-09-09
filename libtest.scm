@@ -32,12 +32,12 @@
 (define (fail proc args)
   (set! n-failure (+ n-failure 1))
   (display* "Failed in " test-name ": Expected ")
-  (fail-message proc args)
-  (newline))
+  (fail-message proc args))
 
 (define (fail-message proc args)
   (let ((f (assq proc fail-message-procs)))
-    (apply (cdr f) args)))
+    (apply (cdr f) args)
+    (newline)))
 
 (define (expect . args)
   (let ((proc (car args))
