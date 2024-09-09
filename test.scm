@@ -829,13 +829,19 @@
           (set! res (cons r res))
           (if (null? states)
               res
-              (begin (set! state (car states))
-                     (set! states (cdr states))
-                     (case state
-                       ((1) (k3 4))
-                       ((2) (k2 2))
-                       ((3) (k1 -)))))))
-      (map check '((1 2 3) (1 3 2) (2 1 3) (2 3 1) (3 1 2) (3 2 1)))))
+              (begin
+                (set! state (car states))
+                (set! states (cdr states))
+                (case state
+                  ((1) (k3 4))
+                  ((2) (k2 2))
+                  ((3) (k1 -)))))))
+      (map check '((1 2 3)
+                   (1 3 2)
+                   (2 1 3)
+                   (2 3 1)
+                   (3 1 2)
+                   (3 2 1)))))
   (expect equal? (f) '((-1 4 5 3)
                        (4 -1 5 3)
                        (-1 5 4 3)
