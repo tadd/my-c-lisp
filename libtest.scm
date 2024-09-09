@@ -45,6 +45,12 @@
         (succeed)
         (fail proc pargs))))
 
+(define (noexpect . args)
+  (let ((origproc (car args))
+        (pargs (cdr args))
+        (proc (lambda a (not (apply origproc a)))))
+    (apply expect proc pargs)))
+
 (define (expect-t x)
   (expect eq? #t x))
 
