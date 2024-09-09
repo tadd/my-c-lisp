@@ -1923,21 +1923,21 @@ static Value builtin_callcc(Value *env, Value proc)
 // 6.6.3. Output
 static void fdisplay(FILE* f, Value v);
 
-static void display_list(FILE *f, Value v)
+static void display_list(FILE *f, Value l)
 {
-    for (;;) {
-        Pair *p = PAIR(v);
-        fdisplay(f, p->car);
-        v = p->cdr;
-        if (v == Qnil)
+    fprintf(f, "(");
+    for (Value p = l, next; p != Qnil; p = next) {
+        fdisplay(f, car(p));
+        if ((next = cdr(p)) == Qnil)
             break;
         fprintf(f, " ");
-        if (value_is_atom(v)) {
+        if (value_is_atom(next)) {
             fprintf(f, ". ");
-            fdisplay(f, v);
+            fdisplay(f, next);
             break;
         }
     }
+    fprintf(f, ")");
 }
 
 static void fdisplay(FILE* f, Value v)
@@ -1954,10 +1954,7 @@ static void fdisplay(FILE* f, Value v)
         fprintf(f, "%s", value_to_string(v));
         break;
     case TYPE_PAIR:
-        fprintf(f, "(");
-        if (v != Qnil)
-            display_list(f, v);
-        fprintf(f, ")");
+        display_list(f, v);
         break;
     case TYPE_PROC:
         fprintf(f, "<procedure>");
