@@ -1201,12 +1201,11 @@ static Value builtin_and(Value *env, Value args)
 
 static Value builtin_or(UNUSED Value *env, Value args)
 {
-    Value last = Qfalse;
-    for (Value p = args; p != Qnil; p = cdr(p)) {
-        if ((last = ieval(env, car(p))) != Qfalse)
-            break;
+    for (Value p = args, curr; p != Qnil; p = cdr(p)) {
+        if ((curr = ieval(env, car(p))) != Qfalse)
+            return curr;
     }
-    return last;
+    return Qfalse;
 }
 
 // 4.2.2. Binding constructs
