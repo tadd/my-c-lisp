@@ -1653,6 +1653,11 @@ static Value builtin_not(UNUSED Value *env, Value x)
     return OF_BOOL(x == Qfalse);
 }
 
+static Value builtin_boolean_p(UNUSED Value *env, Value x)
+{
+    return OF_BOOL(x == Qtrue || x == Qfalse);
+}
+
 // 6.3.2. Pairs and lists
 static Value builtin_pair_p(UNUSED Value *env, Value o)
 {
@@ -1697,6 +1702,15 @@ static Value builtin_cdr(UNUSED Value *env, Value pair)
 static Value builtin_null(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
+}
+
+static Value builtin_list_p(UNUSED Value *env, Value list)
+{
+    for (Value p = list; p != Qnil; p = cdr(p)) {
+        if (!value_is_pair(p))
+            return Qfalse;
+    }
+    return Qtrue;
 }
 
 // C API-level utility
@@ -1841,6 +1855,18 @@ static Value builtin_assoc(UNUSED Value *env, Value obj, Value alist)
 {
     expect_type("assoc", TYPE_PAIR, alist);
     return assoc(obj, alist);
+}
+
+// 6.3.3. Symbols
+static Value builtin_symbol_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_symbol(obj));
+}
+
+// 6.3.5. Strings
+static Value builtin_string_p(UNUSED Value *env, Value obj)
+{
+    return OF_BOOL(value_is_string(obj));
 }
 
 // 6.4. Control features
@@ -2143,8 +2169,8 @@ static void initialize(void)
     //- expt
     // 6.3. Other data types
     // 6.3.1. Booleans
-    //- boolean?
     define_function(e, "not", builtin_not, 1);
+    define_function(e, "boolean?", builtin_boolean_p, 1);
     // 6.3.2. Pairs and lists
     define_function(e, "pair?", builtin_pair_p, 1);
     define_function(e, "cons", builtin_cons, 2);
@@ -2155,7 +2181,7 @@ static void initialize(void)
     //-set-car!
     //-set-cdr!
     define_function(e, "null?", builtin_null, 1);
-    //-list?
+    define_function(e, "list?", builtin_list_p, 1);
     define_function(e, "list", builtin_list, -1);
     define_function(e, "length", builtin_length, 1);
     define_function(e, "append", builtin_append, -1);
@@ -2168,9 +2194,9 @@ static void initialize(void)
     define_function(e, "assv", builtin_assq, 2); // alias
     define_function(e, "assoc", builtin_assoc, 2); // alias
     // 6.3.3. Symbols
-    //-symbol?
+    define_function(e, "symbol?", builtin_symbol_p, 1);
     // 6.3.5. Strings
-    //-string?
+    define_function(e, "string?", builtin_string_p, 1);
     //-string-length
     //-string=?
     // 6.4. Control features

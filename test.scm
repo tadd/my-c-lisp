@@ -721,6 +721,15 @@
   (expect not (not #t))
   (expect not (not (not #f)))))
 
+(describe "boolean?" (lambda ()
+  (expect boolean? #t)
+  (expect boolean? #f)
+
+  (expect-f (boolean? 0))
+  (expect-f (boolean? '(#t)))
+  (expect-f (boolean? "#t"))
+  (expect-f (boolean? boolean?))))
+
 ;; 6.3.2. Pairs and lists
 (describe "pair?" (lambda ()
   (expect pair? '())
@@ -750,6 +759,15 @@
   (expect-t (null? (list)))
   (expect-f (null? '(1)))
   (expect-f (null? 1))))
+
+(describe "list?" (lambda ()
+  (expect list? '(a b c))
+  (expect list? '())
+  (expect-f (list? '(a . b)))
+  (expect-f (list? 1))))
+;;(let ((x (list ’a)))
+;;  (set-cdr! x x)
+;;  (list? x))
 
 (describe "list" (lambda ()
   (expect null? '())
@@ -840,6 +858,26 @@
                  '((a)))
   (expect equal? (assoc 5 '((2 3) (5 7) (11 13)))
                  '(5 7))))
+
+;; 6.3.3. Symbols
+(describe "symbol?" (lambda ()
+  (expect symbol? 'foo)
+  (expect symbol? (car '(a b)))
+  (expect symbol? 'nil)
+  (expect-f (symbol? "bar"))
+  (expect-f (symbol? '()))
+  (expect-f (symbol? #f))))
+
+;; 6.3.5. Strings
+(describe "string?" (lambda ()
+  (expect string? "foo")
+  (expect string? "")
+  (expect string? "\"bar\"")
+  (expect-f (string? 'bar))
+  (expect-f (string? '()))
+  (expect-f (string? 10))
+  (expect-f (string? #f))
+  (expect-f (string? string?))))
 
 ;; 6.4. Control features
 (describe "procedure?" (lambda ()
