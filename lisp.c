@@ -526,8 +526,9 @@ static Token get_token_constant(Parser *p)
     }
 }
 
-static Token get_token_int(Parser *p, int sign)
+static Token get_token_int(Parser *p, int c, int sign)
 {
+    ungetc(c, p->in);
     int64_t i;
     int n = fscanf(p->in, "%"SCNd64, &i);
     if (n != 1)
@@ -539,13 +540,12 @@ static Token get_token_after_sign(Parser *p, int csign)
 {
     int c = fgetc(p->in);
     int dig = isdigit(c);
-    ungetc(c, p->in);
     if (dig) {
         int sign = csign == '-' ? -1 : 1;
-        return get_token_int(p, sign);
+        return get_token_int(p, c, sign);
     }
-    char ident[] = { csign, '\0' };
-    return TOK_IDENT(ident);
+    ungetc(c, p->in);
+    return TOK_IDENT(((char []) { csign, '\0' }));
 }
 
 static inline bool is_special_initial(int c)
@@ -574,17 +574,11 @@ static inline bool is_subsequent(int c)
     return is_initial(c) || isdigit(c) || is_special_subsequent(c);
 }
 
-static Token get_token_ident(Parser *p)
+static Token get_token_ident(Parser *p, int init)
 {
     char buf[BUFSIZ], *s = buf, *end = s + sizeof(buf);
-    int c = fgetc(p->in);
-
-    *s++ = c;
-    for (;;) {
-        c = fgetc(p->in);
-        if (!is_subsequent(c))
-            break;
-        *s++ = c;
+    int c;
+    for (*s++ = init; is_subsequent(c = fgetc(p->in)); *s++ = c) {
         if (s == end)
             parse_error(p, "identifier", "too long");
     }
@@ -627,14 +621,10 @@ static Token get_token(Parser *p)
     default:
         break;
     }
-    if (isdigit(c)) {
-        ungetc(c, p->in);
-        return get_token_int(p, 1);
-    }
-    if (is_initial(c)) {
-        ungetc(c, p->in);
-        return get_token_ident(p);
-    }
+    if (isdigit(c))
+        return get_token_int(p, c, 1);
+    if (is_initial(c))
+        return get_token_ident(p, c);
     parse_error(p, "valid char", "'%c'", c);
 }
 
