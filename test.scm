@@ -717,6 +717,12 @@
 (describe "/" (lambda ()
   (expect eqv? (/ 4 2) 2)))
 
+(describe "abs" (lambda ()
+  (expect equal? (abs 0) 0)
+  (expect equal? (abs 1) 1)
+  (expect equal? (abs -1) 1)
+  (expect equal? (abs -12345678) 12345678)))
+
 (describe "arithmetic" (lambda ()
   (expect eqv? (+ (+ 40 2) 21) 63)
   (expect eqv? (+ (- 40 4) (* 3 (/ 100 50))) 42)))

@@ -1640,6 +1640,12 @@ static Value builtin_div(UNUSED Value *env, Value args)
     return value_of_int(y);
 }
 
+static Value builtin_abs(UNUSED Value *env, Value x)
+{
+    int64_t n = value_get_int("abs", x);
+    return value_of_int(n < 0 ? -n : n);
+}
+
 static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("modulo", y);
@@ -2166,7 +2172,7 @@ static void initialize(void)
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "-", builtin_sub, -1);
     define_function(e, "/", builtin_div, -1);
-    //- abs
+    define_function(e, "abs", builtin_abs, 1);
     //- quotient
     //- remainder
     define_function(e, "modulo", builtin_modulo, 2);
