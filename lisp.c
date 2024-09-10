@@ -397,14 +397,14 @@ static void expect_type_or(const char *header, Type e1, Type e2, Value v)
 //
 
 typedef enum {
-    TOK_TYPE_LPAREN,
-    TOK_TYPE_RPAREN,
-    TOK_TYPE_QUOTE,
-    TOK_TYPE_GRAVE,
-    TOK_TYPE_COMMA,
-    TOK_TYPE_SPLICE,
+    TOK_TYPE_QUOTE = '\'',
+    TOK_TYPE_LPAREN = '(',
+    TOK_TYPE_RPAREN = ')',
+    TOK_TYPE_COMMA = ',',
+    TOK_TYPE_DOT = '.',
+    TOK_TYPE_SPLICE = '@', // not ",@"
+    TOK_TYPE_GRAVE = '`',
     TOK_TYPE_INT,
-    TOK_TYPE_DOT,
     TOK_TYPE_STR,
     TOK_TYPE_IDENT,
     TOK_TYPE_CONST,
@@ -416,19 +416,14 @@ typedef struct {
     Value value;
 } Token;
 
-#define TOK(t) { .type = TOK_TYPE_ ## t }
+#define TOK0(t, v) { .type = t, .value = v }
+#define TOK_NOVAL(t) TOK0(t, Qundef)
+#define TOK(t) ((Token) TOK_NOVAL(t))
+#define TOK_T(t) TOK_NOVAL(TOK_TYPE_ ## t)
 // singletons
-static const Token
-    TOK_LPAREN = TOK(LPAREN),
-    TOK_RPAREN = TOK(RPAREN),
-    TOK_QUOTE = TOK(QUOTE),
-    TOK_GRAVE = TOK(GRAVE),
-    TOK_COMMA = TOK(COMMA),
-    TOK_SPLICE = TOK(SPLICE),
-    TOK_DOT = TOK(DOT),
-    TOK_EOF = TOK(EOF);
-// and ctor
-#define TOK_V(t, v) ((Token) { .type = TOK_TYPE_ ## t, .value = v })
+static const Token TOK_EOF = TOK_T(EOF);
+// and ctors
+#define TOK_V(t, v) ((Token) TOK0(TOK_TYPE_ ## t, v))
 #define TOK_INT(i) TOK_V(INT, value_of_int(i))
 #define TOK_STR(s) TOK_V(STR, value_of_string(s))
 #define TOK_IDENT(s) TOK_V(IDENT, value_of_symbol(s))
@@ -506,9 +501,9 @@ static Token get_token_comma_or_splice(Parser *p)
 {
     int c = fgetc(p->in);
     if (c == '@')
-        return TOK_SPLICE;
+        return TOK(c); // splice
     ungetc(c, p->in);
-    return TOK_COMMA;
+    return TOK(',');
 }
 
 static Token get_token_dots(Parser *p)
@@ -516,7 +511,7 @@ static Token get_token_dots(Parser *p)
     int c = fgetc(p->in);
     if (c != '.') {
         ungetc(c, p->in);
-        return TOK_DOT;
+        return TOK('.');
     }
     c = fgetc(p->in);
     if (c != '.') {
@@ -627,13 +622,10 @@ static Token get_token(Parser *p)
     int c = fgetc(p->in);
     switch (c) {
     case '(':
-        return TOK_LPAREN;
     case ')':
-        return TOK_RPAREN;
     case '\'':
-        return TOK_QUOTE;
     case '`':
-        return TOK_GRAVE;
+        return TOK(c);
     case ',':
         return get_token_comma_or_splice(p);
     case '.':
@@ -678,19 +670,15 @@ static const char *token_stringify(Token t)
 
     switch (t.type) {
     case TOK_TYPE_LPAREN:
-        return "(";
     case TOK_TYPE_RPAREN:
-        return ")";
     case TOK_TYPE_QUOTE:
-        return "'";
     case TOK_TYPE_GRAVE:
-        return "`";
     case TOK_TYPE_COMMA:
-        return ",";
+    case TOK_TYPE_DOT:
+        snprintf(buf, sizeof(buf), "%c", t.type);
+        break;
     case TOK_TYPE_SPLICE:
         return ",@";
-    case TOK_TYPE_DOT:
-        return ".";
     case TOK_TYPE_INT:
         snprintf(buf, sizeof(buf), "%"PRId64, value_to_int(t.value));
         break;
