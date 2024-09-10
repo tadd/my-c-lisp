@@ -2091,7 +2091,6 @@ static void initialize(void)
     // 4.2.1. Conditionals
     define_special(e, "cond", builtin_cond, -1);
     define_special(e, "case", builtin_case, -1);
-    //- case
     define_special(e, "and", builtin_and, -1);
     define_special(e, "or", builtin_or, -1);
     // 4.2.2. Binding constructs
