@@ -1658,6 +1658,37 @@ static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
     return value_of_int(c);
 }
 
+static int64_t expt(int64_t x, int64_t y)
+{
+    int64_t z = 1;
+    while (y > 0) {
+        if ((y % 2) == 0) {
+            x *= x;
+            y /= 2;
+        } else {
+            z *= x;
+            y--;
+        }
+    }
+    return z;
+}
+
+static Value builtin_expt(UNUSED Value *env, Value x, Value y)
+{
+    int64_t a = value_get_int("modulo", x);
+    int64_t b = value_get_int("modulo", y);
+    int64_t c;
+    if (b < 0)
+        runtime_error("expt", "cannot power %d which negative", b);
+    if (a == 0)
+        c = (b == 0) ? 1 : 0;
+    else if (b == 0)
+        c = 1;
+    else
+        c = expt(a, b);
+    return value_of_int(c);
+}
+
 // 6.3.1. Booleans
 static Value builtin_not(UNUSED Value *env, Value x)
 {
@@ -2176,7 +2207,7 @@ static void initialize(void)
     //- quotient
     //- remainder
     define_function(e, "modulo", builtin_modulo, 2);
-    //- expt
+    define_function(e, "expt", builtin_expt, 2);
     // 6.3. Other data types
     // 6.3.1. Booleans
     define_function(e, "not", builtin_not, 1);

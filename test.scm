@@ -733,6 +733,17 @@
   (expect eqv? (modulo 13 -4) -3)
   (expect eqv? (modulo -13 -4) -1)))
 
+(describe "expt" (lambda ()
+  (expect eqv? (expt 1 1) 1)
+  (expect eqv? (expt 2 2) 4)
+  (expect eqv? (expt 2 3) 8)
+  (expect eqv? (expt 2 8) 256)
+  (expect eqv? (expt -2 2) 4)
+  (expect eqv? (expt 1 0) 1)
+  (expect eqv? (expt -1 0) 1)
+  (expect eqv? (expt 0 1) 0)
+  (expect eqv? (expt 0 0) 1)))
+
 ;; 6.3. Other data types
 ;; 6.3.1. Booleans
 (describe "true/false" (lambda ()
