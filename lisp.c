@@ -500,10 +500,7 @@ static Token get_token_dots(Parser *p)
 static Token get_token_string(Parser *p)
 {
     char buf[BUFSIZ], *pbuf = buf, *end = pbuf + sizeof(buf) - 2;
-    for (;;) {
-        int c = fgetc(p->in);
-        if (c == '"')
-            break;
+    for (int c; (c = fgetc(p->in)) != '"'; *pbuf++ = c) {
         if (c == '\\') {
             c = fgetc(p->in);
             if (c != '\\' && c != '"')
@@ -511,7 +508,6 @@ static Token get_token_string(Parser *p)
         }
         if (pbuf == end)
             parse_error(p, "string literal", "too long: \"%s...\"", pbuf);
-        *pbuf++ = c;
     }
     *pbuf = '\0';
     return TOK_STR(buf);
@@ -966,10 +962,7 @@ static Value iparse(FILE *in)
         return Qundef;
     Parser *p = parser_new(in);
     Value v = Qnil, last = Qnil;
-    for (;;) {
-        Value expr = parse_expr(p);
-        if (expr == Qundef)
-            break;
+    for (Value expr; (expr = parse_expr(p)) != Qundef; ) {
         last = append_at(last, expr);
         if (v == Qnil)
             v = last;
@@ -1712,13 +1705,13 @@ static Value builtin_list_p(UNUSED Value *env, Value list)
 }
 
 // C API-level utility
-Value list(Value v, ...)
+Value list(Value arg, ...)
 {
     Value l = Qnil, last = l;
     va_list ap;
-    va_start(ap, v);
-    for (; v != Qundef; v = va_arg(ap, Value)) {
-        last = append_at(last, v);
+    va_start(ap, arg);
+    for (Value o = arg; o != Qundef; o = va_arg(ap, Value)) {
+        last = append_at(last, o);
         if (l == Qnil)
             l = last;
     }
