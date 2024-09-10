@@ -853,28 +853,29 @@ static Value apply_cfunc(Value *env, Value proc, Value args)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-non-prototype"
 #endif
+
+#define EXP0(f, o) /*nothing*/
+#define EXP1(f, o) f(o)
+#define EXP2(f, o) EXP1(f, o) EXP1(f, o+1)
+#define EXP3(f, o) EXP2(f, o) EXP1(f, o+2)
+#define EXP4(f, o) EXP2(f, o) EXP2(f, o+2)
+#define EXP5(f, o) EXP4(f, o) EXP1(f, o+4)
+#define EXP6(f, o) EXP4(f, o) EXP2(f, o+4)
+#define EXP7(f, o) EXP4(f, o) EXP3(f, o+4)
+#define EXP(f, n) EXP##n(f, 0)
+
+#define ARG(o) , a[o]
+#define ARGS(n) EXP(ARG, n)
+#define CASE(n) case (n): return (*f)(env ARGS(n));
+
     switch (n) {
     case -1:
         return (*f)(env, args);
-    case 0:
-        return (*f)(env);
-    case 1:
-        return (*f)(env, a[0]);
-    case 2:
-        return (*f)(env, a[0], a[1]);
-    case 3:
-        return (*f)(env, a[0], a[1], a[2]);
-    case 4:
-        return (*f)(env, a[0], a[1], a[2], a[3]);
-    case 5:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4]);
-    case 6:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5]);
-    case 7:
-        return (*f)(env, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+    CASE(0); CASE(1); CASE(2); CASE(3); CASE(4); CASE(5); CASE(6); CASE(7);
     default:
         error("arity too large: %"PRId64, n);
     }
+
 #if defined(__clang__) && __clang_major__ >= 15
 #pragma clang diagnostic pop
 #endif
