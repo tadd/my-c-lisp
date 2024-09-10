@@ -689,6 +689,22 @@
   (noexpect even? #f)
   (noexpect even? even?)))
 
+(describe "max" (lambda ()
+  (expect equal? (max 0) 0)
+  (expect equal? (max 0 2 1) 2)
+  (expect equal? (max 0 0 0) 0)
+  (expect equal? (max -10) -10)
+  (expect equal? (max -10 -20 -30) -10)
+  (expect equal? (max -1 -1 -1) -1)))
+
+(describe "min" (lambda ()
+  (expect equal? (min 0) 0)
+  (expect equal? (min 0 2 1) 0)
+  (expect equal? (min 2 2 2) 2)
+  (expect equal? (min -10) -10)
+  (expect equal? (min -10 -20 -30) -30)
+  (expect equal? (min -1 -1 -1) -1)))
+
 (describe "+" (lambda ()
   (expect eqv? (+ 42 21) 63)))
 

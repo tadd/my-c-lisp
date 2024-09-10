@@ -1565,6 +1565,30 @@ static Value builtin_even_p(UNUSED Value *env, Value obj)
     return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) == 0);
 }
 
+static Value builtin_max(UNUSED Value *env, Value args)
+{
+    expect_arity_range("max", 1, -1, args);
+    int64_t max = value_get_int("max", car(args));
+    for (Value p = cdr(args); p != Qnil; p = cdr(p)) {
+        int64_t x = value_get_int("max", car(p));
+        if (max < x)
+            max = x;
+    }
+    return value_of_int(max);
+}
+
+static Value builtin_min(UNUSED Value *env, Value args)
+{
+    expect_arity_range("min", 1, -1, args);
+    int64_t min = value_get_int("min", car(args));
+    for (Value p = cdr(args); p != Qnil; p = cdr(p)) {
+        int64_t x = value_get_int("min", car(p));
+        if (min > x)
+            min = x;
+    }
+    return value_of_int(min);
+}
+
 static Value builtin_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
@@ -2136,8 +2160,8 @@ static void initialize(void)
     define_function(e, "negative?", builtin_negative_p, 1);
     define_function(e, "odd?", builtin_odd_p, 1);
     define_function(e, "even?", builtin_even_p, 1);
-    //- max
-    //- min
+    define_function(e, "max", builtin_max, -1);
+    define_function(e, "min", builtin_min, -1);
     define_function(e, "+", builtin_add, -1);
     define_function(e, "*", builtin_mul, -1);
     define_function(e, "-", builtin_sub, -1);
