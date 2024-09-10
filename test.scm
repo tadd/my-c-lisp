@@ -11,6 +11,7 @@
 (describe "peculiar identifiers" (lambda ()
   (expect eq? '+ '+)
   (expect eq? '- '-)
+  (expect eq? '.. '..)
   (expect eq? '... '...)))
 
 ;; 4.1. Primitive expression types
