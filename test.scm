@@ -727,6 +727,22 @@
   (expect eqv? (+ (+ 40 2) 21) 63)
   (expect eqv? (+ (- 40 4) (* 3 (/ 100 50))) 42)))
 
+(describe "quotient" (lambda ()
+  (expect eqv? (quotient 1 1) 1)
+  (expect eqv? (quotient 0 1) 0)
+  (expect eqv? (quotient 0 4) 0)
+  (expect eqv? (quotient 8 4) 2)
+  (expect eqv? (quotient 12 4) 3)
+  (expect eqv? (quotient -12 4) -3)
+  (expect eqv? (quotient 12 -4) -3)
+  (expect eqv? (quotient -12 -4) 3)))
+
+(describe "remainder" (lambda ()
+  (expect eqv? (remainder 13 4) 1)
+  (expect eqv? (remainder -13 4) -1)
+  (expect eqv? (remainder 13 -4) 1)
+  (expect eqv? (remainder -13 -4) -1)))
+
 (describe "modulo" (lambda ()
   (expect eqv? (modulo 13 4) 1)
   (expect eqv? (modulo -13 4) 3)

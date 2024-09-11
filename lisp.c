@@ -1653,6 +1653,27 @@ static Value builtin_abs(UNUSED Value *env, Value x)
     return value_of_int(n < 0 ? -n : n);
 }
 
+static Value builtin_quotient(UNUSED Value *env, Value x, Value y)
+{
+    int64_t b = value_get_int("quotient", y);
+    if (b == 0)
+        runtime_error("quotient: divided by zero");
+    int64_t a = value_get_int("quotient", x);
+    int64_t c = a / b;
+    return value_of_int(c);
+}
+
+
+static Value builtin_remainder(UNUSED Value *env, Value x, Value y)
+{
+    int64_t b = value_get_int("remainder", y);
+    if (b == 0)
+        runtime_error("remainder: divided by zero");
+    int64_t a = value_get_int("remainder", x);
+    int64_t c = a % b;
+    return value_of_int(c);
+}
+
 static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("modulo", y);
@@ -2211,8 +2232,8 @@ static void initialize(void)
     define_procedure(e, "-", builtin_sub, -1);
     define_procedure(e, "/", builtin_div, -1);
     define_procedure(e, "abs", builtin_abs, 1);
-    //- quotient
-    //- remainder
+    define_procedure(e, "quotient", builtin_quotient, 2);
+    define_procedure(e, "remainder", builtin_remainder, 2);
     define_procedure(e, "modulo", builtin_modulo, 2);
     define_procedure(e, "expt", builtin_expt, 2);
     // 6.3. Other data types
