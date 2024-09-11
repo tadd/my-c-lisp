@@ -94,9 +94,13 @@ static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 //   0b0..0010 #f
 //   0b0..0100 #t
 //   0b0..0110 <undef>
-static const uintptr_t FLAG_NBIT = 4U;
-static const uintptr_t MASK_IMMEDIATE = 0b1111U;
-static const uintptr_t FLAG_SYMBOL    = 0b1110U;
+typedef const uintptr_t Flag;
+static Flag FLAG_NBIT     = 4;
+static Flag FLAG_NBIT_INT = 1;
+static Flag FLAG_MASK     = 0b1111;
+static Flag FLAG_MASK_INT =    0b1;
+static Flag FLAG_SYMBOL   = 0b1110;
+static Flag FLAG_INT      =    0b1;
 const Value Qnil = (Value) &PAIR_NIL;
 const Value Qfalse = 0b0010U;
 const Value Qtrue  = 0b0100U;
@@ -122,12 +126,12 @@ static const char *load_basedir = NULL;
 
 static inline uintptr_t flags(Value v)
 {
-    return v & MASK_IMMEDIATE;
+    return v & FLAG_MASK;
 }
 
 inline bool value_is_int(Value v)
 {
-    return v & 1U;
+    return v & FLAG_MASK_INT;
 }
 
 inline bool value_is_symbol(Value v)
@@ -220,7 +224,7 @@ inline const char *value_type_to_string(Type t)
 
 inline int64_t value_to_int(Value v)
 {
-    return (int64_t) v >> 1U;
+    return (int64_t) v >> FLAG_NBIT_INT;
 }
 
 inline Symbol value_to_symbol(Value v)
@@ -258,7 +262,7 @@ inline const char *value_to_string(Value v)
 
 inline Value value_of_int(int64_t i)
 {
-    return (Value) i << 1U | 1U;
+    return (Value) i << FLAG_NBIT_INT | FLAG_INT;
 }
 
 static inline Value list1(Value x)
