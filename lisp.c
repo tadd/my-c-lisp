@@ -95,9 +95,10 @@ static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 //   0b0--0100 #t
 //   0b0--0110 <undef>
 typedef const uintptr_t Flag;
-static Flag FLAG_NBIT     = 4;
+static Flag FLAG_NBIT_SYM = 4;
 static Flag FLAG_NBIT_INT = 1;
-static Flag FLAG_MASK     = 0b1111;
+static Flag FLAG_MASK     =  0b111; // for 64 bit machine
+static Flag FLAG_MASK_SYM = 0b1111;
 static Flag FLAG_MASK_INT =    0b1;
 static Flag FLAG_SYM      = 0b1110;
 static Flag FLAG_INT      =    0b1;
@@ -124,11 +125,6 @@ static const char *load_basedir = NULL;
 // value_is_*: Type Checks
 //
 
-static inline uintptr_t flags(Value v)
-{
-    return v & FLAG_MASK;
-}
-
 inline bool value_is_int(Value v)
 {
     return v & FLAG_MASK_INT;
@@ -136,12 +132,12 @@ inline bool value_is_int(Value v)
 
 inline bool value_is_symbol(Value v)
 {
-    return flags(v) == FLAG_SYM;
+    return (v & FLAG_MASK_SYM) == FLAG_SYM;
 }
 
 static inline bool is_immediate(Value v)
 {
-    return v & 0b111U; // for 64 bit machine
+    return v & FLAG_MASK;
 }
 
 static inline bool value_tag_is(Value v, ValueTag expected)
@@ -234,7 +230,7 @@ inline int64_t value_to_int(Value x)
 
 inline Symbol value_to_symbol(Value v)
 {
-    return (Symbol) v >> FLAG_NBIT;
+    return (Symbol) v >> FLAG_NBIT_SYM;
 }
 
 static const char *name_nth(Value list, int64_t n)
@@ -300,7 +296,7 @@ static Symbol intern(const char *name)
 inline Value value_of_symbol(const char *s)
 {
     Symbol sym = intern(s);
-    return (Value) (sym << FLAG_NBIT | FLAG_SYM);
+    return (Value) (sym << FLAG_NBIT_SYM | FLAG_SYM);
 }
 
 static void *obj_new(size_t size, ValueTag t)
