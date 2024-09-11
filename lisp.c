@@ -1863,6 +1863,33 @@ static Value builtin_reverse(UNUSED Value *env, Value list)
     return reverse(list);
 }
 
+static Value list_tail(const char *func, Value list, Value k)
+{
+    expect_type(func, TYPE_PAIR, list);
+    expect_type(func, TYPE_INT, k);
+    int64_t n = value_to_int(k);
+    if (n < 0)
+        runtime_error("%s: 2nd element needs to be non-negative: "PRId64, n);
+    Value p = list;
+    for (int64_t i = 0; p != Qnil; p = cdr(p), i++) {
+        if (i == n)
+            break;
+    }
+    if (p == Qnil)
+        runtime_error("%s: list has fewer than "PRId64" element", func, n);
+    return p;
+}
+
+static Value builtin_list_tail(UNUSED Value *env, Value list, Value k)
+{
+    return list_tail("list-tail", list, k);
+}
+
+static Value builtin_list_ref(UNUSED Value *env, Value list, Value k)
+{
+    return car(list_tail("list-tail", list, k));
+}
+
 static Value memq(Value key, Value l)
 {
     for (Value p = l; p != Qnil; p = cdr(p)) {
@@ -2255,7 +2282,8 @@ static void initialize(void)
     define_procedure(e, "length", builtin_length, 1);
     define_procedure(e, "append", builtin_append, -1);
     define_procedure(e, "reverse", builtin_reverse, 1);
-    //- list-ref
+    define_procedure(e, "list-tail", builtin_list_tail, 2);
+    define_procedure(e, "list-ref", builtin_list_ref, 2);
     define_procedure(e, "memq", builtin_memq, 2);
     define_procedure(e, "memv", builtin_memq, 2); // alias
     define_procedure(e, "member", builtin_member, 2);

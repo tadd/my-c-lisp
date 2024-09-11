@@ -854,6 +854,16 @@
   (expect equal? '(2 1) (reverse '(1 2)))
   (expect equal? '(3 2 1) (reverse '(1 2 3)))))
 
+(describe "list-tail" (lambda ()
+  (expect equal? (list-tail '(a b c d) 0) '(a b c d))
+  (expect equal? (list-tail '(a b c d) 2) '(c d))
+  (expect equal? (list-tail '(a b c d) 3) '(d))))
+
+(describe "list-ref" (lambda ()
+  (expect equal? (list-ref '(a b c d) 0) 'a)
+  (expect equal? (list-ref '(a b c d) 2) 'c)
+  (expect equal? (list-ref '(a b c d) 3) 'd)))
+
 (describe "memq" (lambda ()
   (expect equal? (memq 'a '(a b c)) '(a b c))
   (expect equal? (memq 'b '(a b c)) '(b c))
