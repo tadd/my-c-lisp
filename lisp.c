@@ -1242,6 +1242,22 @@ static Value transpose_2xn(Value ls) // 2 * n
 
 static Value define_variable(Value *env, Value ident, Value expr);
 
+static Value let(Value *env, const char *func, Value bindings, Value body)
+{
+    expect_type(func, TYPE_PAIR, bindings);
+    Value letenv = *env;
+    for (Value p = bindings; p != Qnil; p = cdr(p)) {
+        Value b = car(p);
+        if (b == Qnil)
+            continue;
+        expect_type(func, TYPE_PAIR, b);
+        Value ident = car(b), expr = cadr(b);
+        expect_type(func, TYPE_SYMBOL, ident);
+        env_put(&letenv, ident, ieval(env, expr));
+    }
+    return eval_body(&letenv, body);
+}
+
 static Value named_let(Value *env, Value var, Value bindings, Value body)
 {
     Value tr = transpose_2xn(bindings);
@@ -1256,28 +1272,16 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
 static Value builtin_let(Value *env, Value args)
 {
     expect_arity_range("let", 2, -1, args);
-    Value bind_or_var = car(args);
-    Value body = cdr(args);
-    expect_type("let", TYPE_PAIR, body);
-
+    Value bind_or_var = car(args), body = cdr(args);
     if (value_is_symbol(bind_or_var))
         return named_let(env, bind_or_var, car(body), cdr(body));
+    return let(env, "let", bind_or_var, body);
+}
 
-    Value bindings = bind_or_var;
-    expect_type("let", TYPE_PAIR, bindings);
-    Value letenv = *env;
-    for (Value p = bindings; p != Qnil; p = cdr(p)) {
-        Value b = car(p);
-        if (b == Qnil)
-            continue;
-        expect_type("let", TYPE_PAIR, b);
-        Value ident = car(b), expr = cadr(b);
-        expect_type("let", TYPE_SYMBOL, ident);
-        env_put(&letenv, ident, ieval(env, expr));
-    }
-    if (body == Qnil)
-        runtime_error("let: one or more expressions needed in body");
-    return eval_body(&letenv, body);
+static Value builtin_let_star(Value *env, Value args)
+{
+    expect_arity_range("let*", 2, -1, args);
+    return let(env, "let*", car(args), cdr(args));
 }
 
 static Value builtin_letrec(Value *env, Value args)
@@ -2223,7 +2227,7 @@ static void initialize(void)
     define_syntax(e, "or", builtin_or, -1);
     // 4.2.2. Binding constructs
     define_syntax(e, "let", builtin_let, -1); // with named let in 4.2.4.
-    define_syntax(e, "let*", builtin_let, -1); // alias
+    define_syntax(e, "let*", builtin_let_star, -1);
     define_syntax(e, "letrec", builtin_letrec, -1);
     // 4.2.3. Sequencing
     define_syntax(e, "begin", builtin_begin, -1);
