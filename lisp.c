@@ -646,9 +646,7 @@ static void unget_token(Parser *p, Token t)
 #define CXRS(f) CXR2(f,) CXR3(f,) CXR4(f,)
 
 #define DEF_CXR(x, y) \
-    static Value c##x##y##r(Value v) { \
-        return c##x##r(c##y##r(v)); \
-    }
+    static Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
 CXRS(DEF_CXR)
 
 static const char *token_stringify(Token t)
@@ -1616,9 +1614,8 @@ static Value builtin_sub(UNUSED Value *env, Value args)
     int64_t y = 0;
     if (rest == Qnil)
         rest = args;
-    else {
+    else
         y = value_get_int("-", car(args));
-    }
     for (Value p = rest; p != Qnil; p = cdr(p))
         y -= value_get_int("-", car(p));
     return value_of_int(y);
@@ -2188,7 +2185,8 @@ static Value builtin_cputime(void) // in micro sec
 }
 
 #define DEF_CXR_BUILTIN(x, y) \
-    static Value builtin_c##x##y##r(UNUSED Value *env, Value v) { \
+    static Value builtin_c##x##y##r(UNUSED Value *env, Value v) \
+    { \
         expect_type("c" #x #y "r", TYPE_PAIR, v); \
         return c##x##y##r(v); \
     }
