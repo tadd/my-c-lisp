@@ -766,9 +766,9 @@
 
 ;; 6.3.2. Pairs and lists
 (describe "pair?" (lambda ()
-  (expect pair? '())
   (expect pair? '(1))
   (expect pair? '(1 . 2))
+  (noexpect pair? '())
   (noexpect pair? 1)
   (noexpect pair? 'a)
   (noexpect pair? #f)))

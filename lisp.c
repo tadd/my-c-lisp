@@ -1714,7 +1714,7 @@ static Value builtin_boolean_p(UNUSED Value *env, Value x)
 // 6.3.2. Pairs and lists
 static Value builtin_pair_p(UNUSED Value *env, Value o)
 {
-    return OF_BOOL(value_is_pair(o));
+    return OF_BOOL(o != Qnil && value_is_pair(o));
 }
 
 Value cons(Value car, Value cdr)
