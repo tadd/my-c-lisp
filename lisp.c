@@ -1966,6 +1966,18 @@ static Value builtin_string_p(UNUSED Value *env, Value obj)
     return OF_BOOL(value_is_string(obj));
 }
 
+static Value builtin_string_length(UNUSED Value *env, Value s)
+{
+    expect_type("string-length", TYPE_STR, s);
+    return value_of_int(strlen(STRING(s)->body));
+}
+
+static Value builtin_string_eq(UNUSED Value *env, Value s1, Value s2)
+{
+    expect_type_twin("string=?", TYPE_STR, s1, s2);
+    return OF_BOOL(strcmp(STRING(s1)->body, STRING(s2)->body) == 0);
+}
+
 // 6.4. Control features
 static Value builtin_procedure_p(UNUSED Value *env, Value o)
 {
@@ -2294,8 +2306,8 @@ static void initialize(void)
     define_procedure(e, "symbol?", builtin_symbol_p, 1);
     // 6.3.5. Strings
     define_procedure(e, "string?", builtin_string_p, 1);
-    //- string-length
-    //- string=?
+    define_procedure(e, "string-length", builtin_string_length, 1);
+    define_procedure(e, "string=?", builtin_string_eq, 2);
     // 6.4. Control features
     define_procedure(e, "procedure?", builtin_procedure_p, 1);
     define_procedure(e, "apply", builtin_apply, -1);

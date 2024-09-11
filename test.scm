@@ -939,6 +939,27 @@
   (noexpect string? #f)
   (noexpect string? string?)))
 
+(describe "string-length" (lambda ()
+  (expect equal? (string-length "foo") 3)
+  (expect equal? (string-length "o") 1)
+  (expect equal? (string-length "") 0)))
+
+(describe "string=?" (lambda ()
+  (expect string=? "foo" "foo")
+  (expect string=? "" "")
+  (expect string=? " " " ")
+  (expect string=? "\\" "\\")
+  (expect string=? "a\"b" "a\"b")
+  ;; newlines
+  (expect string=? "
+" "
+")
+  (noexpect string=? "" "
+")
+  (noexpect string=? "a" "ab")
+  (noexpect string=? "\\" "\\\\")
+  (noexpect string=? "ab" "a\"b")))
+
 ;; 6.4. Control features
 (describe "procedure?" (lambda ()
   (expect procedure? car)
