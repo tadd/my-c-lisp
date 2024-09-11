@@ -99,7 +99,7 @@ static Flag FLAG_NBIT     = 4;
 static Flag FLAG_NBIT_INT = 1;
 static Flag FLAG_MASK     = 0b1111;
 static Flag FLAG_MASK_INT =    0b1;
-static Flag FLAG_SYMBOL   = 0b1110;
+static Flag FLAG_SYM      = 0b1110;
 static Flag FLAG_INT      =    0b1;
 const Value Qnil = (Value) &PAIR_NIL;
 const Value Qfalse = 0b0010U;
@@ -136,7 +136,7 @@ inline bool value_is_int(Value v)
 
 inline bool value_is_symbol(Value v)
 {
-    return flags(v) == FLAG_SYMBOL;
+    return flags(v) == FLAG_SYM;
 }
 
 static inline bool is_immediate(Value v)
@@ -300,7 +300,7 @@ static Symbol intern(const char *name)
 inline Value value_of_symbol(const char *s)
 {
     Symbol sym = intern(s);
-    return (Value) (sym << FLAG_NBIT | FLAG_SYMBOL);
+    return (Value) (sym << FLAG_NBIT | FLAG_SYM);
 }
 
 static void *obj_new(size_t size, ValueTag t)
