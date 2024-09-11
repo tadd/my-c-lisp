@@ -35,7 +35,7 @@ typedef enum { // has the same values as Type
     TAG_PAIR    = TYPE_PAIR,
     TAG_STR     = TYPE_STR,
     TAG_CFUNC   = TYPE_PROC + 1,
-    TAG_SPECIAL, // almost a C Function
+    TAG_SYNTAX, // almost a C Function
     TAG_CLOSURE,
     TAG_CONTINUATION,
 } ValueTag;
@@ -159,7 +159,7 @@ static inline bool value_is_procedure(Value v)
     if (is_immediate(v))
         return false;
     switch (VALUE_TAG(v)) {
-    case TAG_SPECIAL:
+    case TAG_SYNTAX:
     case TAG_CFUNC:
     case TAG_CLOSURE:
     case TAG_CONTINUATION:
@@ -207,7 +207,7 @@ Type value_type_of(Value v)
     case TAG_PAIR:
         return (Type) t;
     case TAG_CFUNC:
-    case TAG_SPECIAL:
+    case TAG_SYNTAX:
     case TAG_CLOSURE:
     case TAG_CONTINUATION:
         return TYPE_PROC;
@@ -325,10 +325,10 @@ static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
     return (Value) f;
 }
 
-static Value value_of_special(cfunc_t cfunc, int64_t arity)
+static Value value_of_syntax(cfunc_t cfunc, int64_t arity)
 {
     Value sp = value_of_cfunc(cfunc, arity);
-    VALUE_TAG(sp) = TAG_SPECIAL;
+    VALUE_TAG(sp) = TAG_SYNTAX;
     return sp;
 }
 
@@ -912,7 +912,7 @@ static Value apply(Value *env, Value proc, Value args)
     expect_type("apply", TYPE_PROC, proc);
     expect_arity(PROCEDURE(proc)->arity, args);
     switch (VALUE_TAG(proc)) {
-    case TAG_SPECIAL:
+    case TAG_SYNTAX:
     case TAG_CFUNC:
         return apply_cfunc(env, proc, args);
     case TAG_CLOSURE:
@@ -934,13 +934,14 @@ static void expect_cfunc_arity(int64_t actual)
           CFUNCARG_MAX, actual);
 }
 
-static void define_special(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
+// Do not mistake this for "(define-syntax ...)" related to macros
+static void define_syntax(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
-    env_put(env, value_of_symbol(name), value_of_special(cfunc, arity));
+    env_put(env, value_of_symbol(name), value_of_syntax(cfunc, arity));
 }
 
-static void define_function(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
+static void define_procedure(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
     env_put(env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
@@ -1016,7 +1017,7 @@ static Value map_eval(Value *env, Value l)
 static Value eval_apply(Value *env, Value symproc, Value args)
 {
     Value proc = ieval(env, symproc);
-    if (!value_tag_is(proc, TAG_SPECIAL))
+    if (!value_tag_is(proc, TAG_SYNTAX))
         args = map_eval(env, args);
     return apply(env, proc, args);
 }
@@ -2151,31 +2152,31 @@ static void initialize(void)
 
     // 4.1. Primitive expression types
     // 4.1.2. Literal expressions
-    define_special(e, "quote", builtin_quote, 1);
+    define_syntax(e, "quote", builtin_quote, 1);
     // 4.1.4. Procedures
-    define_special(e, "lambda", builtin_lambda, -1);
+    define_syntax(e, "lambda", builtin_lambda, -1);
     // 4.1.5. Conditionals
-    define_special(e, "if", builtin_if, -1);
+    define_syntax(e, "if", builtin_if, -1);
     // 4.1.6. Assignments
-    define_special(e, "set!", builtin_set, 2);
+    define_syntax(e, "set!", builtin_set, 2);
     // 4.2. Derived expression types
     // 4.2.1. Conditionals
-    define_special(e, "cond", builtin_cond, -1);
-    define_special(e, "case", builtin_case, -1);
-    define_special(e, "and", builtin_and, -1);
-    define_special(e, "or", builtin_or, -1);
+    define_syntax(e, "cond", builtin_cond, -1);
+    define_syntax(e, "case", builtin_case, -1);
+    define_syntax(e, "and", builtin_and, -1);
+    define_syntax(e, "or", builtin_or, -1);
     // 4.2.2. Binding constructs
-    define_special(e, "let", builtin_let, -1); // with named let in 4.2.4.
-    define_special(e, "let*", builtin_let, -1); // alias
-    define_special(e, "letrec", builtin_letrec, -1);
+    define_syntax(e, "let", builtin_let, -1); // with named let in 4.2.4.
+    define_syntax(e, "let*", builtin_let, -1); // alias
+    define_syntax(e, "letrec", builtin_letrec, -1);
     // 4.2.3. Sequencing
-    define_special(e, "begin", builtin_begin, -1);
+    define_syntax(e, "begin", builtin_begin, -1);
     // 4.2.4. Iteration
     //- do
     // 4.2.6. Quasiquotation
-    define_special(e, "quasiquote", builtin_quasiquote, 1);
-    define_special(e, "unquote", builtin_unquote, 1);
-    define_special(e, "unquote-splicing", builtin_unquote_splicing, 1);
+    define_syntax(e, "quasiquote", builtin_quasiquote, 1);
+    define_syntax(e, "unquote", builtin_unquote, 1);
+    define_syntax(e, "unquote-splicing", builtin_unquote_splicing, 1);
     // 4.3. Macros
     // 4.3.2. Pattern language
     //- syntax-rules
@@ -2183,80 +2184,80 @@ static void initialize(void)
     // 5. Program structure
 
     // 5.2. Definitions
-    define_special(e, "define", builtin_define, -1);
+    define_syntax(e, "define", builtin_define, -1);
     // 5.3. Syntax definitions
     //- define-syntax
 
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    define_function(e, "eqv?", builtin_eq, 2); // alias
-    define_function(e, "eq?", builtin_eq, 2);
-    define_function(e, "equal?", builtin_equal, 2);
+    define_procedure(e, "eqv?", builtin_eq, 2); // alias
+    define_procedure(e, "eq?", builtin_eq, 2);
+    define_procedure(e, "equal?", builtin_equal, 2);
     // 6.2. Numbers
     // 6.2.5. Numerical operations
-    define_function(e, "number?", builtin_integer_p, 1); // alias
-    define_function(e, "integer?", builtin_integer_p, 1);
-    define_function(e, "=", builtin_numeq, -1);
-    define_function(e, "<", builtin_lt, -1);
-    define_function(e, ">", builtin_gt, -1);
-    define_function(e, "<=", builtin_le, -1);
-    define_function(e, ">=", builtin_ge, -1);
-    define_function(e, "zero?", builtin_zero_p, 1);
-    define_function(e, "positive?", builtin_positive_p, 1);
-    define_function(e, "negative?", builtin_negative_p, 1);
-    define_function(e, "odd?", builtin_odd_p, 1);
-    define_function(e, "even?", builtin_even_p, 1);
-    define_function(e, "max", builtin_max, -1);
-    define_function(e, "min", builtin_min, -1);
-    define_function(e, "+", builtin_add, -1);
-    define_function(e, "*", builtin_mul, -1);
-    define_function(e, "-", builtin_sub, -1);
-    define_function(e, "/", builtin_div, -1);
-    define_function(e, "abs", builtin_abs, 1);
+    define_procedure(e, "number?", builtin_integer_p, 1); // alias
+    define_procedure(e, "integer?", builtin_integer_p, 1);
+    define_procedure(e, "=", builtin_numeq, -1);
+    define_procedure(e, "<", builtin_lt, -1);
+    define_procedure(e, ">", builtin_gt, -1);
+    define_procedure(e, "<=", builtin_le, -1);
+    define_procedure(e, ">=", builtin_ge, -1);
+    define_procedure(e, "zero?", builtin_zero_p, 1);
+    define_procedure(e, "positive?", builtin_positive_p, 1);
+    define_procedure(e, "negative?", builtin_negative_p, 1);
+    define_procedure(e, "odd?", builtin_odd_p, 1);
+    define_procedure(e, "even?", builtin_even_p, 1);
+    define_procedure(e, "max", builtin_max, -1);
+    define_procedure(e, "min", builtin_min, -1);
+    define_procedure(e, "+", builtin_add, -1);
+    define_procedure(e, "*", builtin_mul, -1);
+    define_procedure(e, "-", builtin_sub, -1);
+    define_procedure(e, "/", builtin_div, -1);
+    define_procedure(e, "abs", builtin_abs, 1);
     //- quotient
     //- remainder
-    define_function(e, "modulo", builtin_modulo, 2);
-    define_function(e, "expt", builtin_expt, 2);
+    define_procedure(e, "modulo", builtin_modulo, 2);
+    define_procedure(e, "expt", builtin_expt, 2);
     // 6.3. Other data types
     // 6.3.1. Booleans
-    define_function(e, "not", builtin_not, 1);
-    define_function(e, "boolean?", builtin_boolean_p, 1);
+    define_procedure(e, "not", builtin_not, 1);
+    define_procedure(e, "boolean?", builtin_boolean_p, 1);
     // 6.3.2. Pairs and lists
-    define_function(e, "pair?", builtin_pair_p, 1);
-    define_function(e, "cons", builtin_cons, 2);
-    define_function(e, "car", builtin_car, 1);
-    define_function(e, "cdr", builtin_cdr, 1);
-#define DEFUN_CXR(x, y) define_function(e, "c" #x #y "r", builtin_c##x##y##r, 1)
+    define_procedure(e, "pair?", builtin_pair_p, 1);
+    define_procedure(e, "cons", builtin_cons, 2);
+    define_procedure(e, "car", builtin_car, 1);
+    define_procedure(e, "cdr", builtin_cdr, 1);
+#define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", builtin_c##x##y##r, 1)
     CXRS(DEFUN_CXR);
     //-set-car!
     //-set-cdr!
-    define_function(e, "null?", builtin_null, 1);
-    define_function(e, "list?", builtin_list_p, 1);
-    define_function(e, "list", builtin_list, -1);
-    define_function(e, "length", builtin_length, 1);
-    define_function(e, "append", builtin_append, -1);
-    define_function(e, "reverse", builtin_reverse, 1);
+    define_procedure(e, "null?", builtin_null, 1);
+    define_procedure(e, "list?", builtin_list_p, 1);
+    define_procedure(e, "list", builtin_list, -1);
+    define_procedure(e, "length", builtin_length, 1);
+    define_procedure(e, "append", builtin_append, -1);
+    define_procedure(e, "reverse", builtin_reverse, 1);
     //-list-ref
-    define_function(e, "memq", builtin_memq, 2);
-    define_function(e, "memv", builtin_memq, 2); // alias
-    define_function(e, "member", builtin_member, 2);
-    define_function(e, "assq", builtin_assq, 2);
-    define_function(e, "assv", builtin_assq, 2); // alias
-    define_function(e, "assoc", builtin_assoc, 2); // alias
+    define_procedure(e, "memq", builtin_memq, 2);
+    define_procedure(e, "memv", builtin_memq, 2); // alias
+    define_procedure(e, "member", builtin_member, 2);
+    define_procedure(e, "assq", builtin_assq, 2);
+    define_procedure(e, "assv", builtin_assq, 2); // alias
+    define_procedure(e, "assoc", builtin_assoc, 2); // alias
     // 6.3.3. Symbols
-    define_function(e, "symbol?", builtin_symbol_p, 1);
+    define_procedure(e, "symbol?", builtin_symbol_p, 1);
     // 6.3.5. Strings
-    define_function(e, "string?", builtin_string_p, 1);
+    define_procedure(e, "string?", builtin_string_p, 1);
     //-string-length
     //-string=?
     // 6.4. Control features
-    define_function(e, "procedure?", builtin_procedure_p, 1);
-    define_function(e, "apply", builtin_apply, -1);
-    define_function(e, "map", builtin_map, -1);
-    define_function(e, "for-each", builtin_for_each, -1);
-    define_function(e, "call/cc", builtin_callcc, 1); // alias
-    define_function(e, "call-with-current-continuation", builtin_callcc, 1);
+    define_procedure(e, "procedure?", builtin_procedure_p, 1);
+    define_procedure(e, "apply", builtin_apply, -1);
+    define_procedure(e, "map", builtin_map, -1);
+    define_procedure(e, "for-each", builtin_for_each, -1);
+    define_procedure(e, "call/cc", builtin_callcc, 1); // alias
+    define_procedure(e, "call-with-current-continuation", builtin_callcc, 1);
     //-values
     //-call-with-values
     //-dynamic-wind
@@ -2268,12 +2269,12 @@ static void initialize(void)
     // 6.6.2. Input
     //- read
     // 6.6.3. Output
-    define_function(e, "display", builtin_display, 1);
-    define_function(e, "newline", builtin_newline, 0);
+    define_procedure(e, "display", builtin_display, 1);
+    define_procedure(e, "newline", builtin_newline, 0);
     // 6.6.4. System interface
-    define_function(e, "load", builtin_load, 1);
+    define_procedure(e, "load", builtin_load, 1);
 
     // Local Extensions
-    define_function(e, "print", builtin_print, 1); // like Gauche
-    define_function(e, "_cputime", builtin_cputime, 0);
+    define_procedure(e, "print", builtin_print, 1); // like Gauche
+    define_procedure(e, "_cputime", builtin_cputime, 0);
 }
