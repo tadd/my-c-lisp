@@ -1752,7 +1752,7 @@ static Value builtin_cdr(UNUSED Value *env, Value pair)
     return cdr(pair);
 }
 
-static Value builtin_null(UNUSED Value *env, Value list)
+static Value builtin_null_p(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
 }
@@ -2232,7 +2232,7 @@ static void initialize(void)
     CXRS(DEFUN_CXR);
     //-set-car!
     //-set-cdr!
-    define_procedure(e, "null?", builtin_null, 1);
+    define_procedure(e, "null?", builtin_null_p, 1);
     define_procedure(e, "list?", builtin_list_p, 1);
     define_procedure(e, "list", builtin_list, -1);
     define_procedure(e, "length", builtin_length, 1);
