@@ -89,24 +89,24 @@ typedef struct {
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 // Value (uintptr_t):
-//   0b....000 Pointer (Unchangeable pattern!)
-//   0b......1 Integer
-//   0b...1110 Symbol
-//   0b0--0010 #f
-//   0b0--0100 #t
-//   0b0--0110 <undef>
+//   0b.....000 Pointer (Unchangeable pattern!)
+//   0b.......1 Integer
+//   0b......10 Symbol
+//   0b0--00100 #f
+//   0b0--01100 #t
+//   0b0-010100 <undef>
 typedef const uintptr_t Flag;
-static Flag FLAG_NBIT_SYM = 4;
+static Flag FLAG_NBIT_SYM = 2;
 static Flag FLAG_NBIT_INT = 1;
-static Flag FLAG_MASK     =  0b111; // for 64 bit machine
-static Flag FLAG_MASK_SYM = 0b1111;
-static Flag FLAG_MASK_INT =    0b1;
-static Flag FLAG_SYM      = 0b1110;
-static Flag FLAG_INT      =    0b1;
+static Flag FLAG_MASK     = 0b111; // for 64 bit machine
+static Flag FLAG_MASK_SYM =  0b11;
+static Flag FLAG_MASK_INT =   0b1;
+static Flag FLAG_SYM      =  0b10;
+static Flag FLAG_INT      =   0b1;
 const Value Qnil = (Value) &PAIR_NIL;
-const Value Qfalse = 0b0010U;
-const Value Qtrue  = 0b0100U;
-const Value Qundef = 0b0110U; // may be an error or something
+const Value Qfalse = 0b00100U;
+const Value Qtrue  = 0b01100U;
+const Value Qundef = 0b10100U; // may be an error or something
 
 static const int64_t CFUNCARG_MAX = 7;
 
