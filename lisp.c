@@ -91,9 +91,9 @@ static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 //   0b....000 Pointer (Unchangeable pattern!)
 //   0b......1 Integer
 //   0b...1110 Symbol
-//   0b0..0010 #f
-//   0b0..0100 #t
-//   0b0..0110 <undef>
+//   0b0--0010 #f
+//   0b0--0100 #t
+//   0b0--0110 <undef>
 typedef const uintptr_t Flag;
 static Flag FLAG_NBIT     = 4;
 static Flag FLAG_NBIT_INT = 1;
