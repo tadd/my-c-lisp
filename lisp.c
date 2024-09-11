@@ -2226,15 +2226,15 @@ static void initialize(void)
     define_procedure(e, "cdr", builtin_cdr, 1);
 #define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", builtin_c##x##y##r, 1)
     CXRS(DEFUN_CXR);
-    //-set-car!
-    //-set-cdr!
+    //- set-car!
+    //- set-cdr!
     define_procedure(e, "null?", builtin_null_p, 1);
     define_procedure(e, "list?", builtin_list_p, 1);
     define_procedure(e, "list", builtin_list, -1);
     define_procedure(e, "length", builtin_length, 1);
     define_procedure(e, "append", builtin_append, -1);
     define_procedure(e, "reverse", builtin_reverse, 1);
-    //-list-ref
+    //- list-ref
     define_procedure(e, "memq", builtin_memq, 2);
     define_procedure(e, "memv", builtin_memq, 2); // alias
     define_procedure(e, "member", builtin_member, 2);
@@ -2245,8 +2245,8 @@ static void initialize(void)
     define_procedure(e, "symbol?", builtin_symbol_p, 1);
     // 6.3.5. Strings
     define_procedure(e, "string?", builtin_string_p, 1);
-    //-string-length
-    //-string=?
+    //- string-length
+    //- string=?
     // 6.4. Control features
     define_procedure(e, "procedure?", builtin_procedure_p, 1);
     define_procedure(e, "apply", builtin_apply, -1);
@@ -2254,9 +2254,9 @@ static void initialize(void)
     define_procedure(e, "for-each", builtin_for_each, -1);
     define_procedure(e, "call/cc", builtin_callcc, 1); // alias
     define_procedure(e, "call-with-current-continuation", builtin_callcc, 1);
-    //-values
-    //-call-with-values
-    //-dynamic-wind
+    //- values
+    //- call-with-values
+    //- dynamic-wind
     // 6.5. Eval
     //- eval
     //- scheme-report-environment
