@@ -1677,13 +1677,13 @@ static Value builtin_expt(UNUSED Value *env, Value x, Value y)
 {
     int64_t a = value_get_int("modulo", x);
     int64_t b = value_get_int("modulo", y);
-    int64_t c;
     if (b < 0)
         runtime_error("expt", "cannot power %d which negative", b);
-    if (a == 0)
-        c = (b == 0) ? 1 : 0;
-    else if (b == 0)
+    int64_t c;
+    if (b == 0)
         c = 1;
+    else if (a == 0)
+        c = 0;
     else
         c = expt(a, b);
     return value_of_int(c);
