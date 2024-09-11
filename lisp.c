@@ -222,14 +222,19 @@ inline const char *value_type_to_string(Type t)
 
 // value_to_*: Convert internal data to external plain C
 
-inline int64_t value_to_int(Value v)
+inline int64_t value_to_int(Value x)
 {
-    return (int64_t) v >> FLAG_NBIT_INT;
+#if __x86_64__
+    return (int64_t) x >> FLAG_NBIT_INT;
+#else
+    int64_t i = x;
+    return (i - 1) / (1 << FLAG_NBIT_INT);
+#endif
 }
 
 inline Symbol value_to_symbol(Value v)
 {
-    return (Symbol) (v >> FLAG_NBIT);
+    return (Symbol) v >> FLAG_NBIT;
 }
 
 static const char *name_nth(Value list, int64_t n)
@@ -262,7 +267,8 @@ inline const char *value_to_string(Value v)
 
 inline Value value_of_int(int64_t i)
 {
-    return (Value) i << FLAG_NBIT_INT | FLAG_INT;
+    Value v = i;
+    return v << FLAG_NBIT_INT | FLAG_INT;
 }
 
 static inline Value list1(Value x)
