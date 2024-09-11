@@ -84,29 +84,29 @@ typedef struct {
 #define CFUNC(v) ((CFunc *) v)
 #define CLOSURE(v) ((Closure *) v)
 #define CONTINUATION(v) ((Continuation *) v)
-#define OF_BOOL(v) ((v) ? Qtrue : Qfalse)
 
 // singletons
 static const Pair PAIR_NIL = { .tag = TAG_PAIR, .car = 0, .cdr = 0 };
 // Value (uintptr_t):
-//   0b.....000 Pointer (Unchangeable pattern!)
-//   0b.......1 Integer
-//   0b......10 Symbol
-//   0b0--00100 #f
-//   0b0--01100 #t
-//   0b0-010100 <undef>
+//   0b....000 Pointer (Unchangeable pattern!)
+//   0b.....10 Integer
+//   0b0...111 Symbol
+//   0b0---001 #f
+//   0b0---011 #t
+//   0b0--0101 <undef>
 typedef const uintptr_t Flag;
-static Flag FLAG_NBIT_SYM = 2;
-static Flag FLAG_NBIT_INT = 1;
+static Flag FLAG_NBIT_SYM = 3;
+static Flag FLAG_NBIT_INT = 2;
 static Flag FLAG_MASK     = 0b111; // for 64 bit machine
-static Flag FLAG_MASK_SYM =  0b11;
-static Flag FLAG_MASK_INT =   0b1;
-static Flag FLAG_SYM      =  0b10;
-static Flag FLAG_INT      =   0b1;
+static Flag FLAG_MASK_SYM = 0b111;
+static Flag FLAG_MASK_INT =  0b11;
+static Flag FLAG_SYM      = 0b111;
+static Flag FLAG_INT      =  0b10;
 const Value Qnil = (Value) &PAIR_NIL;
-const Value Qfalse = 0b00100U;
-const Value Qtrue  = 0b01100U;
-const Value Qundef = 0b10100U; // may be an error or something
+const Value Qfalse = 0b001U;
+const Value Qtrue  = 0b011U;
+const Value Qundef = 0b101U; // may be an error or something
+#define OF_BOOL(v) ((v) << 1U | 1U)
 
 static const int64_t CFUNCARG_MAX = 7;
 
@@ -130,7 +130,7 @@ static Value source_data = Qnil;
 
 inline bool value_is_int(Value v)
 {
-    return v & FLAG_MASK_INT;
+    return (v & FLAG_MASK_INT) == FLAG_INT;
 }
 
 inline bool value_is_symbol(Value v)
@@ -222,7 +222,7 @@ inline int64_t value_to_int(Value x)
     return (int64_t) x >> FLAG_NBIT_INT;
 #else
     int64_t i = x;
-    return (i - 1) / (1 << FLAG_NBIT_INT);
+    return (i - (int)FLAG_NBIT_INT) / (1 << FLAG_NBIT_INT);
 #endif
 }
 
