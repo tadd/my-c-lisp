@@ -829,10 +829,10 @@
   (expect list? '(a b c))
   (expect list? '())
   (noexpect list? '(a . b))
-  (noexpect list? 1)))
-;;(let ((x (list ’a)))
-;;  (set-cdr! x x)
-;;  (list? x))
+  (noexpect list? 1)
+  (let ((x (list 'a)))
+    ;; (set-cdr! x x)
+    (expect list? x))))
 
 (describe "list" (lambda ()
   (expect null? '())
@@ -1205,7 +1205,7 @@
 ;; Local Extensions
 (describe "cputime" (lambda ()
   (let ((t (_cputime)))
-  ;; (expect number? t)
+    (expect number? t)
     (expect > t 0))))
 
 ;; (load "./test-callcc.scm")
