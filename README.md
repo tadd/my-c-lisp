@@ -20,3 +20,4 @@ You can use this under the [MIT license](./LICENSE.md).
 * Proper tail recursion
 * Better parsing based on formal syntax
 * Report error location with `line:column` and function names in a call stack
+* Split `lisp.c` into multiple files (maybe)
