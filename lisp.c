@@ -313,8 +313,17 @@ Value value_of_string(const char *s)
     return (Value) str;
 }
 
+static void expect_cfunc_arity(int64_t actual)
+{
+    if (actual <= CFUNCARG_MAX)
+        return;
+    error("arity too large: expected ..%"PRId64" but got %"PRId64,
+          CFUNCARG_MAX, actual);
+}
+
 static Value value_of_cfunc(cfunc_t cfunc, int64_t arity)
 {
+    expect_cfunc_arity(arity);
     CFunc *f = obj_new(sizeof(CFunc), TAG_CFUNC);
     f->proc.arity = arity;
     f->cfunc = cfunc;
@@ -837,7 +846,7 @@ static Value apply_cfunc(Value *env, Value proc, Value args)
 #endif
 }
 
-inline static void env_put(Value *env, Value name, Value val)
+static inline void env_put(Value *env, Value name, Value val)
 {
     *env = cons(cons(name, val), *env);
 }
@@ -920,24 +929,14 @@ static Value apply(Value *env, Value proc, Value args)
 
 static Value assq(Value key, Value l);
 
-static void expect_cfunc_arity(int64_t actual)
-{
-    if (actual <= CFUNCARG_MAX)
-        return;
-    error("arity too large: expected ..%"PRId64" but got %"PRId64,
-          CFUNCARG_MAX, actual);
-}
-
 // Note: Do not mistake this for "(define-syntax ...)" which related to macros
 static void define_syntax(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
-    expect_cfunc_arity(arity);
     env_put(env, value_of_symbol(name), value_of_syntax(cfunc, arity));
 }
 
 static void define_procedure(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
-    expect_cfunc_arity(arity);
     env_put(env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
 }
 
