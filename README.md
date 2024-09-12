@@ -16,6 +16,7 @@ You can use this under the [MIT license](./LICENSE.md).
 ## TODO
 
 * Implement syntax/procedures marked with `//-`
-* Better parsing based on formal syntax
+* Refactor `libtest.scm` with `define-syntax`
 * Proper tail recursion
+* Better parsing based on formal syntax
 * Report error location with `line:column` and function names in a call stack
