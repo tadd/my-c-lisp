@@ -1448,7 +1448,7 @@ static Value define_proc_internal(Value *env, Value heads, Value body)
     return define_variable(env, ident, val);
 }
 
-static Value proc_define(Value *env, Value args)
+static Value syn_define(Value *env, Value args)
 {
     if (args == Qnil)
         runtime_error("define: wrong number of arguments: expected 1+");
@@ -2276,7 +2276,7 @@ static void initialize(void)
     // 5. Program structure
 
     // 5.2. Definitions
-    define_syntax(e, "define", proc_define, -1);
+    define_syntax(e, "define", syn_define, -1);
     // 5.3. Syntax definitions
     //- define-syntax
 
