@@ -1144,7 +1144,7 @@ static Value syn_set(Value *env, Value ident, Value expr)
 // 4.2.1. Conditionals
 static inline void expect_nonnull(const char *msg, Value l)
 {
-    expect_type("case", TYPE_PAIR, l);
+    expect_type(msg, TYPE_PAIR, l);
     if (l == Qnil)
         runtime_error("%s: expected non-null?", msg);
 }
