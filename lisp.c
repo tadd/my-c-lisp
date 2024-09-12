@@ -170,11 +170,6 @@ inline bool value_is_pair(Value v)
     return value_tag_is(v, TAG_PAIR);
 }
 
-static inline bool value_is_atom(Value v)
-{
-    return !value_is_pair(v);
-}
-
 inline bool value_is_nil(Value v)
 {
     return v == Qnil;
@@ -1019,7 +1014,7 @@ static Value ieval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
-    if (v == Qnil || value_is_atom(v))
+    if (v == Qnil || !value_is_pair(v))
         return v;
     return eval_apply(env, car(v), cdr(v));
 }
@@ -1350,7 +1345,7 @@ static Value qq(Value *env, Value datum, int64_t depth)
 {
     if (depth == 0)
         return ieval(env, datum);
-    if (datum == Qnil || value_is_atom(datum))
+    if (datum == Qnil || !value_is_pair(datum))
         return datum;
     Value a = car(datum), d = cdr(datum);
     if (a == SYM_QUASIQUOTE) {
@@ -1396,10 +1391,10 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
 {
     Value ret = Qnil, last = Qnil;
     for (Value p = datum; p != Qnil; p = cdr(p)) {
-        bool is_atom = value_is_atom(p);
-        if (is_atom || is_quoted_terminal(p)) {
+        bool is_simple = !value_is_pair(p);
+        if (is_simple || is_quoted_terminal(p)) {
             expect_nonnull("quasiquote", ret);
-            PAIR(last)->cdr = is_atom ? p : qq(env, p, depth);
+            PAIR(last)->cdr = is_simple ? p : qq(env, p, depth);
             break;
         }
         Value elem = car(p);
@@ -2131,7 +2126,7 @@ static void display_list(FILE *f, Value l)
         if ((next = cdr(p)) == Qnil)
             break;
         fprintf(f, " ");
-        if (value_is_atom(next)) {
+        if (!value_is_pair(next)) {
             fprintf(f, ". ");
             fdisplay(f, next);
             break;
