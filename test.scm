@@ -26,23 +26,13 @@
   (expect eq? '() ())
   (expect equal? '(1 2 3) (list 1 2 3))
   (expect eq? 'foooo (quote foooo))
-  (let ((l '(+ 1 2)))
-     (expect equal? l (quote (+ 1 2)))
-     (expect equal? l (list (quote +) 1 2)))
   (expect equal? '(quote a) (list 'quote 'a))
   (expect equal? ''a (list 'quote 'a))
-  (expect equal? '"abc" "abc")
   (expect equal? '#t #t)))
 
 ;; 4.1.4. Procedures
 (describe "lambda" (lambda ()
-  (expect procedure? (lambda () 1))
   (expect eqv? ((lambda () 42)) 42)
-  (expect eqv? ((lambda (x) (* 2 x)) 21) 42)
-  (expect eqv? ((lambda (x y) (* x y)) 3 14) 42)
-  (expect eqv? (begin
-                 (define mul (lambda (x y) (* x y)))
-                 (mul 3 14)) 42)
   (expect eqv? (begin
                  (define a 42)
                  ((lambda () a))) 42)
@@ -90,10 +80,6 @@
 
 (describe "lambda is let" (lambda ()
   (expect eqv? ((lambda (x) x) 42) 42)
-  (expect eqv? ((lambda (x y) (+ x y)) 42 21) 63)
-  (expect eqv? ((lambda (x)
-                  ((lambda (y) (+ x y))
-                   21)) 42) 63)
   (expect eqv? ((lambda (x)
                   ((lambda (x) x) 1))
                 42) 1)
@@ -107,26 +93,11 @@
                   ((lambda (x) x) 10)
                   x) 42) 42)
   (expect equal? ((lambda (x)
-                    ((lambda (y) `(,x ,y))
+                    ((lambda (y) (list x y))
                      10)) 42) '(42 10))))
 
-(describe "lambda recursion" (lambda ()
-  (expect eqv? (begin
-                (define f (lambda (x)
-                            (if (> x 0)
-                                x
-                                (f (+ x 1)))))
-                (f 0)) 1)))
-
 (describe "lambda variadic" (lambda ()
-  (expect procedure? (lambda x 1))
   (expect eqv? ((lambda x 42)) 42)
-  (expect eqv? ((lambda x (* 2 (car x))) 21) 42)
-  (expect eqv? ((lambda x (* (car x) (car (cdr x))))
-                3 14) 42)
-  (expect eqv? (begin
-                 (define mul (lambda x (* (car x) (car (cdr x)))))
-                 (mul 3 14)) 42)
   (expect eqv? (begin
                  (define a 42)
                  ((lambda x a))) 42)
@@ -164,26 +135,17 @@
 (describe "define variable" (lambda ()
   (expect eqv? (begin
                  (define x 42)
-                 x) 42)
-  (expect eqv? (begin
-                 (define x (* -1 42))
-                 x) -42)))
+                 x) 42)))
 
 (describe "define function" (lambda ()
   (expect eqv? (begin
                  (define (f) 42)
-                 (f)) 42)
-  (expect eqv? (begin
-                 (define (f x) (* -1 x))
-                 (f 42)) -42)))
+                 (f)) 42)))
 
 (describe "define function variadic" (lambda ()
   (expect eqv? (begin
                  (define (f . a) 42)
-                 (f)) 42)
-  (expect eqv? (begin
-                 (define (f . a) (* -1 (car a)))
-                 (f 42)) -42)))
+                 (f)) 42)))
 
 (describe "define and lambda" (lambda ()
   (expect eqv? (begin
@@ -229,12 +191,6 @@
 
 ;; 6.4. Control features
 (describe "apply" (lambda ()
-  (expect equal? (apply + '(42)) 42)
-  (expect equal? (apply + 1 '(42)) 43)
-  (expect equal? (apply + 1 2 '(42)) 45)
-  (expect equal? (apply + 1 2 3 '(42)) 48)
-  (expect equal? (apply + '(1 2 3 42)) 48)
-  (expect equal? (apply + (apply + '(1 2 3)) '(42)) 48)
   (expect-t (apply equal? '((1) (1))))))
 
 (describe "apply variadic" (lambda ()

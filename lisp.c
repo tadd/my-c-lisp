@@ -115,8 +115,7 @@ static const int64_t CFUNCARG_MAX = 7;
 
 static Value toplevel_environment = Qnil; // alist of ('symbol . <value>)
 static Value symbol_names = Qnil; // ("name0" "name1" ...)
-static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLICING,
-    SYM_RARROW;
+static Value SYM_QUOTE;
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
@@ -148,21 +147,6 @@ static inline bool value_tag_is(Value v, ValueTag expected)
 inline bool value_is_string(Value v)
 {
     return value_tag_is(v, TAG_STR);
-}
-
-static inline bool value_is_procedure(Value v)
-{
-    if (is_immediate(v))
-        return false;
-    switch (VALUE_TAG(v)) {
-    case TAG_SYNTAX:
-    case TAG_CFUNC:
-    case TAG_CLOSURE:
-    case TAG_CONTINUATION:
-        return true;
-    default:
-        return false;
-    }
 }
 
 inline bool value_is_pair(Value v)
@@ -402,9 +386,6 @@ typedef enum {
     TOK_TYPE_LPAREN,
     TOK_TYPE_RPAREN,
     TOK_TYPE_QUOTE,
-    TOK_TYPE_GRAVE,
-    TOK_TYPE_COMMA,
-    TOK_TYPE_SPLICE,
     TOK_TYPE_INT,
     TOK_TYPE_DOT,
     TOK_TYPE_STR,
@@ -424,9 +405,6 @@ static const Token
     TOK_LPAREN = TOK(LPAREN),
     TOK_RPAREN = TOK(RPAREN),
     TOK_QUOTE = TOK(QUOTE),
-    TOK_GRAVE = TOK(GRAVE),
-    TOK_COMMA = TOK(COMMA),
-    TOK_SPLICE = TOK(SPLICE),
     TOK_DOT = TOK(DOT),
     TOK_EOF = TOK(EOF);
 // and ctor
@@ -486,15 +464,6 @@ static void skip_token_atmosphere(Parser *p)
         break;
     }
     ungetc(c, p->in);
-}
-
-static Token get_token_comma_or_splice(Parser *p)
-{
-    int c = fgetc(p->in);
-    if (c == '@')
-        return TOK_SPLICE;
-    ungetc(c, p->in);
-    return TOK_COMMA;
 }
 
 static Token get_token_dots(Parser *p)
@@ -618,10 +587,6 @@ static Token get_token(Parser *p)
         return TOK_RPAREN;
     case '\'':
         return TOK_QUOTE;
-    case '`':
-        return TOK_GRAVE;
-    case ',':
-        return get_token_comma_or_splice(p);
     case '.':
         return get_token_dots(p);
     case '"':
@@ -649,10 +614,8 @@ static void unget_token(Parser *p, Token t)
 }
 
 #define CXR1(f, x) f(a, x); f(d, x);
-#define CXR2(f, x) CXR1(f, a ## x) CXR1(f, d ## x)
-#define CXR3(f, x) CXR2(f, a ## x) CXR2(f, d ## x)
-#define CXR4(f, x) CXR3(f, a) CXR3(f, d)
-#define CXRS(f) CXR2(f,) CXR3(f,) CXR4(f,)
+#define CXR2(f, x) CXR1(f, d ## x) //CXR1(f, a ## x) 
+#define CXRS(f) CXR2(f,)
 
 #define DEF_CXR(x, y) \
     static Value c##x##y##r(Value v) { return c##x##r(c##y##r(v)); }
@@ -669,12 +632,6 @@ static const char *token_stringify(Token t)
         return ")";
     case TOK_TYPE_QUOTE:
         return "'";
-    case TOK_TYPE_GRAVE:
-        return "`";
-    case TOK_TYPE_COMMA:
-        return ",";
-    case TOK_TYPE_SPLICE:
-        return ",@";
     case TOK_TYPE_DOT:
         return ".";
     case TOK_TYPE_INT:
@@ -758,12 +715,6 @@ static Value parse_expr(Parser *p)
         parse_error(p, "expression", "')'");
     case TOK_TYPE_QUOTE:
         return parse_quoted(p, SYM_QUOTE);
-    case TOK_TYPE_GRAVE:
-        return parse_quoted(p, SYM_QUASIQUOTE);
-    case TOK_TYPE_COMMA:
-        return parse_quoted(p, SYM_UNQUOTE);
-    case TOK_TYPE_SPLICE:
-        return parse_quoted(p, SYM_UNQUOTE_SPLICING);
     case TOK_TYPE_DOT:
         parse_error(p, "expression", "'.'");
     case TOK_TYPE_STR:
@@ -947,8 +898,6 @@ static Value lookup(Value env, Value name)
         runtime_error("unbound variable: %s", value_to_string(name));
     return cdr(found);
 }
-
-static Value reverse(Value l);
 
 static Value iparse(FILE *in)
 {
@@ -1149,61 +1098,8 @@ static inline void expect_nonnull(const char *msg, Value l)
         runtime_error("%s: expected non-null?", msg);
 }
 
-static inline void expect_null(const char *msg, Value l)
-{
-    if (l != Qnil)
-        runtime_error("%s: expected null?", msg);
-}
-
-static Value eval_recipient(Value *env, Value test, Value recipients)
-{
-    expect_nonnull("recipient in cond", recipients);
-    Value recipient = ieval(env, car(recipients)), rest = cdr(recipients);
-    expect_null("end of => in cond", rest);
-    return apply(env, recipient, list1(test));
-}
-
-static Value syn_cond(Value *env, Value clauses)
-{
-    expect_arity_range("cond", 1, -1, clauses);
-
-    for (Value p = clauses; p != Qnil; p = cdr(p)) {
-        Value clause = car(p);
-        expect_nonnull("clause in cond", clause);
-        Value test = car(clause);
-        Value exprs = cdr(clause);
-        if (test == SYM_ELSE)
-            return eval_body(env, exprs);
-        Value t = ieval(env, test);
-        if (t != Qfalse) {
-            if (exprs == Qnil)
-                return t;
-            if (car(exprs) == SYM_RARROW)
-                return eval_recipient(env, t, cdr(exprs));
-            return eval_body(env, exprs);
-        }
-    }
-    return Qnil;
-}
-
-static Value memq(Value key, Value l);
-
-static Value syn_case(Value *env, Value args)
-{
-    expect_arity_range("case", 2, -1, args);
-    Value key = ieval(env, car(args)), clauses = cdr(args);
-
-    for (Value p = clauses; p != Qnil; p = cdr(p)) {
-        Value clause = car(p);
-        expect_nonnull("case", clause);
-        Value data = car(clause), exprs = cdr(clause);
-        expect_nonnull("case", exprs);
-        if (data == SYM_ELSE || memq(key, data) != Qfalse)
-            return eval_body(env, exprs);
-    }
-    return Qnil;
-}
-
+// 4.2. Derived expression types
+// 4.2.1. Conditionals
 static Value syn_and(Value *env, Value args)
 {
     Value last = Qtrue;
@@ -1221,24 +1117,6 @@ static Value syn_or(UNUSED Value *env, Value args)
             return curr;
     }
     return Qfalse;
-}
-
-// 4.2.2. Binding constructs
-static Value transpose_2xn(Value ls) // 2 * n
-{
-    Value firsts = Qnil, seconds = Qnil;
-    Value lfirsts = Qnil, lseconds = Qnil;
-    for (Value p = ls; p != Qnil; p = cdr(p)) {
-        Value l = car(p);
-        expect_arity(2, l);
-        lfirsts = append_at(lfirsts, car(l));
-        lseconds = append_at(lseconds, cadr(l));
-        if (firsts == Qnil) {
-            firsts = lfirsts;
-            seconds = lseconds;
-        }
-    }
-    return list2(firsts, seconds);
 }
 
 static Value define_variable(Value *env, Value ident, Value expr);
@@ -1259,172 +1137,11 @@ static Value let(Value *env, const char *func, Value bindings, Value body)
     return eval_body(&letenv, body);
 }
 
-static Value named_let(Value *env, Value var, Value bindings, Value body)
-{
-    Value tr = transpose_2xn(bindings);
-    Value params = car(tr), symargs = cadr(tr);
-    Value args = map_eval(env, symargs);
-    Value proc = lambda(env, params, body);
-    Value letenv = *env;
-    define_variable(&letenv, var, proc);
-    return apply(&letenv, proc, args);
-}
-
 static Value syn_let(Value *env, Value args)
 {
     expect_arity_range("let", 2, -1, args);
-    Value bind_or_var = car(args), body = cdr(args);
-    if (value_is_symbol(bind_or_var))
-        return named_let(env, bind_or_var, car(body), cdr(body));
-    return let(env, "let", bind_or_var, body);
-}
-
-static Value syn_let_star(Value *env, Value args)
-{
-    expect_arity_range("let*", 2, -1, args);
-    return let(env, "let*", car(args), cdr(args));
-}
-
-static Value syn_letrec(Value *env, Value args)
-{
-    expect_arity_range("letrec", 2, -1, args);
-    Value bindings = car(args);
-    Value body = cdr(args);
-    expect_type_twin("letrec", TYPE_PAIR, bindings, body);
-
-    Value letenv = *env;
-    for (Value p = bindings; p != Qnil; p = cdr(p)) {
-        Value b = car(p);
-        expect_type("letrec", TYPE_PAIR, b);
-        Value ident = car(b);
-        expect_type("letrec", TYPE_SYMBOL, ident);
-        Value val = ieval(&letenv, cadr(b));
-        env_put(&letenv, ident, val);
-    }
-    if (body == Qnil)
-        runtime_error("letrec: one or more expressions needed in body");
-    return eval_body(&letenv, body);
-}
-
-// 4.2.3. Sequencing
-static Value syn_begin(Value *env, Value body)
-{
-    return eval_body(env, body);
-}
-
-// 4.2.4. Iteration
-static Value syn_do(Value *env, Value args)
-{
-    expect_arity_range("do", 2, -1, args);
-
-    Value bindings = car(args), tests = cadr(args), body = cddr(args);
-    expect_type_twin("do", TYPE_PAIR, bindings, tests);
-    Value doenv = *env, steps = Qnil;
-    for (Value p = bindings; p != Qnil; p = cdr(p)) {
-        Value b = car(p);
-        expect_nonnull("do", b);
-        Value var = car(b), init = cadr(b), step = cddr(b);
-        if (step != Qnil)
-            steps = cons(cons(var, car(step)), steps);
-        expect_type("do", TYPE_SYMBOL, var);
-        env_put(&doenv, var, ieval(env, init)); // in the original env
-    }
-    Value test = car(tests), exprs = cdr(tests);
-    while (ieval(&doenv, test) == Qfalse) {
-        if (body != Qnil)
-            eval_body(&doenv, body);
-        for (Value p = steps; p != Qnil; p = cdr(p)) {
-            Value pstep = car(p);
-            Value var = car(pstep), step = cdr(pstep);
-            Value val = ieval(&doenv, step);
-            iset(&doenv, var, val);
-        }
-    }
-    return exprs == Qnil ? Qnil : eval_body(&doenv, exprs);
-}
-
-// 4.2.6. Quasiquotation
-static Value qq_list(Value *env, Value datum, int64_t depth);
-
-static Value qq(Value *env, Value datum, int64_t depth)
-{
-    if (depth == 0)
-        return ieval(env, datum);
-    if (datum == Qnil || value_is_atom(datum))
-        return datum;
-    Value a = car(datum), d = cdr(datum);
-    if (a == SYM_QUASIQUOTE) {
-        expect_nonnull("nested quasiquote", d);
-        Value v = qq(env, car(d), depth + 1);
-        return list2(a, v);
-    }
-    if (a == SYM_UNQUOTE || a == SYM_UNQUOTE_SPLICING) {
-        expect_nonnull("unquotes in quasiquote", d);
-        Value v = qq(env, car(d), depth - 1);
-        return depth == 1 ? v : list2(a, v);
-    }
-    return qq_list(env, datum, depth);
-}
-
-static Value last_pair(Value l)
-{
-    Value last = Qnil;
-    for (Value p = l; p != Qnil; p = cdr(p))
-        last = p;
-    return last;
-}
-
-static bool is_quoted_terminal(Value list)
-{
-    Value a = car(list), d = cdr(list);
-    return (a == SYM_UNQUOTE || a == SYM_QUASIQUOTE) &&
-        d != Qnil && cdr(d) == Qnil;
-}
-
-static Value splice_at(Value last, Value to_splice)
-{
-    if (to_splice == Qnil)
-        return last; // as is
-    expect_type("unquote-splicing", TYPE_PAIR, to_splice);
-    if (last == Qnil)
-        return to_splice;
-    PAIR(last)->cdr = to_splice;
-    return last_pair(to_splice);
-}
-
-static Value qq_list(Value *env, Value datum, int64_t depth)
-{
-    Value ret = Qnil, last = Qnil;
-    for (Value p = datum; p != Qnil; p = cdr(p)) {
-        bool is_atom = value_is_atom(p);
-        if (is_atom || is_quoted_terminal(p)) {
-            expect_nonnull("quasiquote", ret);
-            PAIR(last)->cdr = is_atom ? p : qq(env, p, depth);
-            break;
-        }
-        Value elem = car(p);
-        bool spliced = (value_is_pair(elem) && car(elem) == SYM_UNQUOTE_SPLICING);
-        Value v = qq(env, elem, depth);
-        last = spliced ? splice_at(last, v) : append_at(last, v);
-        if (ret == Qnil)
-            ret = last;
-    }
-    return ret;
-}
-
-static Value syn_quasiquote(Value *env, Value datum)
-{
-    return qq(env, datum, 1);
-}
-
-static Value syn_unquote(UNUSED Value *env, UNUSED Value args)
-{
-    runtime_error("unquote: applied out of quasiquote (`)");
-}
-
-static Value syn_unquote_splicing(UNUSED Value *env, UNUSED Value args)
-{
-    runtime_error("unquote-splicing: applied out of quasiquote (`)");
+    Value binds = car(args), body = cdr(args);
+    return let(env, "let", binds, body);
 }
 
 // 5.2. Definitions
@@ -1477,292 +1194,6 @@ static Value proc_eq(UNUSED Value *env, Value x, Value y)
     return OF_BOOL(eq(x, y));
 }
 
-static bool equal(Value x, Value y)
-{
-    if (x == y)
-        return true;
-    Type tx = value_type_of(x), ty = value_type_of(y);
-    if (tx != ty)
-        return false;
-    switch (tx) {
-    case TYPE_PAIR:
-        if (x == Qnil || y == Qnil)
-            return false;
-        return equal(car(x), car(y)) &&
-               equal(cdr(x), cdr(y));
-    case TYPE_STR:
-        return (strcmp(STRING(x)->body, STRING(y)->body) == 0);
-    default:
-        return false;
-    }
-}
-
-static Value proc_equal(UNUSED Value *env, Value x, Value y)
-{
-    return OF_BOOL(equal(x, y));
-}
-
-// 6.2.5. Numerical operations
-static int64_t value_get_int(const char *header, Value v)
-{
-    expect_type(header, TYPE_INT, v);
-    return value_to_int(v);
-}
-
-static Value proc_integer_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj));
-}
-
-static Value proc_numeq(UNUSED Value *env, Value args)
-{
-    expect_arity_range("=", 2, -1, args);
-
-    int64_t x = value_get_int("=", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("=", car(args));
-        if (x != y)
-            return Qfalse;
-    }
-    return Qtrue;
-}
-
-static Value proc_lt(UNUSED Value *env, Value args)
-{
-    expect_arity_range("<", 2, -1, args);
-
-    int64_t x = value_get_int("<", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<", car(args));
-        if (x >= y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
-}
-
-static Value proc_gt(UNUSED Value *env, Value args)
-{
-    expect_arity_range(">", 2, -1, args);
-
-    int64_t x = value_get_int(">", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">", car(args));
-        if (x <= y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
-}
-
-static Value proc_le(UNUSED Value *env, Value args)
-{
-    expect_arity_range("<=", 2, -1, args);
-
-    int64_t x = value_get_int("<=", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int("<=", car(args));
-        if (x > y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
-}
-
-static Value proc_ge(UNUSED Value *env, Value args)
-{
-    expect_arity_range(">=", 2, -1, args);
-
-    int64_t x = value_get_int(">=", car(args));
-    while ((args = cdr(args)) != Qnil) {
-        int64_t y = value_get_int(">=", car(args));
-        if (x < y)
-            return Qfalse;
-        x = y;
-    }
-    return Qtrue;
-}
-
-static Value proc_zero_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj) && value_to_int(obj) == 0);
-}
-
-static Value proc_positive_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj) && value_to_int(obj) > 0);
-}
-
-static Value proc_negative_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj) && value_to_int(obj) < 0);
-}
-
-static Value proc_odd_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) != 0);
-}
-
-static Value proc_even_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) == 0);
-}
-
-static Value proc_max(UNUSED Value *env, Value args)
-{
-    expect_arity_range("max", 1, -1, args);
-    int64_t max = value_get_int("max", car(args));
-    for (Value p = cdr(args); p != Qnil; p = cdr(p)) {
-        int64_t x = value_get_int("max", car(p));
-        if (max < x)
-            max = x;
-    }
-    return value_of_int(max);
-}
-
-static Value proc_min(UNUSED Value *env, Value args)
-{
-    expect_arity_range("min", 1, -1, args);
-    int64_t min = value_get_int("min", car(args));
-    for (Value p = cdr(args); p != Qnil; p = cdr(p)) {
-        int64_t x = value_get_int("min", car(p));
-        if (min > x)
-            min = x;
-    }
-    return value_of_int(min);
-}
-
-static Value proc_add(UNUSED Value *env, Value args)
-{
-    int64_t y = 0;
-    for (Value p = args; p != Qnil; p = cdr(p))
-        y += value_get_int("+", car(p));
-    return value_of_int(y);
-}
-
-static Value proc_sub(UNUSED Value *env, Value args)
-{
-    expect_arity_range("-", 1, -1, args);
-
-    Value rest = cdr(args);
-    int64_t y = 0;
-    if (rest == Qnil)
-        rest = args;
-    else
-        y = value_get_int("-", car(args));
-    for (Value p = rest; p != Qnil; p = cdr(p))
-        y -= value_get_int("-", car(p));
-    return value_of_int(y);
-}
-
-static Value proc_mul(UNUSED Value *env, Value args)
-{
-    int64_t y = 1;
-    for (Value p = args; p != Qnil; p = cdr(p))
-        y *= value_get_int("*", car(p));
-    return value_of_int(y);
-}
-
-static Value proc_div(UNUSED Value *env, Value args)
-{
-    expect_arity_range("/", 1, -1, args);
-
-    Value rest = cdr(args);
-    int64_t y = 1;
-    if (rest == Qnil)
-        rest = args;
-    else
-        y = value_get_int("/", car(args));
-    for (Value p = rest; p != Qnil; p = cdr(p)) {
-        int64_t x = value_get_int("/", car(p));
-        if (x == 0)
-            runtime_error("/: divided by zero");
-        y /= x;
-    }
-    return value_of_int(y);
-}
-
-static Value proc_abs(UNUSED Value *env, Value x)
-{
-    int64_t n = value_get_int("abs", x);
-    return value_of_int(n < 0 ? -n : n);
-}
-
-static Value proc_quotient(UNUSED Value *env, Value x, Value y)
-{
-    int64_t b = value_get_int("quotient", y);
-    if (b == 0)
-        runtime_error("quotient: divided by zero");
-    int64_t a = value_get_int("quotient", x);
-    int64_t c = a / b;
-    return value_of_int(c);
-}
-
-
-static Value proc_remainder(UNUSED Value *env, Value x, Value y)
-{
-    int64_t b = value_get_int("remainder", y);
-    if (b == 0)
-        runtime_error("remainder: divided by zero");
-    int64_t a = value_get_int("remainder", x);
-    int64_t c = a % b;
-    return value_of_int(c);
-}
-
-static Value proc_modulo(UNUSED Value *env, Value x, Value y)
-{
-    int64_t b = value_get_int("modulo", y);
-    if (b == 0)
-        runtime_error("modulo: divided by zero");
-    int64_t a = value_get_int("modulo", x);
-    int64_t c = a % b;
-    if ((a < 0 && b > 0) || (a > 0 && b < 0))
-        c += b;
-    return value_of_int(c);
-}
-
-static int64_t expt(int64_t x, int64_t y)
-{
-    int64_t z = 1;
-    while (y > 0) {
-        if ((y % 2) == 0) {
-            x *= x;
-            y /= 2;
-        } else {
-            z *= x;
-            y--;
-        }
-    }
-    return z;
-}
-
-static Value proc_expt(UNUSED Value *env, Value x, Value y)
-{
-    int64_t a = value_get_int("expt", x);
-    int64_t b = value_get_int("expt", y);
-    if (b < 0)
-        runtime_error("expt", "cannot power %d which negative", b);
-    int64_t c;
-    if (b == 0)
-        c = 1;
-    else if (a == 0)
-        c = 0;
-    else
-        c = expt(a, b);
-    return value_of_int(c);
-}
-
-// 6.3.1. Booleans
-static Value proc_not(UNUSED Value *env, Value x)
-{
-    return OF_BOOL(x == Qfalse);
-}
-
-static Value proc_boolean_p(UNUSED Value *env, Value x)
-{
-    return OF_BOOL(x == Qtrue || x == Qfalse);
-}
-
 // 6.3.2. Pairs and lists
 static Value proc_pair_p(UNUSED Value *env, Value o)
 {
@@ -1804,11 +1235,6 @@ static Value proc_cdr(UNUSED Value *env, Value pair)
     return cdr(pair);
 }
 
-static Value proc_null_p(UNUSED Value *env, Value list)
-{
-    return OF_BOOL(list == Qnil);
-}
-
 static Value proc_list_p(UNUSED Value *env, Value list)
 {
     for (Value p = list; p != Qnil; p = cdr(p)) {
@@ -1833,55 +1259,12 @@ Value list(Value arg, ...)
     return l;
 }
 
-static Value proc_list(UNUSED Value *env, Value args)
-{
-    return args;
-}
-
 int64_t length(Value list)
 {
     int64_t len = 0;
     for (Value p = list; p != Qnil; p = cdr(p))
         len++;
     return len;
-}
-
-static Value proc_length(UNUSED Value *env, Value list)
-{
-    expect_type("length", TYPE_PAIR, list);
-    return value_of_int(length(list));
-}
-
-static Value dup_list(Value l, Value *plast)
-{
-    Value dup = Qnil, last = Qnil;
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        expect_type("append", TYPE_PAIR, p);
-        last = append_at(last, car(p));
-        if (dup == Qnil)
-            dup = last;
-    }
-    *plast = last;
-    return dup;
-}
-
-static Value proc_append(UNUSED Value *env, Value args)
-{
-    Value l = Qnil, last = Qnil;
-    Value p, next;
-    for (p = args; p != Qnil; p = next) {
-        if ((next = cdr(p)) == Qnil)
-            break;
-        Value dup = dup_list(car(p), &last);
-        l = append2(l, dup);
-    }
-    if (p != Qnil) {
-        if (l == Qnil)
-            l = car(p);
-        else
-            PAIR(last)->cdr = car(p);
-    }
-    return l;
 }
 
 static Value reverse(Value l)
@@ -1898,65 +1281,6 @@ static Value proc_reverse(UNUSED Value *env, Value list)
     return reverse(list);
 }
 
-static Value list_tail(const char *func, Value list, Value k)
-{
-    expect_type(func, TYPE_PAIR, list);
-    expect_type(func, TYPE_INT, k);
-    int64_t n = value_to_int(k);
-    if (n < 0)
-        runtime_error("%s: 2nd element needs to be non-negative: "PRId64, n);
-    Value p = list;
-    for (int64_t i = 0; p != Qnil; p = cdr(p), i++) {
-        if (i == n)
-            break;
-    }
-    if (p == Qnil)
-        runtime_error("%s: list has fewer than "PRId64" element", func, n);
-    return p;
-}
-
-static Value proc_list_tail(UNUSED Value *env, Value list, Value k)
-{
-    return list_tail("list-tail", list, k);
-}
-
-static Value proc_list_ref(UNUSED Value *env, Value list, Value k)
-{
-    return car(list_tail("list-ref", list, k));
-}
-
-static Value memq(Value key, Value l)
-{
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        Value e = car(p);
-        if (eq(e, key))
-            return p;
-    }
-    return Qfalse;
-}
-
-static Value proc_memq(UNUSED Value *env, Value obj, Value list)
-{
-    expect_type("memq", TYPE_PAIR, list);
-    return memq(obj, list);
-}
-
-static Value member(Value key, Value l)
-{
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        Value e = car(p);
-        if (equal(e, key))
-            return p;
-    }
-    return Qfalse;
-}
-
-static Value proc_member(UNUSED Value *env, Value obj, Value list)
-{
-    expect_type("member", TYPE_PAIR, list);
-    return member(obj, list);
-}
-
 static Value assq(Value key, Value l)
 {
     for (Value p = l; p != Qnil; p = cdr(p)) {
@@ -1965,58 +1289,6 @@ static Value assq(Value key, Value l)
             return entry;
     }
     return Qfalse;
-}
-
-static Value proc_assq(UNUSED Value *env, Value obj, Value alist)
-{
-    expect_type("assq", TYPE_PAIR, alist);
-    return assq(obj, alist);
-}
-
-static Value assoc(Value key, Value l)
-{
-    for (Value p = l; p != Qnil; p = cdr(p)) {
-        Value entry = car(p);
-        if (value_is_pair(entry) && equal(car(entry), key))
-            return entry;
-    }
-    return Qfalse;
-}
-
-static Value proc_assoc(UNUSED Value *env, Value obj, Value alist)
-{
-    expect_type("assoc", TYPE_PAIR, alist);
-    return assoc(obj, alist);
-}
-
-// 6.3.3. Symbols
-static Value proc_symbol_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_symbol(obj));
-}
-
-// 6.3.5. Strings
-static Value proc_string_p(UNUSED Value *env, Value obj)
-{
-    return OF_BOOL(value_is_string(obj));
-}
-
-static Value proc_string_length(UNUSED Value *env, Value s)
-{
-    expect_type("string-length", TYPE_STR, s);
-    return value_of_int(strlen(STRING(s)->body));
-}
-
-static Value proc_string_eq(UNUSED Value *env, Value s1, Value s2)
-{
-    expect_type_twin("string=?", TYPE_STR, s1, s2);
-    return OF_BOOL(strcmp(STRING(s1)->body, STRING(s2)->body) == 0);
-}
-
-// 6.4. Control features
-static Value proc_procedure_p(UNUSED Value *env, Value o)
-{
-    return OF_BOOL(value_is_procedure(o));
 }
 
 static Value apply_args(Value args)
@@ -2040,84 +1312,6 @@ static Value proc_apply(Value *env, Value args)
     expect_type("apply", TYPE_PROC, proc);
     Value appargs = apply_args(cdr(args));
     return apply(env, proc, appargs);
-}
-
-static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
-{
-    Value lcars = Qnil, lcdrs = Qnil;
-    Value cars = Qnil , cdrs = Qnil;
-    for (Value p = ls, l; p != Qnil; p = cdr(p)) {
-        if ((l = car(p)) == Qnil)
-            return false;
-        lcars = append_at(lcars, car(l));
-        if (cars == Qnil)
-            cars = lcars;
-        lcdrs = append_at(lcdrs, cdr(l));
-        if (cdrs == Qnil)
-            cdrs = lcdrs;
-    }
-    *pcars = cars;
-    *pcdrs = cdrs;
-    return true;
-}
-
-static Value proc_map(Value *env, Value args)
-{
-    expect_arity_range("map", 2, -1, args);
-
-    Value proc = car(args);
-    Value lists = cdr(args);
-    Value last = Qnil, ret = Qnil;
-    Value cars, cdrs;
-    while (cars_cdrs(lists, &cars, &cdrs)) {
-        Value v = apply(env, proc, cars);
-        last = append_at(last, v);
-        if (ret == Qnil)
-            ret = last;
-        lists = cdrs;
-    }
-    return ret;
-}
-
-static Value proc_for_each(Value *env, Value args)
-{
-    expect_arity_range("for-each", 2, -1, args);
-
-    Value proc = car(args);
-    Value lists = cdr(args);
-    Value cars, cdrs;
-    while (cars_cdrs(lists, &cars, &cdrs)) {
-        apply(env, proc, cars);
-        lists = cdrs;
-    }
-    return Qnil;
-}
-
-static Value value_of_continuation(void)
-{
-    Continuation *c = obj_new(sizeof(Continuation), TAG_CONTINUATION);
-    c->proc.arity = 1; // by spec
-    return (Value) c;
-}
-
-static bool continuation_set(Value c)
-{
-    GET_SP(sp); // must be the first!
-    Continuation *cont = CONTINUATION(c);
-    cont->sp = sp;
-    cont->shelter_len = stack_base - sp;
-    cont->shelter = xmalloc(cont->shelter_len);
-    memcpy(cont->shelter, (void *) sp, cont->shelter_len);
-    return setjmp(cont->state);
-}
-
-static Value proc_callcc(Value *env, Value proc)
-{
-    expect_type("call/cc", TYPE_PROC, proc);
-    Value c = value_of_continuation();
-    if (continuation_set(c) != 0)
-        return CONTINUATION(c)->retval;
-    return apply(env, proc, list1(c));
 }
 
 // 6.6.3. Output
@@ -2188,12 +1382,6 @@ static Value proc_display(UNUSED Value *env, Value obj)
     return obj;
 }
 
-static Value proc_newline(void)
-{
-    puts("");
-    return Qnil;
-}
-
 // 6.6.4. System interface
 static Value proc_load(UNUSED Value *env, Value path)
 {
@@ -2201,42 +1389,12 @@ static Value proc_load(UNUSED Value *env, Value path)
     return load_inner(value_to_string(path));
 }
 
-// Local Extensions
-static Value proc_print(UNUSED Value *env, Value obj)
-{
-    display(obj);
-    puts("");
-    return obj;
-}
-
-static Value proc_cputime(void) // in micro sec
-{
-    static const int64_t MICRO = 1000*1000;
-    struct timespec t;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
-    int64_t n = t.tv_sec * MICRO + lround(t.tv_nsec / 1000.0);
-    return value_of_int(n);
-}
-
-#define DEF_CXR_BUILTIN(x, y) \
-    static Value proc_c##x##y##r(UNUSED Value *env, Value v) \
-    { \
-        expect_type("c" #x #y "r", TYPE_PAIR, v); \
-        return c##x##y##r(v); \
-    }
-CXRS(DEF_CXR_BUILTIN)
-
 ATTR(constructor)
 static void initialize(void)
 {
     static char basedir[PATH_MAX];
     load_basedir = getcwd(basedir, sizeof(basedir));
-    SYM_ELSE = value_of_symbol("else");
     SYM_QUOTE = value_of_symbol("quote");
-    SYM_QUASIQUOTE = value_of_symbol("quasiquote");
-    SYM_UNQUOTE = value_of_symbol("unquote");
-    SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
-    SYM_RARROW = value_of_symbol("=>");
 
     Value *e = &toplevel_environment;
 
@@ -2253,25 +1411,10 @@ static void initialize(void)
     define_syntax(e, "set!", syn_set, 2);
     // 4.2. Derived expression types
     // 4.2.1. Conditionals
-    define_syntax(e, "cond", syn_cond, -1);
-    define_syntax(e, "case", syn_case, -1);
     define_syntax(e, "and", syn_and, -1);
     define_syntax(e, "or", syn_or, -1);
     // 4.2.2. Binding constructs
     define_syntax(e, "let", syn_let, -1); // with named let in 4.2.4.
-    define_syntax(e, "let*", syn_let_star, -1);
-    define_syntax(e, "letrec", syn_letrec, -1);
-    // 4.2.3. Sequencing
-    define_syntax(e, "begin", syn_begin, -1);
-    // 4.2.4. Iteration
-    define_syntax(e, "do", syn_do, -1);
-    // 4.2.6. Quasiquotation
-    define_syntax(e, "quasiquote", syn_quasiquote, 1);
-    define_syntax(e, "unquote", syn_unquote, 1);
-    define_syntax(e, "unquote-splicing", syn_unquote_splicing, 1);
-    // 4.3. Macros
-    // 4.3.2. Pattern language
-    //- syntax-rules
 
     // 5. Program structure
 
@@ -2283,91 +1426,18 @@ static void initialize(void)
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    define_procedure(e, "eqv?", proc_eq, 2); // alias
     define_procedure(e, "eq?", proc_eq, 2);
-    define_procedure(e, "equal?", proc_equal, 2);
-    // 6.2. Numbers
-    // 6.2.5. Numerical operations
-    define_procedure(e, "number?", proc_integer_p, 1); // alias
-    define_procedure(e, "integer?", proc_integer_p, 1);
-    define_procedure(e, "=", proc_numeq, -1);
-    define_procedure(e, "<", proc_lt, -1);
-    define_procedure(e, ">", proc_gt, -1);
-    define_procedure(e, "<=", proc_le, -1);
-    define_procedure(e, ">=", proc_ge, -1);
-    define_procedure(e, "zero?", proc_zero_p, 1);
-    define_procedure(e, "positive?", proc_positive_p, 1);
-    define_procedure(e, "negative?", proc_negative_p, 1);
-    define_procedure(e, "odd?", proc_odd_p, 1);
-    define_procedure(e, "even?", proc_even_p, 1);
-    define_procedure(e, "max", proc_max, -1);
-    define_procedure(e, "min", proc_min, -1);
-    define_procedure(e, "+", proc_add, -1);
-    define_procedure(e, "*", proc_mul, -1);
-    define_procedure(e, "-", proc_sub, -1);
-    define_procedure(e, "/", proc_div, -1);
-    define_procedure(e, "abs", proc_abs, 1);
-    define_procedure(e, "quotient", proc_quotient, 2);
-    define_procedure(e, "remainder", proc_remainder, 2);
-    define_procedure(e, "modulo", proc_modulo, 2);
-    define_procedure(e, "expt", proc_expt, 2);
-    // 6.3. Other data types
-    // 6.3.1. Booleans
-    define_procedure(e, "not", proc_not, 1);
-    define_procedure(e, "boolean?", proc_boolean_p, 1);
     // 6.3.2. Pairs and lists
     define_procedure(e, "pair?", proc_pair_p, 1);
     define_procedure(e, "cons", proc_cons, 2);
     define_procedure(e, "car", proc_car, 1);
     define_procedure(e, "cdr", proc_cdr, 1);
-#define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", proc_c##x##y##r, 1)
-    CXRS(DEFUN_CXR); // defines 28 procedures
-    //- set-car!
-    //- set-cdr!
-    define_procedure(e, "null?", proc_null_p, 1);
     define_procedure(e, "list?", proc_list_p, 1);
-    define_procedure(e, "list", proc_list, -1);
-    define_procedure(e, "length", proc_length, 1);
-    define_procedure(e, "append", proc_append, -1);
     define_procedure(e, "reverse", proc_reverse, 1);
-    define_procedure(e, "list-tail", proc_list_tail, 2);
-    define_procedure(e, "list-ref", proc_list_ref, 2);
-    define_procedure(e, "memq", proc_memq, 2);
-    define_procedure(e, "memv", proc_memq, 2); // alias
-    define_procedure(e, "member", proc_member, 2);
-    define_procedure(e, "assq", proc_assq, 2);
-    define_procedure(e, "assv", proc_assq, 2); // alias
-    define_procedure(e, "assoc", proc_assoc, 2); // alias
-    // 6.3.3. Symbols
-    define_procedure(e, "symbol?", proc_symbol_p, 1);
-    // 6.3.5. Strings
-    define_procedure(e, "string?", proc_string_p, 1);
-    define_procedure(e, "string-length", proc_string_length, 1);
-    define_procedure(e, "string=?", proc_string_eq, 2);
     // 6.4. Control features
-    define_procedure(e, "procedure?", proc_procedure_p, 1);
     define_procedure(e, "apply", proc_apply, -1);
-    define_procedure(e, "map", proc_map, -1);
-    define_procedure(e, "for-each", proc_for_each, -1);
-    define_procedure(e, "call/cc", proc_callcc, 1); // alias
-    define_procedure(e, "call-with-current-continuation", proc_callcc, 1);
-    //- values
-    //- call-with-values
-    //- dynamic-wind
-    // 6.5. Eval
-    //- eval
-    //- scheme-report-environment
-    //- null-environment
-    // 6.6. Input and output
-    // 6.6.2. Input
-    //- read
     // 6.6.3. Output
     define_procedure(e, "display", proc_display, 1);
-    define_procedure(e, "newline", proc_newline, 0);
     // 6.6.4. System interface
     define_procedure(e, "load", proc_load, 1);
-
-    // Local Extensions
-    define_procedure(e, "print", proc_print, 1); // like Gauche
-    define_procedure(e, "_cputime", proc_cputime, 0);
 }
