@@ -1813,21 +1813,6 @@ static Value proc_list_p(UNUSED Value *env, Value list)
     return Qtrue;
 }
 
-// C API-level utility
-Value list(Value arg, ...)
-{
-    Value l = Qnil, last = l;
-    va_list ap;
-    va_start(ap, arg);
-    for (Value o = arg; o != Qundef; o = va_arg(ap, Value)) {
-        last = append_at(last, o);
-        if (l == Qnil)
-            l = last;
-    }
-    va_end(ap);
-    return l;
-}
-
 static Value proc_list(UNUSED Value *env, Value args)
 {
     return args;

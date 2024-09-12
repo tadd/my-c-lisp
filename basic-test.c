@@ -77,6 +77,24 @@ static Value parse_expr_string(const char *in)
     return car(v);
 }
 
+// terminate with Qundef
+static Value list(Value arg, ...)
+{
+    if (arg == Qundef)
+        return Qnil;
+    Value vec[0x100] = { arg, }, o;
+    va_list ap;
+    va_start(ap, arg);
+    long i = 1;
+    while ((o = va_arg(ap, Value)) != Qundef)
+        vec[i++] = o;
+    va_end(ap);
+    Value l = Qnil;
+    while (--i >= 0)
+        l = cons(vec[i], l);
+    return l;
+}
+
 Test(lisp, nil) {
     cr_expect(value_is_nil(Qnil));
 }

@@ -43,7 +43,6 @@ Value value_of_symbol(const char *s);
 Value value_of_string(const char *s);
 
 Value cons(Value car, Value cdr);
-Value list(Value v, ...); // terminate with Qundef
 int64_t length(Value list);
 
 Value car(Value v);
@@ -54,7 +53,6 @@ void display(Value v);
 Value parse(const char *path);
 Value parse_string(const char *in);
 Value load(const char *path);
-Value eval(Value v);
 Value eval_string(const char *s);
 
 const char *error_message(void);
