@@ -981,13 +981,13 @@ Value parse_string(const char *in)
 //
 // Evaluation
 //
-static Value ieval(Value *env, Value v); // internal
+static Value eval(Value *env, Value v);
 
 static Value eval_body(Value *env, Value body)
 {
     Value last = Qnil;
     for (Value p = body; p != Qnil; p = cdr(p))
-        last = ieval(env, car(p));
+        last = eval(env, car(p));
     return last;
 }
 
@@ -995,7 +995,7 @@ static Value map_eval(Value *env, Value l)
 {
     Value mapped = Qnil, last = Qnil;
     for (Value p = l; p != Qnil; p = cdr(p)) {
-        last = append_at(last, ieval(env, car(p)));
+        last = append_at(last, eval(env, car(p)));
         if (mapped == Qnil)
             mapped = last;
     }
@@ -1004,13 +1004,13 @@ static Value map_eval(Value *env, Value l)
 
 static Value eval_apply(Value *env, Value symproc, Value args)
 {
-    Value proc = ieval(env, symproc);
+    Value proc = eval(env, symproc);
     if (!value_tag_is(proc, TAG_SYNTAX))
         args = map_eval(env, args);
     return apply(env, proc, args);
 }
 
-static Value ieval(Value *env, Value v)
+static Value eval(Value *env, Value v)
 {
     if (value_is_symbol(v))
         return lookup(*env, v);
@@ -1111,12 +1111,12 @@ static Value syn_if(Value *env, Value args)
     expect_arity_range("if", 2, 3, args);
 
     Value cond = car(args), then = cadr(args);
-    if (ieval(env, cond) != Qfalse)
-        return ieval(env, then);
+    if (eval(env, cond) != Qfalse)
+        return eval(env, then);
     Value els = cddr(args);
     if (els == Qnil)
         return Qnil;
-    return ieval(env, car(els));
+    return eval(env, car(els));
 }
 
 // 4.1.6. Assignments
@@ -1132,7 +1132,7 @@ static Value iset(Value *env, Value ident, Value val)
 static Value syn_set(Value *env, Value ident, Value expr)
 {
     expect_type("set!", TYPE_SYMBOL, ident);
-    return iset(env, ident, ieval(env, expr));
+    return iset(env, ident, eval(env, expr));
 }
 
 // 4.2. Derived expression types
@@ -1153,7 +1153,7 @@ static inline void expect_null(const char *msg, Value l)
 static Value eval_recipient(Value *env, Value test, Value recipients)
 {
     expect_nonnull("recipient in cond", recipients);
-    Value recipient = ieval(env, car(recipients)), rest = cdr(recipients);
+    Value recipient = eval(env, car(recipients)), rest = cdr(recipients);
     expect_null("end of => in cond", rest);
     return apply(env, recipient, list1(test));
 }
@@ -1169,7 +1169,7 @@ static Value syn_cond(Value *env, Value clauses)
         Value exprs = cdr(clause);
         if (test == SYM_ELSE)
             return eval_body(env, exprs);
-        Value t = ieval(env, test);
+        Value t = eval(env, test);
         if (t != Qfalse) {
             if (exprs == Qnil)
                 return t;
@@ -1186,7 +1186,7 @@ static Value memq(Value key, Value l);
 static Value syn_case(Value *env, Value args)
 {
     expect_arity_range("case", 2, -1, args);
-    Value key = ieval(env, car(args)), clauses = cdr(args);
+    Value key = eval(env, car(args)), clauses = cdr(args);
 
     for (Value p = clauses; p != Qnil; p = cdr(p)) {
         Value clause = car(p);
@@ -1203,7 +1203,7 @@ static Value syn_and(Value *env, Value args)
 {
     Value last = Qtrue;
     for (Value p = args; p != Qnil; p = cdr(p)) {
-        if ((last = ieval(env, car(p))) == Qfalse)
+        if ((last = eval(env, car(p))) == Qfalse)
             break;
     }
     return last;
@@ -1212,7 +1212,7 @@ static Value syn_and(Value *env, Value args)
 static Value syn_or(UNUSED Value *env, Value args)
 {
     for (Value p = args, curr; p != Qnil; p = cdr(p)) {
-        if ((curr = ieval(env, car(p))) != Qfalse)
+        if ((curr = eval(env, car(p))) != Qfalse)
             return curr;
     }
     return Qfalse;
@@ -1249,7 +1249,7 @@ static Value let(Value *env, const char *func, Value bindings, Value body)
         expect_type(func, TYPE_PAIR, b);
         Value ident = car(b), expr = cadr(b);
         expect_type(func, TYPE_SYMBOL, ident);
-        env_put(&letenv, ident, ieval(env, expr));
+        env_put(&letenv, ident, eval(env, expr));
     }
     return eval_body(&letenv, body);
 }
@@ -1293,7 +1293,7 @@ static Value syn_letrec(Value *env, Value args)
         expect_type("letrec", TYPE_PAIR, b);
         Value ident = car(b);
         expect_type("letrec", TYPE_SYMBOL, ident);
-        Value val = ieval(&letenv, cadr(b));
+        Value val = eval(&letenv, cadr(b));
         env_put(&letenv, ident, val);
     }
     if (body == Qnil)
@@ -1322,16 +1322,16 @@ static Value syn_do(Value *env, Value args)
         if (step != Qnil)
             steps = cons(cons(var, car(step)), steps);
         expect_type("do", TYPE_SYMBOL, var);
-        env_put(&doenv, var, ieval(env, init)); // in the original env
+        env_put(&doenv, var, eval(env, init)); // in the original env
     }
     Value test = car(tests), exprs = cdr(tests);
-    while (ieval(&doenv, test) == Qfalse) {
+    while (eval(&doenv, test) == Qfalse) {
         if (body != Qnil)
             eval_body(&doenv, body);
         for (Value p = steps; p != Qnil; p = cdr(p)) {
             Value pstep = car(p);
             Value var = car(pstep), step = cdr(pstep);
-            Value val = ieval(&doenv, step);
+            Value val = eval(&doenv, step);
             iset(&doenv, var, val);
         }
     }
@@ -1344,7 +1344,7 @@ static Value qq_list(Value *env, Value datum, int64_t depth);
 static Value qq(Value *env, Value datum, int64_t depth)
 {
     if (depth == 0)
-        return ieval(env, datum);
+        return eval(env, datum);
     if (datum == Qnil || !value_is_pair(datum))
         return datum;
     Value a = car(datum), d = cdr(datum);
@@ -1427,7 +1427,7 @@ static Value define_variable(Value *env, Value ident, Value expr)
 {
     expect_type("define", TYPE_SYMBOL, ident);
 
-    Value val = ieval(env, expr), found;
+    Value val = eval(env, expr), found;
     if (env == &toplevel_environment &&
         (found = assq(ident, *env)) != Qfalse) {
         PAIR(found)->cdr = val; // set!
