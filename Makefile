@@ -29,7 +29,7 @@ test-scheme-san: lisp-san
 	./$< test.scm
 
 clean:
-	rm -f lisp basic-test *-san *.o *.s
+	rm -f lisp basic-test *-san *.o
 
 analyze: $(OBJ:.o=.analyzer)
 
