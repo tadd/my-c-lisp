@@ -1090,7 +1090,7 @@ static Value load_inner(const char *path)
 
 // 4.1. Primitive expression types
 // 4.1.2. Literal expressions
-static Value builtin_quote(UNUSED Value *env, Value datum)
+static Value syn_quote(UNUSED Value *env, Value datum)
 {
     return datum;
 }
@@ -1105,13 +1105,13 @@ static Value lambda(Value *env, Value params, Value body)
     return value_of_closure(*env, params, body);
 }
 
-static Value builtin_lambda(Value *env, Value args)
+static Value syn_lambda(Value *env, Value args)
 {
     return lambda(env, car(args), cdr(args));
 }
 
 // 4.1.5. Conditionals
-static Value builtin_if(Value *env, Value args)
+static Value syn_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, args);
 
@@ -1134,7 +1134,7 @@ static Value iset(Value *env, Value ident, Value val)
     return Qnil;
 }
 
-static Value builtin_set(Value *env, Value ident, Value expr)
+static Value syn_set(Value *env, Value ident, Value expr)
 {
     expect_type("set!", TYPE_SYMBOL, ident);
     return iset(env, ident, ieval(env, expr));
@@ -1163,7 +1163,7 @@ static Value eval_recipient(Value *env, Value test, Value recipients)
     return apply(env, recipient, list1(test));
 }
 
-static Value builtin_cond(Value *env, Value clauses)
+static Value syn_cond(Value *env, Value clauses)
 {
     expect_arity_range("cond", 1, -1, clauses);
 
@@ -1188,7 +1188,7 @@ static Value builtin_cond(Value *env, Value clauses)
 
 static Value memq(Value key, Value l);
 
-static Value builtin_case(Value *env, Value args)
+static Value syn_case(Value *env, Value args)
 {
     expect_arity_range("case", 2, -1, args);
     Value key = ieval(env, car(args)), clauses = cdr(args);
@@ -1204,7 +1204,7 @@ static Value builtin_case(Value *env, Value args)
     return Qnil;
 }
 
-static Value builtin_and(Value *env, Value args)
+static Value syn_and(Value *env, Value args)
 {
     Value last = Qtrue;
     for (Value p = args; p != Qnil; p = cdr(p)) {
@@ -1214,7 +1214,7 @@ static Value builtin_and(Value *env, Value args)
     return last;
 }
 
-static Value builtin_or(UNUSED Value *env, Value args)
+static Value syn_or(UNUSED Value *env, Value args)
 {
     for (Value p = args, curr; p != Qnil; p = cdr(p)) {
         if ((curr = ieval(env, car(p))) != Qfalse)
@@ -1270,7 +1270,7 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
     return apply(&letenv, proc, args);
 }
 
-static Value builtin_let(Value *env, Value args)
+static Value syn_let(Value *env, Value args)
 {
     expect_arity_range("let", 2, -1, args);
     Value bind_or_var = car(args), body = cdr(args);
@@ -1279,13 +1279,13 @@ static Value builtin_let(Value *env, Value args)
     return let(env, "let", bind_or_var, body);
 }
 
-static Value builtin_let_star(Value *env, Value args)
+static Value syn_let_star(Value *env, Value args)
 {
     expect_arity_range("let*", 2, -1, args);
     return let(env, "let*", car(args), cdr(args));
 }
 
-static Value builtin_letrec(Value *env, Value args)
+static Value syn_letrec(Value *env, Value args)
 {
     expect_arity_range("letrec", 2, -1, args);
     Value bindings = car(args);
@@ -1307,13 +1307,13 @@ static Value builtin_letrec(Value *env, Value args)
 }
 
 // 4.2.3. Sequencing
-static Value builtin_begin(Value *env, Value body)
+static Value syn_begin(Value *env, Value body)
 {
     return eval_body(env, body);
 }
 
 // 4.2.4. Iteration
-static Value builtin_do(Value *env, Value args)
+static Value syn_do(Value *env, Value args)
 {
     expect_arity_range("do", 2, -1, args);
 
@@ -1412,17 +1412,17 @@ static Value qq_list(Value *env, Value datum, int64_t depth)
     return ret;
 }
 
-static Value builtin_quasiquote(Value *env, Value datum)
+static Value syn_quasiquote(Value *env, Value datum)
 {
     return qq(env, datum, 1);
 }
 
-static Value builtin_unquote(UNUSED Value *env, UNUSED Value args)
+static Value syn_unquote(UNUSED Value *env, UNUSED Value args)
 {
     runtime_error("unquote: applied out of quasiquote (`)");
 }
 
-static Value builtin_unquote_splicing(UNUSED Value *env, UNUSED Value args)
+static Value syn_unquote_splicing(UNUSED Value *env, UNUSED Value args)
 {
     runtime_error("unquote-splicing: applied out of quasiquote (`)");
 }
@@ -1448,7 +1448,7 @@ static Value define_proc_internal(Value *env, Value heads, Value body)
     return define_variable(env, ident, val);
 }
 
-static Value builtin_define(Value *env, Value args)
+static Value proc_define(Value *env, Value args)
 {
     if (args == Qnil)
         runtime_error("define: wrong number of arguments: expected 1+");
@@ -1472,7 +1472,7 @@ static inline bool eq(Value x, Value y)
     return x == y;
 }
 
-static Value builtin_eq(UNUSED Value *env, Value x, Value y)
+static Value proc_eq(UNUSED Value *env, Value x, Value y)
 {
     return OF_BOOL(eq(x, y));
 }
@@ -1497,7 +1497,7 @@ static bool equal(Value x, Value y)
     }
 }
 
-static Value builtin_equal(UNUSED Value *env, Value x, Value y)
+static Value proc_equal(UNUSED Value *env, Value x, Value y)
 {
     return OF_BOOL(equal(x, y));
 }
@@ -1509,12 +1509,12 @@ static int64_t value_get_int(const char *header, Value v)
     return value_to_int(v);
 }
 
-static Value builtin_integer_p(UNUSED Value *env, Value obj)
+static Value proc_integer_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj));
 }
 
-static Value builtin_numeq(UNUSED Value *env, Value args)
+static Value proc_numeq(UNUSED Value *env, Value args)
 {
     expect_arity_range("=", 2, -1, args);
 
@@ -1527,7 +1527,7 @@ static Value builtin_numeq(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
-static Value builtin_lt(UNUSED Value *env, Value args)
+static Value proc_lt(UNUSED Value *env, Value args)
 {
     expect_arity_range("<", 2, -1, args);
 
@@ -1541,7 +1541,7 @@ static Value builtin_lt(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
-static Value builtin_gt(UNUSED Value *env, Value args)
+static Value proc_gt(UNUSED Value *env, Value args)
 {
     expect_arity_range(">", 2, -1, args);
 
@@ -1555,7 +1555,7 @@ static Value builtin_gt(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
-static Value builtin_le(UNUSED Value *env, Value args)
+static Value proc_le(UNUSED Value *env, Value args)
 {
     expect_arity_range("<=", 2, -1, args);
 
@@ -1569,7 +1569,7 @@ static Value builtin_le(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
-static Value builtin_ge(UNUSED Value *env, Value args)
+static Value proc_ge(UNUSED Value *env, Value args)
 {
     expect_arity_range(">=", 2, -1, args);
 
@@ -1583,32 +1583,32 @@ static Value builtin_ge(UNUSED Value *env, Value args)
     return Qtrue;
 }
 
-static Value builtin_zero_p(UNUSED Value *env, Value obj)
+static Value proc_zero_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj) && value_to_int(obj) == 0);
 }
 
-static Value builtin_positive_p(UNUSED Value *env, Value obj)
+static Value proc_positive_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj) && value_to_int(obj) > 0);
 }
 
-static Value builtin_negative_p(UNUSED Value *env, Value obj)
+static Value proc_negative_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj) && value_to_int(obj) < 0);
 }
 
-static Value builtin_odd_p(UNUSED Value *env, Value obj)
+static Value proc_odd_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) != 0);
 }
 
-static Value builtin_even_p(UNUSED Value *env, Value obj)
+static Value proc_even_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_int(obj) && (value_to_int(obj) % 2) == 0);
 }
 
-static Value builtin_max(UNUSED Value *env, Value args)
+static Value proc_max(UNUSED Value *env, Value args)
 {
     expect_arity_range("max", 1, -1, args);
     int64_t max = value_get_int("max", car(args));
@@ -1620,7 +1620,7 @@ static Value builtin_max(UNUSED Value *env, Value args)
     return value_of_int(max);
 }
 
-static Value builtin_min(UNUSED Value *env, Value args)
+static Value proc_min(UNUSED Value *env, Value args)
 {
     expect_arity_range("min", 1, -1, args);
     int64_t min = value_get_int("min", car(args));
@@ -1632,7 +1632,7 @@ static Value builtin_min(UNUSED Value *env, Value args)
     return value_of_int(min);
 }
 
-static Value builtin_add(UNUSED Value *env, Value args)
+static Value proc_add(UNUSED Value *env, Value args)
 {
     int64_t y = 0;
     for (Value p = args; p != Qnil; p = cdr(p))
@@ -1640,7 +1640,7 @@ static Value builtin_add(UNUSED Value *env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_sub(UNUSED Value *env, Value args)
+static Value proc_sub(UNUSED Value *env, Value args)
 {
     expect_arity_range("-", 1, -1, args);
 
@@ -1655,7 +1655,7 @@ static Value builtin_sub(UNUSED Value *env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_mul(UNUSED Value *env, Value args)
+static Value proc_mul(UNUSED Value *env, Value args)
 {
     int64_t y = 1;
     for (Value p = args; p != Qnil; p = cdr(p))
@@ -1663,7 +1663,7 @@ static Value builtin_mul(UNUSED Value *env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_div(UNUSED Value *env, Value args)
+static Value proc_div(UNUSED Value *env, Value args)
 {
     expect_arity_range("/", 1, -1, args);
 
@@ -1682,13 +1682,13 @@ static Value builtin_div(UNUSED Value *env, Value args)
     return value_of_int(y);
 }
 
-static Value builtin_abs(UNUSED Value *env, Value x)
+static Value proc_abs(UNUSED Value *env, Value x)
 {
     int64_t n = value_get_int("abs", x);
     return value_of_int(n < 0 ? -n : n);
 }
 
-static Value builtin_quotient(UNUSED Value *env, Value x, Value y)
+static Value proc_quotient(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("quotient", y);
     if (b == 0)
@@ -1699,7 +1699,7 @@ static Value builtin_quotient(UNUSED Value *env, Value x, Value y)
 }
 
 
-static Value builtin_remainder(UNUSED Value *env, Value x, Value y)
+static Value proc_remainder(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("remainder", y);
     if (b == 0)
@@ -1709,7 +1709,7 @@ static Value builtin_remainder(UNUSED Value *env, Value x, Value y)
     return value_of_int(c);
 }
 
-static Value builtin_modulo(UNUSED Value *env, Value x, Value y)
+static Value proc_modulo(UNUSED Value *env, Value x, Value y)
 {
     int64_t b = value_get_int("modulo", y);
     if (b == 0)
@@ -1736,7 +1736,7 @@ static int64_t expt(int64_t x, int64_t y)
     return z;
 }
 
-static Value builtin_expt(UNUSED Value *env, Value x, Value y)
+static Value proc_expt(UNUSED Value *env, Value x, Value y)
 {
     int64_t a = value_get_int("modulo", x);
     int64_t b = value_get_int("modulo", y);
@@ -1753,18 +1753,18 @@ static Value builtin_expt(UNUSED Value *env, Value x, Value y)
 }
 
 // 6.3.1. Booleans
-static Value builtin_not(UNUSED Value *env, Value x)
+static Value proc_not(UNUSED Value *env, Value x)
 {
     return OF_BOOL(x == Qfalse);
 }
 
-static Value builtin_boolean_p(UNUSED Value *env, Value x)
+static Value proc_boolean_p(UNUSED Value *env, Value x)
 {
     return OF_BOOL(x == Qtrue || x == Qfalse);
 }
 
 // 6.3.2. Pairs and lists
-static Value builtin_pair_p(UNUSED Value *env, Value o)
+static Value proc_pair_p(UNUSED Value *env, Value o)
 {
     return OF_BOOL(o != Qnil && value_is_pair(o));
 }
@@ -1787,29 +1787,29 @@ inline Value cdr(Value v)
     return PAIR(v)->cdr;
 }
 
-static Value builtin_cons(UNUSED Value *env, Value car, Value cdr)
+static Value proc_cons(UNUSED Value *env, Value car, Value cdr)
 {
     return cons(car, cdr);
 }
 
-static Value builtin_car(UNUSED Value *env, Value pair)
+static Value proc_car(UNUSED Value *env, Value pair)
 {
     expect_nonnull("car", pair);
     return car(pair);
 }
 
-static Value builtin_cdr(UNUSED Value *env, Value pair)
+static Value proc_cdr(UNUSED Value *env, Value pair)
 {
     expect_nonnull("cdr", pair);
     return cdr(pair);
 }
 
-static Value builtin_null_p(UNUSED Value *env, Value list)
+static Value proc_null_p(UNUSED Value *env, Value list)
 {
     return OF_BOOL(list == Qnil);
 }
 
-static Value builtin_list_p(UNUSED Value *env, Value list)
+static Value proc_list_p(UNUSED Value *env, Value list)
 {
     for (Value p = list; p != Qnil; p = cdr(p)) {
         if (!value_is_pair(p))
@@ -1833,7 +1833,7 @@ Value list(Value arg, ...)
     return l;
 }
 
-static Value builtin_list(UNUSED Value *env, Value args)
+static Value proc_list(UNUSED Value *env, Value args)
 {
     return args;
 }
@@ -1846,7 +1846,7 @@ int64_t length(Value list)
     return len;
 }
 
-static Value builtin_length(UNUSED Value *env, Value list)
+static Value proc_length(UNUSED Value *env, Value list)
 {
     expect_type("length", TYPE_PAIR, list);
     return value_of_int(length(list));
@@ -1865,7 +1865,7 @@ static Value dup_list(Value l, Value *plast)
     return dup;
 }
 
-static Value builtin_append(UNUSED Value *env, Value args)
+static Value proc_append(UNUSED Value *env, Value args)
 {
     Value l = Qnil, last = Qnil;
     Value p, next;
@@ -1892,7 +1892,7 @@ static Value reverse(Value l)
     return ret;
 }
 
-static Value builtin_reverse(UNUSED Value *env, Value list)
+static Value proc_reverse(UNUSED Value *env, Value list)
 {
     expect_type("reverse", TYPE_PAIR, list);
     return reverse(list);
@@ -1915,12 +1915,12 @@ static Value list_tail(const char *func, Value list, Value k)
     return p;
 }
 
-static Value builtin_list_tail(UNUSED Value *env, Value list, Value k)
+static Value proc_list_tail(UNUSED Value *env, Value list, Value k)
 {
     return list_tail("list-tail", list, k);
 }
 
-static Value builtin_list_ref(UNUSED Value *env, Value list, Value k)
+static Value proc_list_ref(UNUSED Value *env, Value list, Value k)
 {
     return car(list_tail("list-tail", list, k));
 }
@@ -1935,7 +1935,7 @@ static Value memq(Value key, Value l)
     return Qfalse;
 }
 
-static Value builtin_memq(UNUSED Value *env, Value obj, Value list)
+static Value proc_memq(UNUSED Value *env, Value obj, Value list)
 {
     expect_type("memq", TYPE_PAIR, list);
     return memq(obj, list);
@@ -1951,7 +1951,7 @@ static Value member(Value key, Value l)
     return Qfalse;
 }
 
-static Value builtin_member(UNUSED Value *env, Value obj, Value list)
+static Value proc_member(UNUSED Value *env, Value obj, Value list)
 {
     expect_type("member", TYPE_PAIR, list);
     return member(obj, list);
@@ -1967,7 +1967,7 @@ static Value assq(Value key, Value l)
     return Qfalse;
 }
 
-static Value builtin_assq(UNUSED Value *env, Value obj, Value alist)
+static Value proc_assq(UNUSED Value *env, Value obj, Value alist)
 {
     expect_type("assq", TYPE_PAIR, alist);
     return assq(obj, alist);
@@ -1983,38 +1983,38 @@ static Value assoc(Value key, Value l)
     return Qfalse;
 }
 
-static Value builtin_assoc(UNUSED Value *env, Value obj, Value alist)
+static Value proc_assoc(UNUSED Value *env, Value obj, Value alist)
 {
     expect_type("assoc", TYPE_PAIR, alist);
     return assoc(obj, alist);
 }
 
 // 6.3.3. Symbols
-static Value builtin_symbol_p(UNUSED Value *env, Value obj)
+static Value proc_symbol_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_symbol(obj));
 }
 
 // 6.3.5. Strings
-static Value builtin_string_p(UNUSED Value *env, Value obj)
+static Value proc_string_p(UNUSED Value *env, Value obj)
 {
     return OF_BOOL(value_is_string(obj));
 }
 
-static Value builtin_string_length(UNUSED Value *env, Value s)
+static Value proc_string_length(UNUSED Value *env, Value s)
 {
     expect_type("string-length", TYPE_STR, s);
     return value_of_int(strlen(STRING(s)->body));
 }
 
-static Value builtin_string_eq(UNUSED Value *env, Value s1, Value s2)
+static Value proc_string_eq(UNUSED Value *env, Value s1, Value s2)
 {
     expect_type_twin("string=?", TYPE_STR, s1, s2);
     return OF_BOOL(strcmp(STRING(s1)->body, STRING(s2)->body) == 0);
 }
 
 // 6.4. Control features
-static Value builtin_procedure_p(UNUSED Value *env, Value o)
+static Value proc_procedure_p(UNUSED Value *env, Value o)
 {
     return OF_BOOL(value_is_procedure(o));
 }
@@ -2032,7 +2032,7 @@ static Value apply_args(Value args)
     return append2(heads, rest);
 }
 
-static Value builtin_apply(Value *env, Value args)
+static Value proc_apply(Value *env, Value args)
 {
     expect_arity_range("apply", 2, -1, args);
 
@@ -2061,7 +2061,7 @@ static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
     return true;
 }
 
-static Value builtin_map(Value *env, Value args)
+static Value proc_map(Value *env, Value args)
 {
     expect_arity_range("map", 2, -1, args);
 
@@ -2079,7 +2079,7 @@ static Value builtin_map(Value *env, Value args)
     return ret;
 }
 
-static Value builtin_for_each(Value *env, Value args)
+static Value proc_for_each(Value *env, Value args)
 {
     expect_arity_range("for-each", 2, -1, args);
 
@@ -2111,7 +2111,7 @@ static bool continuation_set(Value c)
     return setjmp(cont->state);
 }
 
-static Value builtin_callcc(Value *env, Value proc)
+static Value proc_callcc(Value *env, Value proc)
 {
     expect_type("call/cc", TYPE_PROC, proc);
     Value c = value_of_continuation();
@@ -2182,34 +2182,34 @@ void display(Value v)
     fdisplay(stdout, v);
 }
 
-static Value builtin_display(UNUSED Value *env, Value obj)
+static Value proc_display(UNUSED Value *env, Value obj)
 {
     display(obj);
     return obj;
 }
 
-static Value builtin_newline(void)
+static Value proc_newline(void)
 {
     puts("");
     return Qnil;
 }
 
 // 6.6.4. System interface
-static Value builtin_load(UNUSED Value *env, Value path)
+static Value proc_load(UNUSED Value *env, Value path)
 {
     // Current spec: path is always relative
     return load_inner(value_to_string(path));
 }
 
 // Local Extensions
-static Value builtin_print(UNUSED Value *env, Value obj)
+static Value proc_print(UNUSED Value *env, Value obj)
 {
     display(obj);
     puts("");
     return obj;
 }
 
-static Value builtin_cputime(void) // in micro sec
+static Value proc_cputime(void) // in micro sec
 {
     static const int64_t MICRO = 1000*1000;
     struct timespec t;
@@ -2219,7 +2219,7 @@ static Value builtin_cputime(void) // in micro sec
 }
 
 #define DEF_CXR_BUILTIN(x, y) \
-    static Value builtin_c##x##y##r(UNUSED Value *env, Value v) \
+    static Value proc_c##x##y##r(UNUSED Value *env, Value v) \
     { \
         expect_type("c" #x #y "r", TYPE_PAIR, v); \
         return c##x##y##r(v); \
@@ -2244,31 +2244,31 @@ static void initialize(void)
 
     // 4.1. Primitive expression types
     // 4.1.2. Literal expressions
-    define_syntax(e, "quote", builtin_quote, 1);
+    define_syntax(e, "quote", syn_quote, 1);
     // 4.1.4. Procedures
-    define_syntax(e, "lambda", builtin_lambda, -1);
+    define_syntax(e, "lambda", syn_lambda, -1);
     // 4.1.5. Conditionals
-    define_syntax(e, "if", builtin_if, -1);
+    define_syntax(e, "if", syn_if, -1);
     // 4.1.6. Assignments
-    define_syntax(e, "set!", builtin_set, 2);
+    define_syntax(e, "set!", syn_set, 2);
     // 4.2. Derived expression types
     // 4.2.1. Conditionals
-    define_syntax(e, "cond", builtin_cond, -1);
-    define_syntax(e, "case", builtin_case, -1);
-    define_syntax(e, "and", builtin_and, -1);
-    define_syntax(e, "or", builtin_or, -1);
+    define_syntax(e, "cond", syn_cond, -1);
+    define_syntax(e, "case", syn_case, -1);
+    define_syntax(e, "and", syn_and, -1);
+    define_syntax(e, "or", syn_or, -1);
     // 4.2.2. Binding constructs
-    define_syntax(e, "let", builtin_let, -1); // with named let in 4.2.4.
-    define_syntax(e, "let*", builtin_let_star, -1);
-    define_syntax(e, "letrec", builtin_letrec, -1);
+    define_syntax(e, "let", syn_let, -1); // with named let in 4.2.4.
+    define_syntax(e, "let*", syn_let_star, -1);
+    define_syntax(e, "letrec", syn_letrec, -1);
     // 4.2.3. Sequencing
-    define_syntax(e, "begin", builtin_begin, -1);
+    define_syntax(e, "begin", syn_begin, -1);
     // 4.2.4. Iteration
-    define_syntax(e, "do", builtin_do, -1);
+    define_syntax(e, "do", syn_do, -1);
     // 4.2.6. Quasiquotation
-    define_syntax(e, "quasiquote", builtin_quasiquote, 1);
-    define_syntax(e, "unquote", builtin_unquote, 1);
-    define_syntax(e, "unquote-splicing", builtin_unquote_splicing, 1);
+    define_syntax(e, "quasiquote", syn_quasiquote, 1);
+    define_syntax(e, "unquote", syn_unquote, 1);
+    define_syntax(e, "unquote-splicing", syn_unquote_splicing, 1);
     // 4.3. Macros
     // 4.3.2. Pattern language
     //- syntax-rules
@@ -2276,81 +2276,81 @@ static void initialize(void)
     // 5. Program structure
 
     // 5.2. Definitions
-    define_syntax(e, "define", builtin_define, -1);
+    define_syntax(e, "define", proc_define, -1);
     // 5.3. Syntax definitions
     //- define-syntax
 
     // 6. Standard procedures
 
     // 6.1. Equivalence predicates
-    define_procedure(e, "eqv?", builtin_eq, 2); // alias
-    define_procedure(e, "eq?", builtin_eq, 2);
-    define_procedure(e, "equal?", builtin_equal, 2);
+    define_procedure(e, "eqv?", proc_eq, 2); // alias
+    define_procedure(e, "eq?", proc_eq, 2);
+    define_procedure(e, "equal?", proc_equal, 2);
     // 6.2. Numbers
     // 6.2.5. Numerical operations
-    define_procedure(e, "number?", builtin_integer_p, 1); // alias
-    define_procedure(e, "integer?", builtin_integer_p, 1);
-    define_procedure(e, "=", builtin_numeq, -1);
-    define_procedure(e, "<", builtin_lt, -1);
-    define_procedure(e, ">", builtin_gt, -1);
-    define_procedure(e, "<=", builtin_le, -1);
-    define_procedure(e, ">=", builtin_ge, -1);
-    define_procedure(e, "zero?", builtin_zero_p, 1);
-    define_procedure(e, "positive?", builtin_positive_p, 1);
-    define_procedure(e, "negative?", builtin_negative_p, 1);
-    define_procedure(e, "odd?", builtin_odd_p, 1);
-    define_procedure(e, "even?", builtin_even_p, 1);
-    define_procedure(e, "max", builtin_max, -1);
-    define_procedure(e, "min", builtin_min, -1);
-    define_procedure(e, "+", builtin_add, -1);
-    define_procedure(e, "*", builtin_mul, -1);
-    define_procedure(e, "-", builtin_sub, -1);
-    define_procedure(e, "/", builtin_div, -1);
-    define_procedure(e, "abs", builtin_abs, 1);
-    define_procedure(e, "quotient", builtin_quotient, 2);
-    define_procedure(e, "remainder", builtin_remainder, 2);
-    define_procedure(e, "modulo", builtin_modulo, 2);
-    define_procedure(e, "expt", builtin_expt, 2);
+    define_procedure(e, "number?", proc_integer_p, 1); // alias
+    define_procedure(e, "integer?", proc_integer_p, 1);
+    define_procedure(e, "=", proc_numeq, -1);
+    define_procedure(e, "<", proc_lt, -1);
+    define_procedure(e, ">", proc_gt, -1);
+    define_procedure(e, "<=", proc_le, -1);
+    define_procedure(e, ">=", proc_ge, -1);
+    define_procedure(e, "zero?", proc_zero_p, 1);
+    define_procedure(e, "positive?", proc_positive_p, 1);
+    define_procedure(e, "negative?", proc_negative_p, 1);
+    define_procedure(e, "odd?", proc_odd_p, 1);
+    define_procedure(e, "even?", proc_even_p, 1);
+    define_procedure(e, "max", proc_max, -1);
+    define_procedure(e, "min", proc_min, -1);
+    define_procedure(e, "+", proc_add, -1);
+    define_procedure(e, "*", proc_mul, -1);
+    define_procedure(e, "-", proc_sub, -1);
+    define_procedure(e, "/", proc_div, -1);
+    define_procedure(e, "abs", proc_abs, 1);
+    define_procedure(e, "quotient", proc_quotient, 2);
+    define_procedure(e, "remainder", proc_remainder, 2);
+    define_procedure(e, "modulo", proc_modulo, 2);
+    define_procedure(e, "expt", proc_expt, 2);
     // 6.3. Other data types
     // 6.3.1. Booleans
-    define_procedure(e, "not", builtin_not, 1);
-    define_procedure(e, "boolean?", builtin_boolean_p, 1);
+    define_procedure(e, "not", proc_not, 1);
+    define_procedure(e, "boolean?", proc_boolean_p, 1);
     // 6.3.2. Pairs and lists
-    define_procedure(e, "pair?", builtin_pair_p, 1);
-    define_procedure(e, "cons", builtin_cons, 2);
-    define_procedure(e, "car", builtin_car, 1);
-    define_procedure(e, "cdr", builtin_cdr, 1);
-#define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", builtin_c##x##y##r, 1)
+    define_procedure(e, "pair?", proc_pair_p, 1);
+    define_procedure(e, "cons", proc_cons, 2);
+    define_procedure(e, "car", proc_car, 1);
+    define_procedure(e, "cdr", proc_cdr, 1);
+#define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", proc_c##x##y##r, 1)
     CXRS(DEFUN_CXR); // defines 28 procedures
     //- set-car!
     //- set-cdr!
-    define_procedure(e, "null?", builtin_null_p, 1);
-    define_procedure(e, "list?", builtin_list_p, 1);
-    define_procedure(e, "list", builtin_list, -1);
-    define_procedure(e, "length", builtin_length, 1);
-    define_procedure(e, "append", builtin_append, -1);
-    define_procedure(e, "reverse", builtin_reverse, 1);
-    define_procedure(e, "list-tail", builtin_list_tail, 2);
-    define_procedure(e, "list-ref", builtin_list_ref, 2);
-    define_procedure(e, "memq", builtin_memq, 2);
-    define_procedure(e, "memv", builtin_memq, 2); // alias
-    define_procedure(e, "member", builtin_member, 2);
-    define_procedure(e, "assq", builtin_assq, 2);
-    define_procedure(e, "assv", builtin_assq, 2); // alias
-    define_procedure(e, "assoc", builtin_assoc, 2); // alias
+    define_procedure(e, "null?", proc_null_p, 1);
+    define_procedure(e, "list?", proc_list_p, 1);
+    define_procedure(e, "list", proc_list, -1);
+    define_procedure(e, "length", proc_length, 1);
+    define_procedure(e, "append", proc_append, -1);
+    define_procedure(e, "reverse", proc_reverse, 1);
+    define_procedure(e, "list-tail", proc_list_tail, 2);
+    define_procedure(e, "list-ref", proc_list_ref, 2);
+    define_procedure(e, "memq", proc_memq, 2);
+    define_procedure(e, "memv", proc_memq, 2); // alias
+    define_procedure(e, "member", proc_member, 2);
+    define_procedure(e, "assq", proc_assq, 2);
+    define_procedure(e, "assv", proc_assq, 2); // alias
+    define_procedure(e, "assoc", proc_assoc, 2); // alias
     // 6.3.3. Symbols
-    define_procedure(e, "symbol?", builtin_symbol_p, 1);
+    define_procedure(e, "symbol?", proc_symbol_p, 1);
     // 6.3.5. Strings
-    define_procedure(e, "string?", builtin_string_p, 1);
-    define_procedure(e, "string-length", builtin_string_length, 1);
-    define_procedure(e, "string=?", builtin_string_eq, 2);
+    define_procedure(e, "string?", proc_string_p, 1);
+    define_procedure(e, "string-length", proc_string_length, 1);
+    define_procedure(e, "string=?", proc_string_eq, 2);
     // 6.4. Control features
-    define_procedure(e, "procedure?", builtin_procedure_p, 1);
-    define_procedure(e, "apply", builtin_apply, -1);
-    define_procedure(e, "map", builtin_map, -1);
-    define_procedure(e, "for-each", builtin_for_each, -1);
-    define_procedure(e, "call/cc", builtin_callcc, 1); // alias
-    define_procedure(e, "call-with-current-continuation", builtin_callcc, 1);
+    define_procedure(e, "procedure?", proc_procedure_p, 1);
+    define_procedure(e, "apply", proc_apply, -1);
+    define_procedure(e, "map", proc_map, -1);
+    define_procedure(e, "for-each", proc_for_each, -1);
+    define_procedure(e, "call/cc", proc_callcc, 1); // alias
+    define_procedure(e, "call-with-current-continuation", proc_callcc, 1);
     //- values
     //- call-with-values
     //- dynamic-wind
@@ -2362,12 +2362,12 @@ static void initialize(void)
     // 6.6.2. Input
     //- read
     // 6.6.3. Output
-    define_procedure(e, "display", builtin_display, 1);
-    define_procedure(e, "newline", builtin_newline, 0);
+    define_procedure(e, "display", proc_display, 1);
+    define_procedure(e, "newline", proc_newline, 0);
     // 6.6.4. System interface
-    define_procedure(e, "load", builtin_load, 1);
+    define_procedure(e, "load", proc_load, 1);
 
     // Local Extensions
-    define_procedure(e, "print", builtin_print, 1); // like Gauche
-    define_procedure(e, "_cputime", builtin_cputime, 0);
+    define_procedure(e, "print", proc_print, 1); // like Gauche
+    define_procedure(e, "_cputime", proc_cputime, 0);
 }
