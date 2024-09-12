@@ -969,7 +969,7 @@ Value parse(const char *path)
 {
     FILE *in = fopen(path, "r");
     if (in == NULL)
-        error("load: can't open file: %s", path);
+        error("parse: can't open file: %s", path);
     Value retval = iparse(in);
     fclose(in);
     return retval;
@@ -1738,8 +1738,8 @@ static int64_t expt(int64_t x, int64_t y)
 
 static Value proc_expt(UNUSED Value *env, Value x, Value y)
 {
-    int64_t a = value_get_int("modulo", x);
-    int64_t b = value_get_int("modulo", y);
+    int64_t a = value_get_int("expt", x);
+    int64_t b = value_get_int("expt", y);
     if (b < 0)
         runtime_error("expt", "cannot power %d which negative", b);
     int64_t c;
@@ -1922,7 +1922,7 @@ static Value proc_list_tail(UNUSED Value *env, Value list, Value k)
 
 static Value proc_list_ref(UNUSED Value *env, Value list, Value k)
 {
-    return car(list_tail("list-tail", list, k));
+    return car(list_tail("list-ref", list, k));
 }
 
 static Value memq(Value key, Value l)
