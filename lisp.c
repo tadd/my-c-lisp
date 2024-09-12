@@ -2321,7 +2321,7 @@ static void initialize(void)
     define_procedure(e, "car", builtin_car, 1);
     define_procedure(e, "cdr", builtin_cdr, 1);
 #define DEFUN_CXR(x, y) define_procedure(e, "c" #x #y "r", builtin_c##x##y##r, 1)
-    CXRS(DEFUN_CXR);
+    CXRS(DEFUN_CXR); // defines 28 procedures
     //- set-car!
     //- set-cdr!
     define_procedure(e, "null?", builtin_null_p, 1);
