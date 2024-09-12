@@ -12,3 +12,10 @@ You can use this under the [MIT license](./LICENSE.md).
 
 [^1]: just a little[^2] bit
 [^2]: really
+
+## TODO
+
+* Implement syntax/procedures marked with `//-`
+* Better parsing based on formal syntax
+* Proper tail recursion
+* Report error location with `line:column` and function names in a call stack
