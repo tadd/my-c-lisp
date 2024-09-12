@@ -928,7 +928,7 @@ static void expect_cfunc_arity(int64_t actual)
           CFUNCARG_MAX, actual);
 }
 
-// Do not mistake this for "(define-syntax ...)" related to macros
+// Note: Do not mistake this for "(define-syntax ...)" which related to macros
 static void define_syntax(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
 {
     expect_cfunc_arity(arity);
