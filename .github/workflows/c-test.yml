@@ -32,11 +32,19 @@ jobs:
       run: make -j2 lisp basic-test
     - name: Test
       run: make test
-    - name: Make binaries for Clang
-      run: make clean && make -j2 lisp basic-test CC=clang
-    - name: Test for Clang
-      run: make test CC=clang
+    - name: Test with Santizer
+      run: make sanitize
     - name: Test -O3
       run: make clean && make -j2 test XCFLAGS=-O3
-    - name: Test Clang -O3
+    - name: Test -O3 with Sanitizer
+      run: make -j2 sanitize XCFLAGS=-O3
+    - name: Clang - Make binaries
+      run: make clean && make -j2 lisp basic-test CC=clang
+    - name: Clang - Test
+      run: make test CC=clang
+    - name: Clang - Test with Santizer
+      run: make sanitize CC=clang
+    - name: Clang - Test -O3
       run: make clean && make -j2 test CC=clang XCFLAGS=-O3
+    - name: Clang - Test -O3 with Sanitizer
+      run: make -j2 sanitize CC=clang XCFLAGS=-O3
