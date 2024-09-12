@@ -1125,15 +1125,19 @@ static Value builtin_if(Value *env, Value args)
 }
 
 // 4.1.6. Assignments
-static Value builtin_set(Value *env, Value ident, Value expr)
+static Value iset(Value *env, Value ident, Value val)
 {
-    expect_type("set!", TYPE_SYMBOL, ident);
-
     Value found = assq(ident, *env);
     if (found == Qfalse)
         runtime_error("set!: unbound variable: %s", value_to_string(ident));
-    PAIR(found)->cdr = ieval(env, expr);
+    PAIR(found)->cdr = val;
     return Qnil;
+}
+
+static Value builtin_set(Value *env, Value ident, Value expr)
+{
+    expect_type("set!", TYPE_SYMBOL, ident);
+    return iset(env, ident, ieval(env, expr));
 }
 
 // 4.2. Derived expression types
@@ -1306,6 +1310,37 @@ static Value builtin_letrec(Value *env, Value args)
 static Value builtin_begin(Value *env, Value body)
 {
     return eval_body(env, body);
+}
+
+// 4.2.4. Iteration
+static Value builtin_do(Value *env, Value args)
+{
+    expect_arity_range("do", 2, -1, args);
+
+    Value bindings = car(args), tests = cadr(args), body = cddr(args);
+    expect_type_twin("do", TYPE_PAIR, bindings, tests);
+    Value doenv = *env, steps = Qnil;
+    for (Value p = bindings; p != Qnil; p = cdr(p)) {
+        Value b = car(p);
+        expect_nonnull("do", b);
+        Value var = car(b), init = cadr(b), step = cddr(b);
+        if (step != Qnil)
+            steps = cons(cons(var, car(step)), steps);
+        expect_type("do", TYPE_SYMBOL, var);
+        env_put(&doenv, var, ieval(env, init)); // in the original env
+    }
+    Value test = car(tests), exprs = cdr(tests);
+    while (ieval(&doenv, test) == Qfalse) {
+        if (body != Qnil)
+            eval_body(&doenv, body);
+        for (Value p = steps; p != Qnil; p = cdr(p)) {
+            Value pstep = car(p);
+            Value var = car(pstep), step = cdr(pstep);
+            Value val = ieval(&doenv, step);
+            iset(&doenv, var, val);
+        }
+    }
+    return exprs == Qnil ? Qnil : eval_body(&doenv, exprs);
 }
 
 // 4.2.6. Quasiquotation
@@ -2229,7 +2264,7 @@ static void initialize(void)
     // 4.2.3. Sequencing
     define_syntax(e, "begin", builtin_begin, -1);
     // 4.2.4. Iteration
-    //- do
+    define_syntax(e, "do", builtin_do, -1);
     // 4.2.6. Quasiquotation
     define_syntax(e, "quasiquote", builtin_quasiquote, 1);
     define_syntax(e, "unquote", builtin_unquote, 1);

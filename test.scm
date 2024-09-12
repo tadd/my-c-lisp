@@ -325,6 +325,21 @@
 (describe "begin" (lambda ()
   (expect eqv? (begin 1 2 3) 3)))
 
+;; 4.2.4. Iteration
+(describe "do" (lambda ()
+  (expect equal?
+          (do ((l '())
+               (i 0 (+ i 1)))
+              ((= i 5) l)
+            (set! l (append l (list i))))
+          '(0 1 2 3 4))
+  (expect equal?
+          (let ((x '(1 3 5 7 9)))
+            (do ((x x (cdr x))
+                 (sum 0 (+ sum (car x))))
+                ((null? x) sum)))
+          25)))
+
 ;; 4.2.6. Quasiquotation
 (describe "quasiquote basic" (lambda ()
   (expect equal? `() (list))
