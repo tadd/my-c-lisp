@@ -72,6 +72,7 @@ typedef struct {
     volatile void *sp;
     void *shelter;
     size_t shelter_len;
+    Value call_stack;
     jmp_buf state;
     Value retval;
 } Continuation;
@@ -120,6 +121,8 @@ static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLIC
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
+static Value function_locations = Qnil, newline_pos = Qnil;
+static Value call_stack = Qnil;
 
 //
 // value_is_*: Type Checks
@@ -484,12 +487,16 @@ static void skip_token_atmosphere(Parser *p)
     int c;
     for (;;) {
         c = fgetc(p->in);
+        if (c == '\n')
+            newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
         if (isspace(c))
             continue; // skip
         if (c == ';') {
             do {
                 c = fgetc(p->in);
             } while (c != '\n' && c != EOF);
+            if (c == '\n')
+                newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
             continue;
         }
         break;
@@ -724,9 +731,22 @@ static Value append_at(Value last, Value elem)
     return p;
 }
 
+static inline Value pair_to_id(Value p)
+{
+    return value_of_int(p >> 3U); // we assume 64 bit machines
+}
+
+static void record_location(Value p, int64_t pos, Value sym)
+{
+    int64_t id = pair_to_id(p);
+    Value loc = cons(id, cons(value_of_int(pos), sym));
+    function_locations = cons(loc, function_locations);
+}
+
 static Value parse_list(Parser *p)
 {
     Value l = Qnil, last = Qnil;
+    int64_t pos = ftell(p->in);
     for (;;) {
         Token t = get_token(p);
         if (t.type == TOK_TYPE_RPAREN)
@@ -738,8 +758,11 @@ static Value parse_list(Parser *p)
         unget_token(p, t);
         Value e = parse_expr(p);
         last = append_at(last, e);
-        if (l == Qnil)
+        if (l == Qnil) {
             l = last;
+            if (value_is_symbol(e))
+                record_location(l, pos, e);
+        }
     }
     return l;
 }
@@ -791,6 +814,7 @@ static Parser *parser_new(FILE *in)
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
+    function_locations = newline_pos = Qnil;
     return p;
 }
 
@@ -896,9 +920,36 @@ static Value apply_closure(Value *env, Value proc, Value args)
     return eval_body(&clenv, cl->body);
 }
 
+static inline void expect_nonnull(const char *msg, Value l)
+{
+    expect_type(msg, TYPE_PAIR, l);
+    if (l == Qnil)
+        runtime_error("%s: expected non-null?", msg);
+}
+
+static const Value FRAME_IGNORE = Qfalse, FRAME_UNKNOWN = Qundef;
+
+static inline bool frame_is_special(Value f)
+{
+    return f == FRAME_IGNORE || f == FRAME_UNKNOWN;
+}
+
+static void call_stack_push(Value l)
+{
+    Value id = frame_is_special(l) ? l : pair_to_id(l);
+    call_stack = cons(id, call_stack);
+}
+
+static void call_stack_pop(void)
+{
+    expect_nonnull("apply", call_stack);
+    call_stack = cdr(call_stack);
+}
+
 ATTR(noreturn) ATTR(noinline)
 static void jump(Continuation *cont)
 {
+    call_stack = cont->call_stack;
     memcpy((void *) cont->sp, cont->shelter, cont->shelter_len);
     longjmp(cont->state, 1);
 }
@@ -922,20 +973,23 @@ static void apply_continuation(Value f, Value args)
 static Value apply(Value *env, Value proc, Value args)
 {
     expect_arity(PROCEDURE(proc)->arity, args);
+    Value ret;
     switch (VALUE_TAG(proc)) {
     case TAG_SYNTAX:
     case TAG_CFUNC:
-        return apply_cfunc(env, proc, args);
+        ret = apply_cfunc(env, proc, args);
+        break;
     case TAG_CLOSURE:
-        return apply_closure(env, proc, args);
+        ret = apply_closure(env, proc, args);
+        break;
     case TAG_CONTINUATION:
         apply_continuation(proc, args); // no return!
     default:
         UNREACHABLE();
     }
+    call_stack_pop();
+    return ret;
 }
-
-static Value assq(Value key, Value l);
 
 // Note: Do not mistake this for "(define-syntax ...)" which related to macros
 static void define_syntax(Value *env, const char *name, cfunc_t cfunc, int64_t arity)
@@ -947,6 +1001,8 @@ static void define_procedure(Value *env, const char *name, cfunc_t cfunc, int64_
 {
     env_put(env, value_of_symbol(name), value_of_cfunc(cfunc, arity));
 }
+
+static Value assq(Value key, Value l);
 
 static Value lookup(Value env, Value name)
 {
@@ -976,6 +1032,7 @@ static Value iparse(FILE *in)
     else
         v = Qundef;
     free(p);
+    newline_pos = reverse(newline_pos);
     return v;
 }
 
@@ -1036,7 +1093,84 @@ static Value eval(Value *env, Value v)
         return lookup(*env, v);
     if (v == Qnil || !value_is_pair(v))
         return v;
+    call_stack_push(v);
     return eval_apply(env, car(v), cdr(v));
+}
+
+static void pos_to_line_col(int64_t pos, int64_t *line, int64_t *col)
+{
+    int64_t nline = 0, last = 0;
+    for (Value p = newline_pos; p != Qnil; p = cdr(p), nline++) {
+        int n = value_to_int(car(p));
+        if (n > pos)
+            break;
+        last = n;
+    }
+    *line = nline + 1;
+    *col = pos - last + 1;
+}
+
+ATTR(format(printf, 1, 2))
+static int append_error_message(const char *fmt, ...)
+{
+    size_t len = strlen(errmsg);
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(errmsg + len, sizeof(errmsg) - len, fmt, ap);
+    va_end(ap);
+    return n;
+}
+
+static void dump_line_column(Value vpos)
+{
+    int64_t pos = value_to_int(vpos), line, col;
+    pos_to_line_col(pos, &line, &col);
+    append_error_message("\n\t%"PRId64":%"PRId64" in ", line, col);
+}
+
+static void dump_callee_name(Value id)
+{
+    Value p;
+    if (id == Qnil)
+        append_error_message("<toplevel>");
+    else if ((p = assq(id, function_locations)) == Qfalse)
+        append_error_message("<unknown>");
+    else {
+        const char *name = value_to_string(cddr(p));
+        append_error_message("'%s'", name);
+    }
+}
+
+static void dump_frame(Value id, Value callee)
+{
+    if (id == FRAME_IGNORE)
+        return;
+    Value p;
+    if (id == FRAME_UNKNOWN || (p = assq(id, function_locations)) == Qfalse) {
+        append_error_message("\n\t<unknown>");
+        return;
+    }
+    dump_line_column(cadr(p));
+    dump_callee_name(callee == Qnil ? Qnil : car(callee));
+}
+
+static void dump_stack_trace(void)
+{
+    for (Value p = call_stack, next; p != Qnil; p = next) {
+        next = cdr(p);
+        dump_frame(car(p), next);
+    }
+}
+
+static void fdisplay(FILE* f, Value v);
+
+static void call_stack_check_consistency(void)
+{
+    if (call_stack == Qnil)
+        return;
+    fprintf(stderr, "BUG: got non-null call stack: ");
+    fdisplay(stderr, call_stack);
+    fprintf(stderr, "\n");
 }
 
 static Value iload(FILE *in)
@@ -1044,10 +1178,15 @@ static Value iload(FILE *in)
     Value l = iparse(in);
     if (l == Qundef)
         return Qundef;
-    if (setjmp(jmp_runtime_error) != 0)
+    if (setjmp(jmp_runtime_error) != 0) {
+        dump_stack_trace();
         return Qundef;
+    }
+    call_stack = Qnil;
     INIT_STACK();
-    return eval_body(&toplevel_environment, l);
+    Value ret = eval_body(&toplevel_environment, l);
+    call_stack_check_consistency();
+    return ret;
 }
 
 static Value iload_inner(FILE *in)
@@ -1157,13 +1296,6 @@ static Value syn_set(Value *env, Value ident, Value expr)
 
 // 4.2. Derived expression types
 // 4.2.1. Conditionals
-static inline void expect_nonnull(const char *msg, Value l)
-{
-    expect_type(msg, TYPE_PAIR, l);
-    if (l == Qnil)
-        runtime_error("%s: expected non-null?", msg);
-}
-
 static inline void expect_null(const char *msg, Value l)
 {
     if (l != Qnil)
@@ -1176,6 +1308,7 @@ static Value eval_recipient(Value *env, Value test, Value recipients)
     Value recipient = eval(env, car(recipients)), rest = cdr(recipients);
     expect_type("end of => in cond", TYPE_PROC, recipient);
     expect_null("end of => in cond", rest);
+    call_stack_push(FRAME_UNKNOWN);
     return apply(env, recipient, list1(test));
 }
 
@@ -1284,6 +1417,7 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
     Value args = map_eval(env, symargs);
     Value letenv = *env;
     define_variable(&letenv, var, proc);
+    call_stack_push(FRAME_IGNORE);
     return apply(&letenv, proc, args);
 }
 
@@ -2041,6 +2175,7 @@ static Value proc_apply(Value *env, Value args)
     Value proc = car(args);
     expect_type("apply", TYPE_PROC, proc);
     Value appargs = apply_args(cdr(args));
+    call_stack_push(FRAME_UNKNOWN);
     return apply(env, proc, appargs);
 }
 
@@ -2075,6 +2210,7 @@ static Value proc_map(Value *env, Value args)
     Value last = Qnil, ret = Qnil;
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
+        call_stack_push(FRAME_UNKNOWN);
         Value v = apply(env, proc, cars);
         last = append_at(last, v);
         if (ret == Qnil)
@@ -2093,6 +2229,7 @@ static Value proc_for_each(Value *env, Value args)
     Value lists = cdr(args);
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
+        call_stack_push(FRAME_UNKNOWN);
         apply(env, proc, cars);
         lists = cdrs;
     }
@@ -2114,6 +2251,7 @@ static bool continuation_set(Value c)
     cont->shelter_len = stack_base - sp;
     cont->shelter = xmalloc(cont->shelter_len);
     memcpy(cont->shelter, (void *) sp, cont->shelter_len);
+    cont->call_stack = call_stack;
     return setjmp(cont->state);
 }
 
@@ -2123,12 +2261,11 @@ static Value proc_callcc(Value *env, Value proc)
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
+    call_stack_push(FRAME_UNKNOWN);
     return apply(env, proc, list1(c));
 }
 
 // 6.6.3. Output
-static void fdisplay(FILE* f, Value v);
-
 static void display_list(FILE *f, Value l)
 {
     fprintf(f, "(");
