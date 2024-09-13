@@ -355,13 +355,28 @@ static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
 ATTR(noreturn)
+static void error_with_buf(jmp_buf buf, const char *fmt, va_list ap)
+{
+    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    longjmp(buf, 1);
+}
+
+ATTR(noreturn)
 static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
+    error_with_buf(jmp_runtime_error, fmt, ap);
     va_end(ap);
-    longjmp(jmp_runtime_error, 1);
+}
+
+ATTR(noreturn)
+static void parse_error_fn(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    error_with_buf(jmp_parse_error, fmt, ap);
+    va_end(ap);
 }
 
 const char *error_message(void)
@@ -439,9 +454,8 @@ typedef struct {
 #define parse_error(p, exp, act, ...) do { \
         int64_t line, col; \
         get_line_column(p, &line, &col); \
-        memcpy(jmp_runtime_error, jmp_parse_error, sizeof(jmp_buf)); \
-        runtime_error("on %"PRId64":%"PRId64": expected %s but got " act, line, col, \
-                      exp __VA_OPT__(,) __VA_ARGS__); \
+        parse_error_fn("on %"PRId64":%"PRId64": expected %s but got " act, \
+                       line, col, exp __VA_OPT__(,) __VA_ARGS__); \
     } while (0)
 
 static void get_line_column(Parser *p, int64_t *line, int64_t *col)
