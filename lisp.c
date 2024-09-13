@@ -907,7 +907,6 @@ static void apply_continuation(Value f, Value args)
 
 static Value apply(Value *env, Value proc, Value args)
 {
-    expect_type("apply", TYPE_PROC, proc);
     expect_arity(PROCEDURE(proc)->arity, args);
     switch (VALUE_TAG(proc)) {
     case TAG_SYNTAX:
@@ -1007,6 +1006,7 @@ static Value eval_apply(Value *env, Value symproc, Value args)
     Value proc = eval(env, symproc);
     if (!value_tag_is(proc, TAG_SYNTAX))
         args = map_eval(env, args);
+    expect_type("eval", TYPE_PROC, proc);
     return apply(env, proc, args);
 }
 
@@ -1154,6 +1154,7 @@ static Value eval_recipient(Value *env, Value test, Value recipients)
 {
     expect_nonnull("recipient in cond", recipients);
     Value recipient = eval(env, car(recipients)), rest = cdr(recipients);
+    expect_type("end of => in cond", TYPE_PROC, recipient);
     expect_null("end of => in cond", rest);
     return apply(env, recipient, list1(test));
 }
@@ -1260,6 +1261,7 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
     Value params = car(tr), symargs = cadr(tr);
     Value args = map_eval(env, symargs);
     Value proc = lambda(env, params, body);
+    expect_type("named let", TYPE_PROC, proc);
     Value letenv = *env;
     define_variable(&letenv, var, proc);
     return apply(&letenv, proc, args);
@@ -2046,6 +2048,7 @@ static Value proc_map(Value *env, Value args)
     expect_arity_range("map", 2, -1, args);
 
     Value proc = car(args);
+    expect_type("map", TYPE_PROC, proc);
     Value lists = cdr(args);
     Value last = Qnil, ret = Qnil;
     Value cars, cdrs;
@@ -2064,6 +2067,7 @@ static Value proc_for_each(Value *env, Value args)
     expect_arity_range("for-each", 2, -1, args);
 
     Value proc = car(args);
+    expect_type("for-each", TYPE_PROC, proc);
     Value lists = cdr(args);
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
