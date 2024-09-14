@@ -121,7 +121,8 @@ static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLIC
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
-static Value function_locations = Qnil, newline_pos = Qnil;
+static Value function_locations = Qnil;
+static int64_t *newline_pos, newline_pos_len = 0;
 static Value call_stack = Qnil;
 
 //
@@ -452,6 +453,7 @@ static const Token
 typedef struct {
     FILE *in;
     Token prev_token;
+    FILE *newline_pos; // as memstream
 } Parser;
 
 #define parse_error(p, exp, act, ...) do { \
@@ -482,13 +484,19 @@ static void get_line_column(Parser *p, int64_t *line, int64_t *col)
     *col = loc - last_newline;
 }
 
+static void put_newline_pos(Parser *p)
+{
+    int64_t pos = ftell(p->in);
+    fwrite(&pos, sizeof(int64_t), 1, p->newline_pos);
+}
+
 static void skip_token_atmosphere(Parser *p)
 {
     int c;
     for (;;) {
         c = fgetc(p->in);
         if (c == '\n')
-            newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
+            put_newline_pos(p);
         if (isspace(c))
             continue; // skip
         if (c == ';') {
@@ -496,7 +504,7 @@ static void skip_token_atmosphere(Parser *p)
                 c = fgetc(p->in);
             } while (c != '\n' && c != EOF);
             if (c == '\n')
-                newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
+                put_newline_pos(p);
             continue;
         }
         break;
@@ -811,11 +819,23 @@ static Value parse_expr(Parser *p)
 
 static Parser *parser_new(FILE *in)
 {
+    FILE *nlpos = open_memstream((char **) &newline_pos, (size_t *) &newline_pos_len);
+    if (nlpos == NULL)
+        error("failed to open_memstream()");
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
-    function_locations = newline_pos = Qnil;
+    p->newline_pos = nlpos;
     return p;
+}
+
+static void parser_free(Parser *p)
+{
+    if (p == NULL)
+        return;
+    fclose(p->newline_pos);
+    newline_pos_len /= sizeof(int64_t);
+    free(p);
 }
 
 static void expect_arity_range(const char *func, int64_t min, int64_t max, Value args)
@@ -1025,8 +1045,7 @@ static Value iparse(FILE *in)
         if (v == Qnil)
             v = last;
     }
-    free(p);
-    newline_pos = reverse(newline_pos);
+    parser_free(p);
     return v;
 }
 
@@ -1093,12 +1112,12 @@ static Value eval(Value *env, Value v)
 
 static void pos_to_line_col(int64_t pos, int64_t *line, int64_t *col)
 {
-    int64_t nline = 0, last = 0;
-    for (Value p = newline_pos; p != Qnil; p = cdr(p), nline++) {
-        int n = value_to_int(car(p));
-        if (n > pos)
+    int64_t *p = newline_pos;
+    int64_t nline, last = 0;
+    for (nline = 0; nline < newline_pos_len; nline++, p++) {
+        if (*p > pos)
             break;
-        last = n;
+        last = *p;
     }
     *line = nline + 1;
     *col = pos - last + 1;
