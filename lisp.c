@@ -358,28 +358,13 @@ static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
 ATTR(noreturn)
-static void error_with_jmp(jmp_buf buf, const char *fmt, va_list ap)
-{
-    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
-    longjmp(buf, 1);
-}
-
-ATTR(noreturn)
 static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    error_with_jmp(jmp_runtime_error, fmt, ap);
+    vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
     va_end(ap);
-}
-
-ATTR(noreturn)
-static void parse_error_fn(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    error_with_jmp(jmp_parse_error, fmt, ap);
-    va_end(ap);
+    longjmp(jmp_runtime_error, 1);
 }
 
 const char *error_message(void)
@@ -454,32 +439,35 @@ typedef struct {
     Token prev_token;
 } Parser;
 
-#define parse_error(p, exp, act, ...) do { \
-        int64_t line, col; \
-        get_line_column(p, &line, &col); \
-        parse_error_fn("on %"PRId64":%"PRId64": expected %s but got " act, \
-                       line, col, exp __VA_OPT__(,) __VA_ARGS__); \
-    } while (0)
-
-static void get_line_column(Parser *p, int64_t *line, int64_t *col)
+static void pos_to_line_col(int64_t pos, int64_t *line, int64_t *col)
 {
-    FILE *in = p->in;
-    int64_t loc = ftell(in);
-    if (loc < 0) {
-        *line = *col = 0;
-        return;
+    int64_t nline = 0, last = 0;
+    for (Value p = newline_pos; p != Qnil; p = cdr(p), nline++) {
+        int n = value_to_int(car(p));
+        if (n > pos)
+            break;
+        last = n;
     }
-    rewind(in);
-    int64_t nline = 1;
-    int64_t last_newline = 0;
-    for (int64_t i = 0; i < loc; i++) {
-        if (fgetc(in) == '\n') {
-            nline++;
-            last_newline = i;
-        }
-    }
-    *line = nline;
-    *col = loc - last_newline;
+    *line = nline + 1;
+    *col = pos - last + 1;
+}
+
+static Value reverse(Value l);
+
+ATTR(noreturn)
+static void parse_error(Parser *p, const char *expected, const char *actual, ...)
+{
+    newline_pos = reverse(newline_pos);
+    int64_t pos = ftell(p->in), line, col;
+    pos_to_line_col(pos, &line, &col);
+    int n = snprintf(errmsg, sizeof(errmsg),
+                     "on %"PRId64":%"PRId64": expected %s but got ",
+                     line, col, expected);
+    va_list ap;
+    va_start(ap, actual);
+    vsnprintf(errmsg + n, sizeof(errmsg) - n, actual, ap);
+    va_end(ap);
+    longjmp(jmp_parse_error, 1);
 }
 
 static void skip_token_atmosphere(Parser *p)
@@ -1095,19 +1083,6 @@ static Value eval(Value *env, Value v)
         return v;
     call_stack_push(v);
     return eval_apply(env, car(v), cdr(v));
-}
-
-static void pos_to_line_col(int64_t pos, int64_t *line, int64_t *col)
-{
-    int64_t nline = 0, last = 0;
-    for (Value p = newline_pos; p != Qnil; p = cdr(p), nline++) {
-        int n = value_to_int(car(p));
-        if (n > pos)
-            break;
-        last = n;
-    }
-    *line = nline + 1;
-    *col = pos - last + 1;
 }
 
 ATTR(format(printf, 1, 2))
