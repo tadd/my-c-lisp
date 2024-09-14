@@ -95,10 +95,6 @@ static Value list(Value arg, ...)
     return l;
 }
 
-Test(lisp, nil) {
-    cr_expect(value_is_nil(Qnil));
-}
-
 Test(lisp, printing) {
     expect_stringify("#t", Qtrue);
     expect_stringify("#f", Qfalse);
@@ -122,7 +118,7 @@ Test(lisp, parse_int) {
 }
 
 Test(lisp, parse_nil) {
-    cr_expect(value_is_nil(parse_expr_string("()")));
+    cr_expect(parse_expr_string("()") == Qnil);
 }
 
 Test(lisp, parse_list) {

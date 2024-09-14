@@ -206,7 +206,7 @@ Type value_type_of(Value v)
     UNREACHABLE();
 }
 
-inline const char *value_type_to_string(Type t)
+static inline const char *value_type_to_string(Type t)
 {
     return TYPE_NAMES[t];
 }

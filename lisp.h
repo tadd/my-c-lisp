@@ -30,9 +30,7 @@ bool value_is_int(Value v);
 bool value_is_symbol(Value v);
 bool value_is_string(Value v);
 bool value_is_pair(Value v);
-bool value_is_nil(Value v);
 Type value_type_of(Value v);
-const char *value_type_to_string(Type t);
 
 int64_t value_to_int(Value v);
 Symbol value_to_symbol(Value v);
