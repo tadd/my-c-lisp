@@ -435,6 +435,7 @@ static const Token
 
 typedef struct {
     FILE *in;
+    const char *filename;
     Token prev_token;
     Value function_locations; //  alist of '(id . (pos . sym)) | id = (pointer >> 3)
     Value newline_pos; // list of pos | int
@@ -463,8 +464,8 @@ static void parse_error(Parser *p, const char *expected, const char *actual, ...
     int64_t line, col;
     pos_to_line_col(pos, newline_pos, &line, &col);
     int n = snprintf(errmsg, sizeof(errmsg),
-                     "on %"PRId64":%"PRId64": expected %s but got ",
-                     line, col, expected);
+                     "%s:%"PRId64":%"PRId64": expected %s but got ",
+                     p->filename, line, col, expected);
     va_list ap;
     va_start(ap, actual);
     vsnprintf(errmsg + n, sizeof(errmsg) - n, actual, ap);
@@ -805,10 +806,11 @@ static Value parse_expr(Parser *p)
     return Qundef;
 }
 
-static Parser *parser_new(FILE *in)
+static Parser *parser_new(FILE *in, const char *filename)
 {
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
+    p->filename = filename;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
     p->function_locations = Qnil;
     p->newline_pos = Qnil;
@@ -1031,9 +1033,9 @@ static Value parse_program(Parser *p)
     return ast_new(p, v);
 }
 
-static Value iparse(FILE *in)
+static Value iparse(FILE *in, const char *filename)
 {
-    Parser *p = parser_new(in);
+    Parser *p = parser_new(in, filename);
     Value ast;
     if (setjmp(jmp_parse_error) == 0)
         ast = parse_program(p); // success
@@ -1048,7 +1050,7 @@ Value parse(const char *path)
     FILE *in = fopen(path, "r");
     if (in == NULL)
         error("parse: can't open file: %s", path);
-    Value ast = iparse(in);
+    Value ast = iparse(in, path);
     fclose(in);
     return car(ast);
 }
@@ -1056,7 +1058,7 @@ Value parse(const char *path)
 Value parse_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value ast = iparse(f);
+    Value ast = iparse(f, "<inline>");
     fclose(f);
     return car(ast);
 }
@@ -1115,11 +1117,11 @@ static int append_error_message(const char *fmt, ...)
     return n;
 }
 
-static void dump_line_column(Value function_locations, Value vpos)
+static void dump_line_column(Value function_locations, const char *filename, Value vpos)
 {
     int64_t pos = value_to_int(vpos), line, col;
     pos_to_line_col(pos, function_locations, &line, &col);
-    append_error_message("\n\t%"PRId64":%"PRId64" in ", line, col);
+    append_error_message("\n\t%s:%"PRId64":%"PRId64" in ", filename, line, col);
 }
 
 static void dump_callee_name(Value function_locations, Value id)
@@ -1135,24 +1137,24 @@ static void dump_callee_name(Value function_locations, Value id)
     }
 }
 
-static void dump_frame(Value data, Value id, Value callee)
+static void dump_frame(Value data, const char *filename, Value id, Value callee)
 {
     if (id == FRAME_IGNORE)
         return;
     Value p, function_locations = car(data);
     if (id == FRAME_UNKNOWN || (p = assq(id, function_locations)) == Qfalse) {
-        append_error_message("\n\t<unknown>");
+        append_error_message("\n\t%s:<unknown>", filename);
         return;
     }
-    dump_line_column(cadr(data), cadr(p));
+    dump_line_column(cadr(data), filename, cadr(p));
     dump_callee_name(function_locations, callee == Qnil ? Qnil : car(callee));
 }
 
-static void dump_stack_trace(Value data)
+static void dump_stack_trace(Value data, const char *filename)
 {
     for (Value p = call_stack, next; p != Qnil; p = next) {
         next = cdr(p);
-        dump_frame(data, car(p), next);
+        dump_frame(data, filename, car(p), next);
     }
 }
 
@@ -1167,13 +1169,13 @@ static void call_stack_check_consistency(void)
     fprintf(stderr, "\n");
 }
 
-static Value iload(FILE *in)
+static Value iload(FILE *in, const char *filename)
 {
-    Value ast = iparse(in), l = car(ast);
+    Value ast = iparse(in, filename), l = car(ast);
     if (l == Qundef)
         return Qundef;
     if (setjmp(jmp_runtime_error) != 0) {
-        dump_stack_trace(cdr(ast));
+        dump_stack_trace(cdr(ast), filename);
         return Qundef;
     }
     call_stack = Qnil;
@@ -1183,9 +1185,9 @@ static Value iload(FILE *in)
     return ret;
 }
 
-static Value iload_inner(FILE *in)
+static Value iload_inner(FILE *in, const char *path)
 {
-    Value ast = iparse(in), l = car(ast);
+    Value ast = iparse(in, path), l = car(ast);
     if (l == Qundef)
         return Qundef;
     return eval_body(&toplevel_environment, l);
@@ -1194,7 +1196,7 @@ static Value iload_inner(FILE *in)
 Value eval_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = iload(f);
+    Value v = iload(f, "<inline>");
     fclose(f);
     return v;
 }
@@ -1216,7 +1218,7 @@ static FILE *open_loadable(const char *path)
 Value load(const char *path)
 {
     FILE *in = open_loadable(path);
-    Value retval = iload(in);
+    Value retval = iload(in, path);
     fclose(in);
     return retval;
 }
@@ -1225,7 +1227,7 @@ static Value load_inner(const char *path)
 {
     const char *basedir_saved = load_basedir;
     FILE *in = open_loadable(path);
-    Value retval = iload_inner(in);
+    Value retval = iload_inner(in, path);
     fclose(in);
     load_basedir = basedir_saved;
     return retval;
