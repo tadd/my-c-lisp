@@ -1011,15 +1011,16 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static inline Value list3(Value x, Value y, Value z)
+static inline Value list4(Value w, Value x, Value y, Value z)
 {
-    return cons(x, cons(y, cons(z, Qnil)));
+    return cons(w, cons(x, list2(y, z)));
 }
 
-// AST: (syntax_list function_locations, newline_positions)
+// AST: (syntax_list filename function_locations newline_positions)
 static Value ast_new(Parser *p, Value syntax_list)
 {
-    return list3(syntax_list, p->function_locations, reverse(p->newline_pos));
+    Value filename = value_of_symbol(p->filename);
+    return list4(syntax_list, filename, p->function_locations, reverse(p->newline_pos));
 }
 
 static Value parse_program(Parser *p)
@@ -1117,10 +1118,13 @@ static int append_error_message(const char *fmt, ...)
     return n;
 }
 
-static void dump_line_column(Value function_locations, const char *filename, Value vpos)
+static void dump_line_column(Value data, Value vpos)
 {
+    Value newline_pos = caddr(data);
     int64_t pos = value_to_int(vpos), line, col;
-    pos_to_line_col(pos, function_locations, &line, &col);
+    pos_to_line_col(pos, newline_pos, &line, &col);
+    Value vfilename = car(data);
+    const char *filename = value_to_string(vfilename);
     append_error_message("\n\t%s:%"PRId64":%"PRId64" in ", filename, line, col);
 }
 
@@ -1137,24 +1141,25 @@ static void dump_callee_name(Value function_locations, Value id)
     }
 }
 
-static void dump_frame(Value data, const char *filename, Value id, Value callee)
+static void dump_frame(Value data, Value id, Value callee)
 {
     if (id == FRAME_IGNORE)
         return;
-    Value p, function_locations = car(data);
+    Value p, function_locations = cadr(data);
     if (id == FRAME_UNKNOWN || (p = assq(id, function_locations)) == Qfalse) {
-        append_error_message("\n\t%s:<unknown>", filename);
+        Value f = car(data);
+        append_error_message("\n\t%s:<unknown>", value_to_string(f));
         return;
     }
-    dump_line_column(cadr(data), filename, cadr(p));
+    dump_line_column(data, cadr(p));
     dump_callee_name(function_locations, callee == Qnil ? Qnil : car(callee));
 }
 
-static void dump_stack_trace(Value data, const char *filename)
+static void dump_stack_trace(Value data)
 {
     for (Value p = call_stack, next; p != Qnil; p = next) {
         next = cdr(p);
-        dump_frame(data, filename, car(p), next);
+        dump_frame(data, car(p), next);
     }
 }
 
@@ -1175,7 +1180,7 @@ static Value iload(FILE *in, const char *filename)
     if (l == Qundef)
         return Qundef;
     if (setjmp(jmp_runtime_error) != 0) {
-        dump_stack_trace(cdr(ast), filename);
+        dump_stack_trace(cdr(ast));
         return Qundef;
     }
     call_stack = Qnil;
