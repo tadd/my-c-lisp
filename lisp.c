@@ -355,7 +355,7 @@ static jmp_buf jmp_runtime_error, jmp_parse_error;
 static char errmsg[BUFSIZ];
 
 ATTR(noreturn)
-static void error_with_buf(jmp_buf buf, const char *fmt, va_list ap)
+static void error_with_jmp(jmp_buf buf, const char *fmt, va_list ap)
 {
     vsnprintf(errmsg, sizeof(errmsg), fmt, ap);
     longjmp(buf, 1);
@@ -366,7 +366,7 @@ static void runtime_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    error_with_buf(jmp_runtime_error, fmt, ap);
+    error_with_jmp(jmp_runtime_error, fmt, ap);
     va_end(ap);
 }
 
@@ -375,7 +375,7 @@ static void parse_error_fn(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    error_with_buf(jmp_parse_error, fmt, ap);
+    error_with_jmp(jmp_parse_error, fmt, ap);
     va_end(ap);
 }
 
