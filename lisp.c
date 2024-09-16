@@ -1128,12 +1128,14 @@ static void dump_line_column(Value data, Value vpos)
     append_error_message("\n\t%s:%"PRId64":%"PRId64" in ", filename, line, col);
 }
 
-static void dump_callee_name(Value function_locations, Value id)
+static void dump_callee_name(Value function_locations, Value xid)
 {
-    Value p;
-    if (id == Qnil)
+    if (xid == Qnil) {
         append_error_message("<toplevel>");
-    else if ((p = assq(id, function_locations)) == Qfalse)
+        return;
+    }
+    Value id = car(xid), p = assq(id, function_locations);
+    if (p == Qfalse)
         append_error_message("<unknown>");
     else {
         const char *name = value_to_string(cddr(p));
@@ -1152,7 +1154,7 @@ static void dump_frame(Value data, Value id, Value callee)
         return;
     }
     dump_line_column(data, cadr(p));
-    dump_callee_name(function_locations, callee == Qnil ? Qnil : car(callee));
+    dump_callee_name(function_locations, callee);
 }
 
 static void dump_stack_trace(Value data)
