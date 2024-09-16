@@ -40,7 +40,7 @@
 
 #define expect_int_eq(exp, act) cr_expect(eq(int, exp, act))
 #define expect_string_eq(exp, act) cr_expect_str_eq(act, exp)
-#define expect_runtime_error(pattern, v) do { \
+#define expect_error(pattern, v) do { \
         expect_int_eq(Qundef, v); \
         char *m = strstr(error_message(), pattern); \
         cr_expect_not_null(m, "expected \"%s\" includes \"%s\"", \
@@ -66,8 +66,8 @@
 #define expect_vsym_eq_parsed(exp, act) expect_x_eq_parsed(vsym, exp, act)
 #define expect_list_eq_parsed(exp, act) expect_x_eq_parsed(list, exp, act)
 #define expect_pair_eq_parsed(ecar, ecdr, act) expect_pair_eq(ecar, ecdr, parse_expr_string(act))
-#define expect_runtime_error_parsed(exp, act) expect_runtime_error(exp, parse_expr_string(act))
-#define expect_runtime_error_evaled(exp, act) expect_runtime_error(exp, eval_string(act))
+#define expect_parse_error(exp, act) expect_error(exp, parse_expr_string(act))
+#define expect_runtime_error(exp, act) expect_error(exp, eval_string(act))
 
 static Value parse_expr_string(const char *in)
 {
@@ -160,38 +160,38 @@ Test(lisp, parse_lambda) {
 }
 
 Test(lisp, parse_broken) {
-    expect_runtime_error_parsed("got 'EOF'", "(");
-    expect_runtime_error_parsed("got 'EOF'", "'");
+    expect_parse_error("got 'EOF'", "(");
+    expect_parse_error("got 'EOF'", "'");
 }
 
 Test(lisp, div0) {
-    expect_runtime_error_evaled("divided by zero", "(/ 42 0)");
+    expect_runtime_error("divided by zero", "(/ 42 0)");
 }
 
 Test(lisp, modulo) {
-    expect_runtime_error_evaled("divided by zero", "(modulo 13 0)");
+    expect_runtime_error("divided by zero", "(modulo 13 0)");
 }
 
 Test(lisp, unbound_variable) {
-    expect_runtime_error_evaled("unbound variable: x", "x");
-    expect_runtime_error_evaled("unbound variable: x", "(+ x 2)");
+    expect_runtime_error("unbound variable: x", "x");
+    expect_runtime_error("unbound variable: x", "(+ x 2)");
 }
 
 Test(lisp, if) {
-    expect_runtime_error_evaled("2..3 but got 1", "(if #f)");
-    expect_runtime_error_evaled("2..3 but got 4", "(if #f 1 2 3)");
+    expect_runtime_error("2..3 but got 1", "(if #f)");
+    expect_runtime_error("2..3 but got 4", "(if #f 1 2 3)");
 }
 
 Test(lisp, set) {
-    expect_runtime_error_evaled("unbound variable: x", "(begin (set! x 42) x)");
+    expect_runtime_error("unbound variable: x", "(begin (set! x 42) x)");
 }
 
 Test(lisp, let) {
-    expect_runtime_error_evaled("but got 1", "(let ((x 42)))");
-    expect_runtime_error_evaled("but got 1", "(let ((x 42) (y 100)))");
+    expect_runtime_error("but got 1", "(let ((x 42)))");
+    expect_runtime_error("but got 1", "(let ((x 42) (y 100)))");
 }
 
 Test(lisp, applicable) {
-    expect_runtime_error_evaled("expected procedure", "(1 1)");
-    expect_runtime_error_evaled("expected procedure", "(() 1)");
+    expect_runtime_error("expected procedure", "(1 1)");
+    expect_runtime_error("expected procedure", "(() 1)");
 }
