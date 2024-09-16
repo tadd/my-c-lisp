@@ -956,19 +956,23 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
-static Value reverse(Value l);
-
-static Value iparse(FILE *in)
+static Value parse_program(Parser *p)
 {
-    if (setjmp(jmp_parse_error) != 0)
-        return Qundef;
-    Parser *p = parser_new(in);
     Value v = Qnil, last = Qnil;
     for (Value expr; (expr = parse_expr(p)) != Qundef; ) {
         last = append_at(last, expr);
         if (v == Qnil)
             v = last;
     }
+    return v;
+}
+
+static Value iparse(FILE *in)
+{
+    if (setjmp(jmp_parse_error) != 0)
+        return Qundef;
+    Parser *p = parser_new(in);
+    Value v = parse_program(p);
     free(p);
     return v;
 }
