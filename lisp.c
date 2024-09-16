@@ -122,6 +122,7 @@ static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
 static Value call_stack = Qnil;
+static Value source_data = Qnil;
 
 //
 // value_is_*: Type Checks
@@ -1118,50 +1119,70 @@ static int append_error_message(const char *fmt, ...)
     return n;
 }
 
-static void dump_line_column(Value data, Value vpos)
+static void dump_line_column(Value vfilename, Value vpos)
 {
-    Value newline_pos = caddr(data);
     int64_t pos = value_to_int(vpos), line, col;
+    Value data = assq(vfilename, source_data);
+    if (data == Qnil) {
+        append_error_message("\n\t<unknown>");
+        return;
+    }
+    Value newline_pos = caddr(data);
     pos_to_line_col(pos, newline_pos, &line, &col);
-    Value vfilename = car(data);
     const char *filename = value_to_string(vfilename);
     append_error_message("\n\t%s:%"PRId64":%"PRId64" in ", filename, line, col);
 }
 
-static void dump_callee_name(Value function_locations, Value xid)
+static Value find_location_by_pair_id(Value id, Value *pfilename)
+{
+    if (id == FRAME_UNKNOWN)
+        return Qfalse;
+    for (Value p = source_data; p != Qnil; p = cdr(p)) {
+        Value filename = caar(p), locations = cadar(p);
+        Value found = assq(id, locations);
+        if (found != Qfalse) {
+            if (pfilename)
+                *pfilename = filename;
+            return found;
+        }
+    }
+    return Qfalse;
+}
+
+static void dump_callee_name(Value xid)
 {
     if (xid == Qnil) {
         append_error_message("<toplevel>");
         return;
     }
-    Value id = car(xid), p = assq(id, function_locations);
-    if (p == Qfalse)
+    Value id = car(xid);
+    Value found = find_location_by_pair_id(id, NULL);
+    if (found == Qfalse)
         append_error_message("<unknown>");
     else {
-        const char *name = value_to_string(cddr(p));
+        const char *name = value_to_string(cddr(found));
         append_error_message("'%s'", name);
     }
 }
 
-static void dump_frame(Value data, Value id, Value callee)
+static void dump_frame(Value id, Value callee)
 {
     if (id == FRAME_IGNORE)
         return;
-    Value p, function_locations = cadr(data);
-    if (id == FRAME_UNKNOWN || (p = assq(id, function_locations)) == Qfalse) {
-        Value f = car(data);
-        append_error_message("\n\t%s:<unknown>", value_to_string(f));
+    Value filename, found = find_location_by_pair_id(id, &filename);
+    if (found == Qfalse) {
+        append_error_message("\n\t<unknown>");
         return;
     }
-    dump_line_column(data, cadr(p));
-    dump_callee_name(function_locations, callee);
+    dump_line_column(filename, cadr(found));
+    dump_callee_name(callee);
 }
 
-static void dump_stack_trace(Value data)
+static void dump_stack_trace()
 {
     for (Value p = call_stack, next; p != Qnil; p = next) {
         next = cdr(p);
-        dump_frame(data, car(p), next);
+        dump_frame(car(p), next);
     }
 }
 
@@ -1179,10 +1200,11 @@ static void call_stack_check_consistency(void)
 static Value iload(FILE *in, const char *filename)
 {
     Value ast = iparse(in, filename), l = car(ast);
+    source_data = cons(cdr(ast), source_data);
     if (l == Qundef)
         return Qundef;
     if (setjmp(jmp_runtime_error) != 0) {
-        dump_stack_trace(cdr(ast));
+        dump_stack_trace();
         return Qundef;
     }
     call_stack = Qnil;
@@ -1195,6 +1217,7 @@ static Value iload(FILE *in, const char *filename)
 static Value iload_inner(FILE *in, const char *path)
 {
     Value ast = iparse(in, path), l = car(ast);
+    source_data = cons(cdr(ast), source_data);
     if (l == Qundef)
         return Qundef;
     return eval_body(&toplevel_environment, l);
