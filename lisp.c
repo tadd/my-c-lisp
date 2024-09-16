@@ -121,7 +121,6 @@ static Value SYM_ELSE, SYM_QUOTE, SYM_QUASIQUOTE, SYM_UNQUOTE, SYM_UNQUOTE_SPLIC
 static const volatile void *stack_base = NULL;
 #define INIT_STACK() void *basis; stack_base = &basis
 static const char *load_basedir = NULL;
-static Value function_locations = Qnil, newline_pos = Qnil;
 static Value call_stack = Qnil;
 
 //
@@ -437,9 +436,11 @@ static const Token
 typedef struct {
     FILE *in;
     Token prev_token;
+    Value function_locations; //  alist of '(id . (pos . sym)) | id = (pointer >> 3)
+    Value newline_pos; // list of pos | int
 } Parser;
 
-static void pos_to_line_col(int64_t pos, int64_t *line, int64_t *col)
+static void pos_to_line_col(int64_t pos, Value newline_pos, int64_t *line, int64_t *col)
 {
     int64_t nline = 0, last = 0;
     for (Value p = newline_pos; p != Qnil; p = cdr(p), nline++) {
@@ -457,9 +458,10 @@ static Value reverse(Value l);
 ATTR(noreturn)
 static void parse_error(Parser *p, const char *expected, const char *actual, ...)
 {
-    newline_pos = reverse(newline_pos);
-    int64_t pos = ftell(p->in), line, col;
-    pos_to_line_col(pos, &line, &col);
+    Value newline_pos = reverse(p->newline_pos);
+    int64_t pos = ftell(p->in);
+    int64_t line, col;
+    pos_to_line_col(pos, newline_pos, &line, &col);
     int n = snprintf(errmsg, sizeof(errmsg),
                      "on %"PRId64":%"PRId64": expected %s but got ",
                      line, col, expected);
@@ -470,21 +472,27 @@ static void parse_error(Parser *p, const char *expected, const char *actual, ...
     longjmp(jmp_parse_error, 1);
 }
 
+static inline void put_newline_pos(Parser *p)
+{
+    p->newline_pos = cons(value_of_int(ftell(p->in)), p->newline_pos);
+}
+
 static void skip_token_atmosphere(Parser *p)
 {
     int c;
     for (;;) {
         c = fgetc(p->in);
-        if (c == '\n')
-            newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
-        if (isspace(c))
+        if (isspace(c)) {
+            if (c == '\n')
+                put_newline_pos(p);
             continue; // skip
+        }
         if (c == ';') {
             do {
                 c = fgetc(p->in);
             } while (c != '\n' && c != EOF);
             if (c == '\n')
-                newline_pos = cons(value_of_int(ftell(p->in)), newline_pos);
+                put_newline_pos(p);
             continue;
         }
         break;
@@ -724,11 +732,11 @@ static inline Value pair_to_id(Value p)
     return value_of_int(p >> 3U); // we assume 64 bit machines
 }
 
-static void record_location(Value p, int64_t pos, Value sym)
+static void record_location(Parser *p, Value pair, int64_t pos, Value sym)
 {
-    int64_t id = pair_to_id(p);
+    int64_t id = pair_to_id(pair);
     Value loc = cons(id, cons(value_of_int(pos), sym));
-    function_locations = cons(loc, function_locations);
+    p->function_locations = cons(loc, p->function_locations);
 }
 
 static Value parse_list(Parser *p)
@@ -749,7 +757,7 @@ static Value parse_list(Parser *p)
         if (l == Qnil) {
             l = last;
             if (value_is_symbol(e))
-                record_location(l, pos, e);
+                record_location(p, l, pos, e);
         }
     }
     return l;
@@ -802,7 +810,8 @@ static Parser *parser_new(FILE *in)
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
-    function_locations = newline_pos = Qnil;
+    p->function_locations = Qnil;
+    p->newline_pos = Qnil;
     return p;
 }
 
@@ -1000,6 +1009,17 @@ static Value lookup(Value env, Value name)
     return cdr(found);
 }
 
+static inline Value list3(Value x, Value y, Value z)
+{
+    return cons(x, cons(y, cons(z, Qnil)));
+}
+
+// AST: (syntax_list function_locations, newline_positions)
+static Value ast_new(Parser *p, Value syntax_list)
+{
+    return list3(syntax_list, p->function_locations, reverse(p->newline_pos));
+}
+
 static Value parse_program(Parser *p)
 {
     Value v = Qnil, last = Qnil;
@@ -1008,20 +1028,19 @@ static Value parse_program(Parser *p)
         if (v == Qnil)
             v = last;
     }
-    return v;
+    return ast_new(p, v);
 }
 
 static Value iparse(FILE *in)
 {
     Parser *p = parser_new(in);
-    Value v;
+    Value ast;
     if (setjmp(jmp_parse_error) == 0)
-        v = parse_program(p);
+        ast = parse_program(p); // success
     else
-        v = Qundef;
+        ast = ast_new(p, Qundef); // got an error
     free(p);
-    newline_pos = reverse(newline_pos);
-    return v;
+    return ast;
 }
 
 Value parse(const char *path)
@@ -1029,17 +1048,17 @@ Value parse(const char *path)
     FILE *in = fopen(path, "r");
     if (in == NULL)
         error("parse: can't open file: %s", path);
-    Value retval = iparse(in);
+    Value ast = iparse(in);
     fclose(in);
-    return retval;
+    return car(ast);
 }
 
 Value parse_string(const char *in)
 {
     FILE *f = fmemopen((char *) in, strlen(in), "r");
-    Value v = iparse(f);
+    Value ast = iparse(f);
     fclose(f);
-    return v;
+    return car(ast);
 }
 
 //
@@ -1096,14 +1115,14 @@ static int append_error_message(const char *fmt, ...)
     return n;
 }
 
-static void dump_line_column(Value vpos)
+static void dump_line_column(Value function_locations, Value vpos)
 {
     int64_t pos = value_to_int(vpos), line, col;
-    pos_to_line_col(pos, &line, &col);
+    pos_to_line_col(pos, function_locations, &line, &col);
     append_error_message("\n\t%"PRId64":%"PRId64" in ", line, col);
 }
 
-static void dump_callee_name(Value id)
+static void dump_callee_name(Value function_locations, Value id)
 {
     Value p;
     if (id == Qnil)
@@ -1116,24 +1135,24 @@ static void dump_callee_name(Value id)
     }
 }
 
-static void dump_frame(Value id, Value callee)
+static void dump_frame(Value data, Value id, Value callee)
 {
     if (id == FRAME_IGNORE)
         return;
-    Value p;
+    Value p, function_locations = car(data);
     if (id == FRAME_UNKNOWN || (p = assq(id, function_locations)) == Qfalse) {
         append_error_message("\n\t<unknown>");
         return;
     }
-    dump_line_column(cadr(p));
-    dump_callee_name(callee == Qnil ? Qnil : car(callee));
+    dump_line_column(cadr(data), cadr(p));
+    dump_callee_name(function_locations, callee == Qnil ? Qnil : car(callee));
 }
 
-static void dump_stack_trace(void)
+static void dump_stack_trace(Value data)
 {
     for (Value p = call_stack, next; p != Qnil; p = next) {
         next = cdr(p);
-        dump_frame(car(p), next);
+        dump_frame(data, car(p), next);
     }
 }
 
@@ -1150,11 +1169,11 @@ static void call_stack_check_consistency(void)
 
 static Value iload(FILE *in)
 {
-    Value l = iparse(in);
+    Value ast = iparse(in), l = car(ast);
     if (l == Qundef)
         return Qundef;
     if (setjmp(jmp_runtime_error) != 0) {
-        dump_stack_trace();
+        dump_stack_trace(cdr(ast));
         return Qundef;
     }
     call_stack = Qnil;
@@ -1166,7 +1185,7 @@ static Value iload(FILE *in)
 
 static Value iload_inner(FILE *in)
 {
-    Value l = iparse(in);
+    Value ast = iparse(in), l = car(ast);
     if (l == Qundef)
         return Qundef;
     return eval_body(&toplevel_environment, l);
