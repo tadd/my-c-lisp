@@ -999,7 +999,7 @@ static Value eval(Value *env, Value v);
 static Value eval_body(Value *env, Value body)
 {
     Value last = Qnil;
-    for (Value p = body; p != Qnil; p = cdr(p))
+    for (Value p = body; p != Qnil && last != Qundef; p = cdr(p))
         last = eval(env, car(p));
     return last;
 }
