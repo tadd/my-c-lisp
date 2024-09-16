@@ -1273,9 +1273,9 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
 {
     Value tr = transpose_2xn(bindings);
     Value params = car(tr), symargs = cadr(tr);
-    Value args = map_eval(env, symargs);
     Value proc = lambda(env, params, body);
     expect_type("named let", TYPE_PROC, proc);
+    Value args = map_eval(env, symargs);
     Value letenv = *env;
     define_variable(&letenv, var, proc);
     return apply(&letenv, proc, args);
