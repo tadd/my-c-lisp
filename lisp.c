@@ -969,10 +969,12 @@ static Value parse_program(Parser *p)
 
 static Value iparse(FILE *in)
 {
-    if (setjmp(jmp_parse_error) != 0)
-        return Qundef;
     Parser *p = parser_new(in);
-    Value v = parse_program(p);
+    Value v;
+    if (setjmp(jmp_parse_error) == 0)
+        v = parse_program(p);
+    else
+        v = Qundef;
     free(p);
     return v;
 }
