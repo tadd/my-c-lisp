@@ -2048,8 +2048,10 @@ static bool cars_cdrs(Value ls, Value *pcars, Value *pcdrs)
 {
     Value lcars = Qnil, lcdrs = Qnil;
     Value cars = Qnil , cdrs = Qnil;
-    for (Value p = ls, l; p != Qnil; p = cdr(p)) {
-        if ((l = car(p)) == Qnil)
+    for (Value p = ls; p != Qnil; p = cdr(p)) {
+        Value l = car(p);
+        expect_type("map", TYPE_PAIR, l);
+        if (l == Qnil)
             return false;
         lcars = append_at(lcars, car(l));
         if (cars == Qnil)

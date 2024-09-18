@@ -195,3 +195,8 @@ Test(lisp, applicable) {
     expect_runtime_error("expected procedure", "(1 1)");
     expect_runtime_error("expected procedure", "(() 1)");
 }
+
+Test(lisp, map) {
+    expect_runtime_error("expected pair but got integer", "(map + 1)");
+    expect_runtime_error("expected pair but got integer", "(for-each + 1)");
+}
