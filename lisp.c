@@ -927,17 +927,9 @@ static inline void expect_nonnull(const char *msg, Value l)
         runtime_error("%s: expected non-null?", msg);
 }
 
-static const Value FRAME_IGNORE = Qfalse, FRAME_UNKNOWN = Qundef;
-
-static inline bool frame_is_special(Value f)
-{
-    return f == FRAME_IGNORE || f == FRAME_UNKNOWN;
-}
-
 static void call_stack_push(Value l)
 {
-    Value id = frame_is_special(l) ? l : pair_to_id(l);
-    call_stack = cons(id, call_stack);
+    call_stack = cons(pair_to_id(l), call_stack);
 }
 
 static void call_stack_pop(void)
@@ -973,22 +965,17 @@ static void apply_continuation(Value f, Value args)
 static Value apply(Value *env, Value proc, Value args)
 {
     expect_arity(PROCEDURE(proc)->arity, args);
-    Value ret;
     switch (VALUE_TAG(proc)) {
     case TAG_SYNTAX:
     case TAG_CFUNC:
-        ret = apply_cfunc(env, proc, args);
-        break;
+        return apply_cfunc(env, proc, args);
     case TAG_CLOSURE:
-        ret = apply_closure(env, proc, args);
-        break;
+        return apply_closure(env, proc, args);
     case TAG_CONTINUATION:
         apply_continuation(proc, args); // no return!
     default:
         UNREACHABLE();
     }
-    call_stack_pop();
-    return ret;
 }
 
 // Note: Do not mistake this for "(define-syntax ...)" which related to macros
@@ -1095,7 +1082,9 @@ static Value eval_apply(Value *env, Value symproc, Value args)
     if (!value_tag_is(proc, TAG_SYNTAX))
         args = map_eval(env, args);
     expect_type("eval", TYPE_PROC, proc);
-    return apply(env, proc, args);
+    Value ret = apply(env, proc, args);
+    call_stack_pop();
+    return ret;
 }
 
 static Value eval(Value *env, Value v)
@@ -1135,8 +1124,6 @@ static void dump_line_column(Value vfilename, Value vpos)
 
 static Value find_location_by_pair_id(Value id, Value *pfilename)
 {
-    if (id == FRAME_UNKNOWN)
-        return Qfalse;
     for (Value p = source_data; p != Qnil; p = cdr(p)) {
         Value filename = caar(p), locations = cadar(p);
         Value found = assq(id, locations);
@@ -1167,8 +1154,6 @@ static void dump_callee_name(Value xid)
 
 static void dump_frame(Value id, Value callee)
 {
-    if (id == FRAME_IGNORE)
-        return;
     Value filename, found = find_location_by_pair_id(id, &filename);
     if (found == Qfalse) {
         append_error_message("\n\t<unknown>");
@@ -1334,7 +1319,6 @@ static Value cond_eval_recipient(Value *env, Value test, Value recipients)
     Value recipient = eval(env, car(recipients)), rest = cdr(recipients);
     expect_type("end of => in cond", TYPE_PROC, recipient);
     expect_null("end of => in cond", rest);
-    call_stack_push(FRAME_IGNORE);
     return apply(env, recipient, list1(test));
 }
 
@@ -1443,7 +1427,6 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
     Value args = map_eval(env, symargs);
     Value letenv = *env;
     define_variable(&letenv, var, proc);
-    call_stack_push(FRAME_IGNORE);
     return apply(&letenv, proc, args);
 }
 
@@ -2201,7 +2184,6 @@ static Value proc_apply(Value *env, Value args)
     Value proc = car(args);
     expect_type("apply", TYPE_PROC, proc);
     Value appargs = apply_args(cdr(args));
-    call_stack_push(FRAME_IGNORE);
     return apply(env, proc, appargs);
 }
 
@@ -2236,7 +2218,6 @@ static Value proc_map(Value *env, Value args)
     Value last = Qnil, ret = Qnil;
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
-        call_stack_push(FRAME_IGNORE);
         Value v = apply(env, proc, cars);
         last = append_at(last, v);
         if (ret == Qnil)
@@ -2255,7 +2236,6 @@ static Value proc_for_each(Value *env, Value args)
     Value lists = cdr(args);
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
-        call_stack_push(FRAME_IGNORE);
         apply(env, proc, cars);
         lists = cdrs;
     }
@@ -2287,7 +2267,6 @@ static Value proc_callcc(Value *env, Value proc)
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
-    call_stack_push(FRAME_IGNORE);
     return apply(env, proc, list1(c));
 }
 
