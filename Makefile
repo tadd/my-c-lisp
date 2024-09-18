@@ -1,13 +1,13 @@
 CC=gcc
 OPTFLAGS=-O0 -ggdb3
-CFLAGS=-std=gnu17 -Wall -Wextra $(OPTFLAGS) $(XCFLAGS)
+CFLAGS=-std=gnu17 -Wall -Wextra -I. $(OPTFLAGS) $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 
 OBJ_COMMON=lisp.o utils.o
 OBJ=$(OBJ_COMMON) main.o
-OBJ_TEST=$(OBJ_COMMON) basic-test.o
+OBJ_TEST=$(OBJ_COMMON) test/basic-test.o
 
 all: lisp test
 
@@ -25,12 +25,12 @@ test-c-san: basic-test-san
 	./$<
 
 test-scheme: lisp
-	./$< test.scm
+	./$< test/test.scm
 test-scheme-san: lisp-san
-	./$< test.scm
+	./$< test/test.scm
 
 clean:
-	rm -f lisp basic-test *-san *.o
+	rm -f lisp basic-test *-san *.o test/*.o
 
 analyze: $(OBJ:.o=.analyzer)
 
@@ -44,7 +44,7 @@ basic-test-san: $(OBJ_TEST:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS) -lcriterion
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< -o $@
 
 %.s: %.c
 	$(CC) $(CFLAGS) -S -fverbose-asm -c $<
