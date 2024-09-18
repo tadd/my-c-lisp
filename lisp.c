@@ -1136,13 +1136,13 @@ static Value find_location_by_pair_id(Value id, Value *pfilename)
     return Qfalse;
 }
 
-static void dump_callee_name(Value xid)
+static void dump_callee_name(Value callers)
 {
-    if (xid == Qnil) {
+    if (callers == Qnil) {
         append_error_message("<toplevel>");
         return;
     }
-    Value id = car(xid);
+    Value id = car(callers);
     Value found = find_location_by_pair_id(id, NULL);
     if (found == Qfalse)
         append_error_message("<unknown>");
@@ -1152,7 +1152,7 @@ static void dump_callee_name(Value xid)
     }
 }
 
-static void dump_frame(Value id, Value callee)
+static void dump_frame(Value id, Value callers)
 {
     Value filename, found = find_location_by_pair_id(id, &filename);
     if (found == Qfalse) {
@@ -1160,7 +1160,7 @@ static void dump_frame(Value id, Value callee)
         return;
     }
     dump_line_column(filename, cadr(found));
-    dump_callee_name(callee);
+    dump_callee_name(callers);
 }
 
 static void dump_stack_trace()
