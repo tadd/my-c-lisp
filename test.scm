@@ -1198,6 +1198,7 @@
            (k (+ 20 x)))
        (+ 10 x))))
 
+  (expect eqv? (fa 3) 3)
   (expect eqv? (fb 3) 13)
   (expect eqv? (fc 3) 23)))
 ;; End of tests from Kawa
