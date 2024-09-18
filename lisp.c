@@ -1328,13 +1328,13 @@ static inline void expect_null(const char *msg, Value l)
         runtime_error("%s: expected null?", msg);
 }
 
-static Value eval_recipient(Value *env, Value test, Value recipients)
+static Value cond_eval_recipient(Value *env, Value test, Value recipients)
 {
     expect_nonnull("recipient in cond", recipients);
     Value recipient = eval(env, car(recipients)), rest = cdr(recipients);
     expect_type("end of => in cond", TYPE_PROC, recipient);
     expect_null("end of => in cond", rest);
-    call_stack_push(FRAME_UNKNOWN);
+    call_stack_push(FRAME_IGNORE);
     return apply(env, recipient, list1(test));
 }
 
@@ -1354,7 +1354,7 @@ static Value syn_cond(Value *env, Value clauses)
             if (exprs == Qnil)
                 return t;
             if (car(exprs) == SYM_RARROW)
-                return eval_recipient(env, t, cdr(exprs));
+                return cond_eval_recipient(env, t, cdr(exprs));
             return eval_body(env, exprs);
         }
     }
@@ -2201,7 +2201,7 @@ static Value proc_apply(Value *env, Value args)
     Value proc = car(args);
     expect_type("apply", TYPE_PROC, proc);
     Value appargs = apply_args(cdr(args));
-    call_stack_push(FRAME_UNKNOWN);
+    call_stack_push(FRAME_IGNORE);
     return apply(env, proc, appargs);
 }
 
@@ -2236,7 +2236,7 @@ static Value proc_map(Value *env, Value args)
     Value last = Qnil, ret = Qnil;
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
-        call_stack_push(FRAME_UNKNOWN);
+        call_stack_push(FRAME_IGNORE);
         Value v = apply(env, proc, cars);
         last = append_at(last, v);
         if (ret == Qnil)
@@ -2255,7 +2255,7 @@ static Value proc_for_each(Value *env, Value args)
     Value lists = cdr(args);
     Value cars, cdrs;
     while (cars_cdrs(lists, &cars, &cdrs)) {
-        call_stack_push(FRAME_UNKNOWN);
+        call_stack_push(FRAME_IGNORE);
         apply(env, proc, cars);
         lists = cdrs;
     }
@@ -2287,7 +2287,7 @@ static Value proc_callcc(Value *env, Value proc)
     Value c = value_of_continuation();
     if (continuation_set(c) != 0)
         return CONTINUATION(c)->retval;
-    call_stack_push(FRAME_UNKNOWN);
+    call_stack_push(FRAME_IGNORE);
     return apply(env, proc, list1(c));
 }
 
