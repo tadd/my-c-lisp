@@ -164,6 +164,24 @@ Test(lisp, parse_broken) {
     expect_parse_error("got 'EOF'", "'");
 }
 
+Test(lisp, parse_error_line_column) {
+    expect_parse_error("<inline>:1:3: ", "(1");
+    expect_parse_error("<inline>:2:3: ", "\n(1");
+    expect_parse_error("<inline>:2:5: ", "()\n()(1");
+}
+
+Test(lisp, runtime_error_line_column) {
+    expect_runtime_error(
+"unbound variable: h\n"
+"\t<inline>:2:14 in 'g'\n"
+"\t<inline>:1:14 in 'f'\n"
+"\t<inline>:3:2 in <toplevel>"
+,
+"(define (f) (g))\n"
+"(define (g) (h))\n"
+"(f)");
+}
+
 Test(lisp, div0) {
     expect_runtime_error("divided by zero", "(/ 42 0)");
 }
