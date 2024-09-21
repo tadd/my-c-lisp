@@ -1192,8 +1192,8 @@ static Value iload(FILE *in, const char *filename)
         dump_stack_trace();
         return Qundef;
     }
-    call_stack = Qnil;
     INIT_STACK();
+    call_stack = Qnil;
     Value ret = eval_body(&toplevel_environment, l);
     call_stack_check_consistency();
     return ret;
