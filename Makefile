@@ -4,7 +4,7 @@ LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 
-OBJ_COMMON=lisp.o utils.o
+OBJ_COMMON=lisp.o utils.o scary.o
 OBJ=$(OBJ_COMMON) main.o
 OBJ_TEST=$(OBJ_COMMON) basic-test.o
 
@@ -56,6 +56,7 @@ basic-test-san: $(OBJ_TEST:.o=.san.o)
 
 utils.o: utils.h
 lisp.o main.o: lisp.h utils.h
+lisp.o: scary.h
 basic-test.o: lisp.h
 
 .PHONY: all clean test test-c test-scheme analyze sanitize
