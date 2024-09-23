@@ -242,5 +242,7 @@ Test(table, get_put) {
     for (int i = 1; i <= 17; i++)
         cr_assert(eq(int, i*10000000, int_table_get(t, i)));
 
+    void int_table_dump(const IntTable *t);
+    int_table_dump(t);
     int_table_free(t);
 }
