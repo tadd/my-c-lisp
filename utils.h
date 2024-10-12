@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define ATTR(x) __attribute__((x))
@@ -20,5 +21,7 @@ Table *table_new(void);
 void table_free(Table *t);
 void table_put(Table *t, uint64_t key, uint64_t val); // `val` can't be 0
 uint64_t table_get(const Table *t, uint64_t key);
+
+#define debug(fmt, ...) fprintf(stderr, fmt "\n" __VA_OPT__(,) __VA_ARGS__);
 
 #endif
