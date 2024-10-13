@@ -444,6 +444,7 @@ static Location *location_new(Value filename, uint64_t pos, Value sym)
 typedef struct {
     FILE *in;
     const char *filename;
+    Value vfilename; // cache for filename
     Token prev_token;
     Table *function_locations; // Value (Pair) => Location
     uint64_t *newline_pos; // array<uint64_t>
@@ -740,8 +741,9 @@ static Value append_at(Value last, Value elem)
 
 static void record_location(Parser *p, Value pair, int64_t pos, Value sym)
 {
-    Value vfilename = value_of_symbol(p->filename);
-    Location *loc = location_new(vfilename, pos, sym);
+    if (p->vfilename == Qfalse)
+        p->vfilename = value_of_symbol(p->filename);
+    Location *loc = location_new(p->vfilename, pos, sym);
     table_put(p->function_locations, pair, (uintptr_t) loc);
 }
 
@@ -816,6 +818,7 @@ static Parser *parser_new(FILE *in, const char *filename)
     Parser *p = xmalloc(sizeof(Parser));
     p->in = in;
     p->filename = filename;
+    p->vfilename = Qfalse;
     p->prev_token = TOK_EOF; // we use this since we never postpone EOF things
     p->function_locations = table_new();
     p->newline_pos = scary_new(sizeof(uint64_t));
@@ -1042,7 +1045,7 @@ static ParseTree *iparse(FILE *in, const char *filename)
         tree = parse_program(p); // success
     else
         tree = parse_tree_new(p, Qundef); // got an error
-    free(p); // p->newline_pos is moved into tree
+    free(p); // some members are moved into tree
     return tree;
 }
 
