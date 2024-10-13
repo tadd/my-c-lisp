@@ -244,3 +244,21 @@ Test(table, get_put) {
 
     int_table_free(t);
 }
+
+Test(table, merge) {
+    IntTable *t = int_table_new();
+    for (size_t i = 1; i <= 11; i++)
+        int_table_put(t, i, i*13);
+    IntTable *u = int_table_new();
+    for (size_t i = 5; i <= 17; i++)
+        int_table_put(u, i, i*19);
+    int_table_merge(t, u);
+
+    for (int i = 1; i < 5; i++)
+        cr_assert(eq(sz, i*13, int_table_get(t, i)));
+    for (int i = 5; i <= 17; i++)
+        cr_assert(eq(sz, i*19, int_table_get(t, i)));
+
+    int_table_free(t);
+    int_table_free(u);
+}

@@ -21,6 +21,7 @@ IntTable *int_table_new(void);
 void int_table_free(IntTable *t);
 void int_table_put(IntTable *t, uint64_t key, uint64_t val); // `val` can't be 0
 uint64_t int_table_get(const IntTable *t, uint64_t key);
+void int_table_merge(IntTable *dst, const IntTable *src);
 
 #define debug(fmt, ...) fprintf(stderr, fmt "\n" __VA_OPT__(,) __VA_ARGS__);
 

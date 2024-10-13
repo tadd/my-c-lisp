@@ -201,3 +201,13 @@ uint64_t int_table_get(const IntTable *t, uint64_t key)
     }
     return 0; // not found
 }
+
+void int_table_merge(IntTable *dst, const IntTable *src)
+{
+    const size_t size = src->body_size;
+    for (size_t i = 0; i < size; i++) {
+        for (List *l = src->body[i]; l != NULL; l = l->next) {
+            int_table_put(dst, l->key, l->value);
+        }
+    }
+}
