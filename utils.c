@@ -54,9 +54,28 @@ typedef struct List {
 struct IntTable {
     size_t size, body_size;
     List **body;
+    IntTableHashFunc hash;
+    IntTableEqualFunc eq;
 };
 
+static inline bool direct_equal(uint64_t x, uint64_t y)
+{
+    return x == y;
+}
+
+static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
+{
+    x ^= x << 7U;
+    x ^= x >> 9U;
+    return x;
+}
+
 IntTable *int_table_new(void)
+{
+    return int_table_new_full(direct_hash, direct_equal);
+}
+
+IntTable *int_table_new_full(IntTableHashFunc hash, IntTableEqualFunc eq)
 {
     IntTable *t = xmalloc(sizeof(IntTable));
     t->body = xmalloc(sizeof(List *) * TABLE_INIT_SIZE);
@@ -64,6 +83,8 @@ IntTable *int_table_new(void)
     t->body_size = TABLE_INIT_SIZE;
     for (size_t i = 0; i < t->body_size; i++)
         t->body[i] = NULL;
+    t->hash = hash ? hash : direct_hash;
+    t->eq = eq;
     return t;
 }
 
@@ -123,16 +144,9 @@ void int_table_dump(const IntTable *t)
 }
 #endif
 
-static uint64_t int_table_hash(uint64_t x) // simplified xorshift
-{
-    x ^= x << 7U;
-    x ^= x >> 9U;
-    return x;
-}
-
 static inline List **int_table_body(const IntTable *t, uint64_t key)
 {
-    uint64_t i = int_table_hash(key) % t->body_size;
+    uint64_t i = (*t->hash)(key) % t->body_size;
     return &t->body[i];
 }
 
@@ -196,7 +210,7 @@ uint64_t int_table_get(const IntTable *t, uint64_t key)
 {
     const List *l = *int_table_body(t, key);
     for (; l != NULL; l = l->next) {
-        if (l->key == key)
+        if ((*t->eq)(l->key, key))
             return l->value;
     }
     return 0; // not found

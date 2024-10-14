@@ -262,3 +262,29 @@ Test(table, merge) {
     int_table_free(t);
     int_table_free(u);
 }
+
+static uint64_t strhash(uint64_t x) // modified djb2
+{
+    uint64_t h = 30011;
+    for (const char *s = (char *) x; *s != '\0'; s++)
+        h = h * 61 + *s;
+    return h;
+}
+
+static bool streq(uint64_t s, uint64_t t)
+{
+    return strcmp((const char *) s, (const char *) t) == 0;
+}
+
+Test(table, custom_equal_func) {
+    const char *s[] = { "foo", "bar" };
+    IntTable *t = int_table_new_full(strhash, streq);
+    int_table_put(t, (uintptr_t) xstrdup(s[0]), 12);
+    int_table_put(t, (uintptr_t) xstrdup(s[1]), 34);
+    int_table_put(t, (uintptr_t) xstrdup(s[0]), 56);
+
+    cr_assert(eq(int, 56, int_table_get(t, (uintptr_t) "foo")));
+    cr_assert(eq(int, 34, int_table_get(t, (uintptr_t) "bar")));
+
+    int_table_free(t);
+}
