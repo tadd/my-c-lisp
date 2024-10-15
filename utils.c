@@ -68,13 +68,11 @@ struct Table {
 };
 
 #if 1
-// RAPID_SEED = UINT64_C(0xbdd89aa982704029);
-// RAPID_SEED_64 = RAPID_SEED ^ (rapid_mix(RAPID_SEED ^ secret[0], secret[1]) ^ 8U);
-static const uint64_t RAPID_SEED_64 = UINT64_C(0x763305bbe7bea53e);
-static const uint64_t RAPID_SECRET[] = {
-    UINT64_C(0x2d358dccaa6c78a5),
-    UINT64_C(0x8bb84b93962eacc9),
-};
+// SEED ^ rapid_mix(SEED ^ secret[0], secret[1]) | SEED = UINT64_C(0xbdd89aa982704029);
+static const uint64_t RAPID_SEED0 = UINT64_C(0x763305bbe7bea536);
+static const uint64_t RAPID_SECRET0 = UINT64_C(0x2d358dccaa6c78a5),
+    RAPID_SECRET1 = UINT64_C(0x8bb84b93962eacc9),
+    RAPID_SECRET2 = UINT64_C(0x4b33a62ed433d4a3);
 static inline void rapid_mum(uint64_t *a, uint64_t *b)
 {
     // r = *a * *b, *a = lower(r), *b = upper(r);
@@ -86,30 +84,56 @@ static inline void rapid_mum(uint64_t *a, uint64_t *b)
     *a = rl;
     *b = rh;
 }
-static inline uint64_t rapid_mix(uint64_t a, uint64_t b)
+static inline uint64_t rapid_mix(uint64_t a, uint64_t b) { rapid_mum(&a, &b); return a ^ b; }
+#define READ(ty, p) ({ ty v; memcpy(&v, p, sizeof(ty)); (uint64_t) v; })
+#define READ64(p) READ(uint64_t, p)
+#define READ32(p) READ(uint32_t, p)
+static uint64_t rapidhash(const void *key, size_t len)
 {
+    static const uint64_t S0 = RAPID_SECRET0, S1 = RAPID_SECRET1, S2 = RAPID_SECRET2;
+    const uint8_t *p = (uint8_t *) key;
+    uint64_t seed = RAPID_SEED0 ^ len, a = 0, b = 0;
+    if (len <= 0) {
+        // nothing to do
+    } else if (len < 4) {
+        a = (((uint64_t) p[0]) << 56U) | (((uint64_t) p[len >> 1U]) << 32U) | p[len - 1];
+    } else if (len <= 16) {
+        const uint8_t *plast = p + len - 4;
+        a = (READ32(p) << 32U) | READ32(plast);
+        uint64_t d = (len & 24U) >> (len >> 3U);
+        b = (READ32(p + d) << 32U) | READ32(plast - d);
+    } else {
+        size_t i = len;
+        if (i > 48) {
+            uint64_t see1 = seed, see2 = seed;
+            do {
+                seed = rapid_mix(READ64(p) ^ S0, READ64(p + 8) ^ seed);
+                see1 = rapid_mix(READ64(p + 16) ^ S1, READ64(p + 24) ^ see1);
+                see2 = rapid_mix(READ64(p + 32) ^ S2, READ64(p + 40) ^ see2);
+                p += 48; i -= 48;
+            } while (i >= 48);
+            seed ^= see1 ^ see2;
+        }
+        if (i > 16) {
+            seed = rapid_mix(READ64(p) ^ S2, READ64(p + 8) ^ seed ^ S1);
+            if (i > 32)
+                seed = rapid_mix(READ64(p + 16) ^ S2, READ64(p + 24) ^ seed);
+        }
+        a = READ64(p + i - 16), b = READ64(p + i - 8);
+    }
+    a ^= S1, b ^= seed;
     rapid_mum(&a, &b);
-    return a ^ b;
-}
-// rapidhash for 64bit-fixed inputs
-static inline uint64_t rapidhash64(uint64_t x)
-{
-    // static const size_t len = 8;
-    static const uint64_t seed = RAPID_SEED_64;
-    static const uint64_t *const secret = RAPID_SECRET;
-
-    const uint32_t *p = (uint32_t *) &x;
-    uint64_t l = p[0], h = p[1];
-    uint64_t a = (l << 32U) | h;
-    uint64_t b = x;
-    a ^= secret[1];
-    b ^= seed;
-    rapid_mum(&a, &b);
-    return rapid_mix(a ^ secret[0] ^ 8U, b ^ secret[1]);
+    return rapid_mix(a ^ S0 ^ len, b ^ S1);
 }
 static uint64_t direct_hash(uint64_t x)
 {
-    return rapidhash64(x);
+    return rapidhash(&x, 8);
+}
+
+static uint64_t str_hash(uint64_t x)
+{
+    const char *s = (char *) x;
+    return rapidhash(s, strlen(s));
 }
 #else
 static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
@@ -117,6 +141,14 @@ static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
     x ^= x << 7U;
     x ^= x >> 9U;
     return x;
+}
+
+static uint64_t str_hash(uint64_t x) // modified djb2
+{
+    uint64_t h = 30011;
+    for (const char *s = (char *) x; *s != '\0'; s++)
+        h = h * 61 + *s;
+    return h;
 }
 #endif
 
@@ -128,14 +160,6 @@ static inline bool direct_equal(uint64_t x, uint64_t y)
 Table *table_new(void)
 {
     return table_new_full(direct_hash, direct_equal);
-}
-
-static uint64_t str_hash(uint64_t x) // modified djb2
-{
-    uint64_t h = 30011;
-    for (const char *s = (char *) x; *s != '\0'; s++)
-        h = h * 61 + *s;
-    return h;
 }
 
 static inline bool str_equal(uint64_t s, uint64_t t)
