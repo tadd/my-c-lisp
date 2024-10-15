@@ -20,6 +20,7 @@ typedef struct IntTable IntTable;
 typedef bool (*IntTableEqualFunc)(uint64_t x, uint64_t y);
 typedef uint64_t (*IntTableHashFunc)(uint64_t x);
 IntTable *int_table_new(void);
+IntTable *int_table_new_str(void);
 IntTable *int_table_new_full(IntTableHashFunc hash, IntTableEqualFunc eq);
 void int_table_free(IntTable *t);
 void int_table_put(IntTable *t, uint64_t key, uint64_t val); // `val` can't be 0
