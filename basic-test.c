@@ -220,6 +220,7 @@ Test(lisp, map) {
     expect_runtime_error("expected pair but got integer", "(for-each + 1)");
 }
 
+void table_dump(const Table *t);
 Test(table, get_put) {
     Table *t = table_new();
     table_put(t, 1, 100);
@@ -237,11 +238,12 @@ Test(table, get_put) {
     cr_assert(eq(int, 300, table_get(t, 3)));
     cr_assert(eq(int, 400, table_get(t, 4)));
 
-    for (int i = 1; i <= 17; i++)
+    for (int i = 1; i <= 31; i++)
         table_put(t, i, i*10000000);
-    for (int i = 1; i <= 17; i++)
+    for (int i = 1; i <= 31; i++)
         cr_assert(eq(int, i*10000000, table_get(t, i)));
 
+    table_dump(t);
     table_free(t);
 }
 
@@ -353,5 +355,21 @@ Test(table, set_or_put) {
     cr_assert(eq(int, 789, table_get(t, 2)));
     cr_assert(eq(int, 210, table_get(t, 3)));
 
+    table_free(t);
+}
+
+Test(table, string2) {
+    char buf[8];
+    Table *t = table_new_str();
+    for (int d = 'a', j = 0; d <= 'b'; d++, j++) {
+        for (int c = 'a', i = 1; c <= 'z'; c++, i++) {
+            snprintf(buf, sizeof(buf), "%c%c", c, d);
+            table_put(t, (uintptr_t) xstrdup(buf), (i+j)*17);
+        }
+    }
+
+    cr_assert(eq(int, 17, table_get(t, (uintptr_t) "aa")));
+
+    table_dump(t);
     table_free(t);
 }

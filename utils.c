@@ -68,6 +68,7 @@ struct Table {
     uint64_t *child_pairs;
 };
 
+#if 1
 static uint64_t hround(uint64_t h, uint64_t l)
 {
     h ^= l;
@@ -103,6 +104,23 @@ static inline uint64_t str_hash(uint64_t x)
     const char *s = (char *) x;
     return pbhash(s, strlen(s));
 }
+#else
+static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
+{
+    x ^= x << 7U;
+    x ^= x >> 9U;
+    return x;
+}
+
+static inline uint64_t str_hash(uint64_t x)
+{
+    const char *s = (char *) x;
+    uint64_t h = 0, l = strlen(s);
+    for (uint64_t i = 0; i < l; i++)
+        h ^= direct_hash(s[i]);
+    return h;
+}
+#endif
 
 static inline bool direct_equal(uint64_t x, uint64_t y)
 {
@@ -206,7 +224,7 @@ void table_free(Table *t)
     free(t);
 }
 
-#if 0
+#if 1
 static size_t list_length(List *l)
 {
     size_t len = 0;
