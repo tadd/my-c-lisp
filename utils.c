@@ -68,11 +68,40 @@ struct Table {
     uint64_t *child_pairs;
 };
 
-static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
+static uint64_t hround(uint64_t h, uint64_t l)
 {
-    x ^= x << 7U;
-    x ^= x >> 9U;
-    return x;
+    h ^= l;
+    h--;
+    h ^= h >> 30U;
+    h *= UINT64_C(0xbf58476d1ce4e5b9);
+    h ^= h >> 27U;
+    h *= UINT64_C(0x94d049bb133111eb);
+    h ^= h >> 31U;
+    return h;
+}
+
+// Pearson Block Hash
+static uint64_t pbhash(const void *key, size_t len)
+{
+    const uint64_t *q = key;
+    uint64_t h = 0, orig_len = (uint64_t) len;
+    for (; len >= 8; len -= 8)
+        h = hround(h, *q++);
+    h = ~h;
+    for (const uint8_t *b = (void *) q; len > 0; len--)
+        h = hround(h, *b++);
+    return hround(~h, orig_len);
+}
+
+static inline uint64_t direct_hash(uint64_t x)
+{
+    return pbhash(&x, 8);
+}
+
+static inline uint64_t str_hash(uint64_t x)
+{
+    const char *s = (char *) x;
+    return pbhash(s, strlen(s));
 }
 
 static inline bool direct_equal(uint64_t x, uint64_t y)
@@ -83,14 +112,6 @@ static inline bool direct_equal(uint64_t x, uint64_t y)
 Table *table_new(void)
 {
     return table_new_full(direct_hash, direct_equal, NULL);
-}
-
-static uint64_t str_hash(uint64_t x) // modified djb2
-{
-    uint64_t h = 30011;
-    for (const char *s = (char *) x; *s != '\0'; s++)
-        h = h * 61 + *s;
-    return h;
 }
 
 static inline bool str_equal(uint64_t s, uint64_t t)
