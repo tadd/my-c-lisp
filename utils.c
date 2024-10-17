@@ -67,7 +67,6 @@ struct Table {
     TableEqualFunc eq;
 };
 
-#if 1
 // SEED ^ rapid_mix(SEED ^ secret[0], secret[1]) | SEED = UINT64_C(0xbdd89aa982704029);
 static const uint64_t RAPID_SEED0 = UINT64_C(0x763305bbe7bea536);
 static const uint64_t RAPID_SECRET0 = UINT64_C(0x2d358dccaa6c78a5),
@@ -135,22 +134,6 @@ static uint64_t str_hash(uint64_t x)
     const char *s = (char *) x;
     return rapidhash(s, strlen(s));
 }
-#else
-static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
-{
-    x ^= x << 7U;
-    x ^= x >> 9U;
-    return x;
-}
-
-static uint64_t str_hash(uint64_t x) // modified djb2
-{
-    uint64_t h = 30011;
-    for (const char *s = (char *) x; *s != '\0'; s++)
-        h = h * 61 + *s;
-    return h;
-}
-#endif
 
 static inline bool direct_equal(uint64_t x, uint64_t y)
 {
