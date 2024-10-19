@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-std=gnu17 -O0 -ggdb3 -Wall -Wextra $(XCFLAGS)
+OPTFLAGS=-O0 -ggdb3
+CFLAGS=-std=gnu17 -Wall -Wextra $(OPTFLAGS) $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
