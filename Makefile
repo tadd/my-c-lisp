@@ -59,4 +59,5 @@ utils.o: utils.h
 lisp.o main.o: lisp.h utils.h
 basic-test.o: lisp.h
 
-.PHONY: all clean test test-c test-scheme analyze sanitize
+.PHONY: all clean test test-c test-scheme analyze sanitize \
+	test-san test-c-san test-scheme-san
