@@ -56,9 +56,8 @@ basic-test-san: $(OBJ_TEST:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -c $< -o $@
 
 utils.o: utils.h
-lisp.o main.o: lisp.h utils.h
-lisp.o: scary.h
-basic-test.o: lisp.h
+lisp.o scary.o: scary.h
+lisp.o main.o basic-test.o: lisp.h utils.h
 
 .PHONY: all clean test test-c test-scheme analyze sanitize \
 	test-san test-c-san test-scheme-san
