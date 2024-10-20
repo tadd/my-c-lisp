@@ -65,6 +65,7 @@ struct Table {
     List **body;
     TableHashFunc hash;
     TableEqualFunc eq;
+    TableFreeFunc free_key;
     uint64_t *child_pairs;
 };
 
@@ -82,7 +83,7 @@ static inline bool direct_equal(uint64_t x, uint64_t y)
 
 Table *table_new(void)
 {
-    return table_new_full(direct_hash, direct_equal);
+    return table_new_full(direct_hash, direct_equal, NULL);
 }
 
 static uint64_t str_hash(uint64_t x) // modified djb2
@@ -100,10 +101,12 @@ static inline bool str_equal(uint64_t s, uint64_t t)
 
 Table *table_new_str(void)
 {
-    return table_new_full(str_hash, str_equal);
+    return table_new_full(str_hash, str_equal, free); // expects strdup for keys
 }
 
-Table *table_new_full(TableHashFunc hash, TableEqualFunc eq)
+static inline void free_nop(ATTR(unused) void *p) { }
+
+Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_key)
 {
     Table *t = xmalloc(sizeof(Table));
     t->body = xcalloc(sizeof(List *), TABLE_INIT_SIZE); // set NULL
@@ -113,6 +116,7 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq)
         t->body[i] = NULL;
     t->hash = hash != NULL ? hash : direct_hash;
     t->eq = eq;
+    t->free_key = free_key != NULL ? free_key : free_nop;
     t->child_pairs = NULL;
     return t;
 }
@@ -150,10 +154,11 @@ static bool is_owned(const uint64_t *owned, const List *p)
     return false;
 }
 
-static void list_free(List *l, uint64_t *owned)
+static void list_free(List *l, uint64_t *owned, TableFreeFunc free_key)
 {
     for (List *next; is_owned(owned, l); l = next) {
         next = l->next;
+        (*free_key)((void *) l->key);
         free(l);
     }
 }
@@ -175,7 +180,7 @@ void table_free(Table *t)
     if (t == NULL)
         return;
     for (size_t i = 0; i < t->body_size; i++)
-        list_free(t->body[i], t->child_pairs);
+        list_free(t->body[i], t->child_pairs, t->free_key);
     scary_free(t->child_pairs);
     free(t->body);
     free(t);
