@@ -204,7 +204,7 @@ void table_dump(const Table *t)
 }
 #endif
 
-static inline List **table_body(const Table *t, uint64_t key)
+static inline List **table_listp(const Table *t, uint64_t key)
 {
     uint64_t i = (*t->hash)(key) % t->body_size;
     return &t->body[i];
@@ -244,7 +244,7 @@ static void table_resize(Table *t)
     t->body = xcalloc(sizeof(List *), t->body_size); // set NULL
     for (size_t i = 0; i < old_body_size; i++) {
         for (List *l = old_body[i], *next; l != NULL; l = next) {
-            List **p = table_body(t, l->key);
+            List **p = table_listp(t, l->key);
             next = l->next;
             l->next = NULL;
             list_append(p, l);
@@ -260,7 +260,7 @@ void table_put(Table *t, uint64_t key, uint64_t value)
     if (table_too_many_elements(t))
         table_resize(t);
     List *l = list_new(key, value);
-    List **p = table_body(t, key);
+    List **p = table_listp(t, key);
     l->next = *p; // prepend even if the same key exists
     *p = l;
     t->size++;
@@ -268,14 +268,33 @@ void table_put(Table *t, uint64_t key, uint64_t value)
         scary_push(&t->child_pairs, (uint64_t) l);
 }
 
+static List *table_pair(const Table *t, uint64_t key)
+{
+    List **body = table_listp(t, key);
+    for (List *l = *body; l != NULL; l = l->next) {
+        if ((*t->eq)(l->key, key))
+            return l;
+    }
+    return NULL;
+}
+
 uint64_t table_get(const Table *t, uint64_t key)
 {
-    const List *l = *table_body(t, key);
-    for (; l != NULL; l = l->next) {
-        if ((*t->eq)(l->key, key))
-            return l->value;
-    }
-    return 0; // not found
+    const List *l = table_pair(t, key);
+    if (l == NULL) // not found
+        return 0;
+    return l->value;
+}
+
+bool table_set(Table *t, uint64_t key, uint64_t value)
+{
+    if (value == 0)
+        error("%s: got invalid value == 0", __func__);
+    List *l = table_pair(t, key);
+    if (l == NULL)
+        return false; // did nothing
+    l->value = value; // overwrite!
+    return true;
 }
 
 void table_merge(Table *dst, const Table *src)
