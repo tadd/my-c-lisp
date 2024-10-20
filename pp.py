@@ -28,4 +28,4 @@ def my_c_lisp_pp(val):
         return ValuePrinter(val)
     return None
 
-gdb.pretty_printers.append(my_c_lisp_pp)
+#gdb.pretty_printers.append(my_c_lisp_pp)

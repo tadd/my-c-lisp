@@ -185,7 +185,7 @@ void table_free(Table *t)
     free(t);
 }
 
-#if 0
+#if 1
 static size_t list_length(List *l)
 {
     size_t len = 0;
