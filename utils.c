@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "utils.h"
+#include "scary.h"
 
 void error(const char *fmt, ...)
 {
@@ -64,6 +65,7 @@ struct Table {
     List **body;
     TableHashFunc hash;
     TableEqualFunc eq;
+    uint64_t *child_pairs;
 };
 
 static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
@@ -111,7 +113,18 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq)
         t->body[i] = NULL;
     t->hash = hash != NULL ? hash : direct_hash;
     t->eq = eq;
+    t->child_pairs = NULL;
     return t;
+}
+
+Table *table_inherit(const Table *t)
+{
+    Table *u = xmalloc(sizeof(Table));
+    *u = *t;
+    u->body = xmalloc(sizeof(List *) * u->body_size); // set NULL
+    memcpy(u->body, t->body, sizeof(List *) * u->body_size);
+    u->child_pairs = scary_new(sizeof(uint64_t));
+    return u;
 }
 
 static List *list_new(uint64_t key, uint64_t value)
@@ -123,9 +136,23 @@ static List *list_new(uint64_t key, uint64_t value)
     return l;
 }
 
-static void list_free(List *l)
+static bool is_owned(const uint64_t *owned, const List *p)
 {
-    for (List *next; l != NULL; l = next) {
+    if (p == NULL)
+        return false;
+    if (owned == NULL)
+        return true; // not an inherited table so frees all
+    uint64_t val = (uint64_t) p;
+    size_t len = scary_length(owned);
+    for (size_t i = 0; i < len; i++)
+        if (owned[i] == val)
+            return true;
+    return false;
+}
+
+static void list_free(List *l, uint64_t *owned)
+{
+    for (List *next; is_owned(owned, l); l = next) {
         next = l->next;
         free(l);
     }
@@ -148,7 +175,8 @@ void table_free(Table *t)
     if (t == NULL)
         return;
     for (size_t i = 0; i < t->body_size; i++)
-        list_free(t->body[i]);
+        list_free(t->body[i], t->child_pairs);
+    scary_free(t->child_pairs);
     free(t->body);
     free(t);
 }
@@ -179,7 +207,8 @@ static inline List **table_body(const Table *t, uint64_t key)
 
 static inline bool table_too_many_elements(const Table *t)
 {
-    return t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
+    return t->child_pairs == NULL &&
+        t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
 }
 
 static size_t next_prime(size_t curr)
@@ -230,6 +259,8 @@ void table_put(Table *t, uint64_t key, uint64_t value)
     l->next = *p; // prepend even if the same key exists
     *p = l;
     t->size++;
+    if (t->child_pairs != NULL)
+        scary_push(&t->child_pairs, (uint64_t) l);
 }
 
 uint64_t table_get(const Table *t, uint64_t key)

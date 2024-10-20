@@ -282,3 +282,42 @@ Test(table, string_keys) {
 
     table_free(t);
 }
+
+Test(table, inherit) {
+    uint64_t k_foo = (uint64_t) "foo";
+    uint64_t k_bar = (uint64_t) "bar";
+    uint64_t k_baz = (uint64_t) "baz";
+
+    Table *t = table_new_str();
+    table_put(t, keydup(k_foo), 12);
+    table_put(t, keydup(k_bar), 34);
+
+    Table *u = table_inherit(t);
+    table_put(u, keydup(k_baz), 56);
+
+    cr_assert(eq(int, 12, table_get(u, k_foo)));
+    cr_assert(eq(int, 34, table_get(u, k_bar)));
+    cr_assert(eq(int, 56, table_get(u, k_baz)));
+
+    cr_assert(eq(int, 12, table_get(t, k_foo)));
+    cr_assert(eq(int, 34, table_get(t, k_bar)));
+    cr_assert(eq(int,  0, table_get(t, k_baz)));
+
+    table_free(u);
+    table_free(t);
+}
+
+Test(table, inheritance_with_huge_child) {
+    Table *t = table_new();
+    for (long i = 1; i < 10; i++)
+        table_put(t, i, i*13);
+
+    Table *u = table_inherit(t);
+    for (long i = 1; i < 100; i++)
+        table_put(u, i, i*17);
+
+    cr_assert(eq(int, 13, table_get(t, 1)));
+
+    table_free(u);
+    table_free(t);
+}
