@@ -252,15 +252,18 @@ static void table_resize(Table *t)
     }
 }
 
- // `value` can't be 0
-void table_put(Table *t, uint64_t key, uint64_t value)
+static inline bool table_ensure_size(Table *t)
 {
-    if (value == 0)
-        error("%s: got invalid value == 0", __func__);
-    if (table_too_many_elements(t))
+    if (table_too_many_elements(t)) {
         table_resize(t);
+        return true;
+    }
+    return false;
+}
+
+static void table_put_raw(Table *t, List **p, uint64_t key, uint64_t value)
+{
     List *l = list_new(key, value);
-    List **p = table_listp(t, key);
     l->next = *p; // prepend even if the same key exists
     *p = l;
     t->size++;
@@ -268,14 +271,29 @@ void table_put(Table *t, uint64_t key, uint64_t value)
         scary_push(&t->child_pairs, (uint64_t) l);
 }
 
-static List *table_pair(const Table *t, uint64_t key)
+// `value` can't be 0
+void table_put(Table *t, uint64_t key, uint64_t value)
 {
-    List **body = table_listp(t, key);
-    for (List *l = *body; l != NULL; l = l->next) {
-        if ((*t->eq)(l->key, key))
+    if (value == 0)
+        error("%s: got invalid value == 0", __func__);
+    table_ensure_size(t);
+    List **p = table_listp(t, key);
+    table_put_raw(t, p, key, value);
+}
+
+static List *table_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
+{
+    for (List *l = *p; l != NULL; l = l->next) {
+        if ((*eq)(l->key, key))
             return l;
     }
     return NULL;
+}
+
+static inline List *table_pair(const Table *t, uint64_t key)
+{
+    List **p = table_listp(t, key);
+    return table_pair_raw(p, key, t->eq);
 }
 
 uint64_t table_get(const Table *t, uint64_t key)
@@ -293,6 +311,22 @@ bool table_set(Table *t, uint64_t key, uint64_t value)
     List *l = table_pair(t, key);
     if (l == NULL)
         return false; // did nothing
+    l->value = value; // overwrite!
+    return true;
+}
+
+bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
+{
+    if (value == 0)
+        error("%s: got invalid value == 0", __func__);
+    List **p = table_listp(t, key);
+    List *l = table_pair_raw(p, key, t->eq);
+    if (l == NULL) { // to put
+        if (table_ensure_size(t))
+            p = table_listp(t, key); // recalc
+        table_put_raw(t, p, key, value);
+        return false; // not overwritten
+    }
     l->value = value; // overwrite!
     return true;
 }
