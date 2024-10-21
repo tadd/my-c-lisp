@@ -338,7 +338,7 @@ static Value value_of_syntax(cfunc_t cfunc, int64_t arity)
 static Value value_of_closure(Value env, Value params, Value body)
 {
     Closure *f = obj_new(sizeof(Closure), TAG_CLOSURE);
-    f->proc.arity = (value_type_of(params) == TYPE_PAIR) ? length(params) : -1;
+    f->proc.arity = value_is_pair(params) ? length(params) : -1;
     f->env = env;
     f->params = params;
     f->body = body;
