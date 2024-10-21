@@ -11,11 +11,12 @@
 ATTR(noreturn)
 static void usage(FILE *out)
 {
-    fprintf(out, "Usage: lisp [-e <source>] [-pPTh] <file>\n");
+    fprintf(out, "Usage: lisp [-e <source>] [-pPTMh] <file>\n");
     fprintf(out, "  -e <source>\tevaluate <source> directly instead of <file>\n");
     fprintf(out, "  -p\t\tprint last expression in the input\n");
     fprintf(out, "  -P\t\tonly parse then exit before evaluation. implies -p\n");
     fprintf(out, "  -T\t\tprint consumed CPU time at exit\n");
+    fprintf(out, "  -M\t\tprint memory usage (VmHWM) at exit\n");
     fprintf(out, "  -h\t\tprint this help\n");
     exit(out == stdout ? 0 : 2);
 }
@@ -38,6 +39,7 @@ typedef struct {
     bool print;
     bool parse_only;
     bool cputime;
+    bool memory;
 } Option;
 
 static Option parse_opt(int argc, char *const *argv)
@@ -48,9 +50,10 @@ static Option parse_opt(int argc, char *const *argv)
         .print = false,
         .parse_only = false,
         .cputime = false,
+        .memory = false,
     };
     int opt;
-    while ((opt = getopt(argc, argv, "e:hPpT")) != -1) {
+    while ((opt = getopt(argc, argv, "e:hPpTM")) != -1) {
         switch (opt) {
         case 'e':
             o.script = optarg;
@@ -65,6 +68,9 @@ static Option parse_opt(int argc, char *const *argv)
             break;
         case 'T':
             o.cputime = true;
+            break;
+        case 'M':
+            o.memory = true;
             break;
         case '?':
             usage(stderr);
@@ -85,6 +91,26 @@ static double cputime_ms(void)
     return ts.tv_sec * 1000.0 + ts.tv_nsec / (1000.0*1000.0);
 }
 
+static void print_vmhwm(void)
+{
+    FILE *status = fopen("/proc/self/status", "r");
+    if (status == NULL)
+        error("cannot open file /proc/self/status");
+    char buf[BUFSIZ];
+    bool printed = false;
+    static const char *const pat = "VmHWM";
+    while (fgets(buf, sizeof(buf), status) != NULL) {
+        if (strncmp(buf, pat, strlen(pat)) == 0) {
+            fprintf(stderr, "%s", buf);
+            printed = true;
+            break;
+        }
+    }
+    fclose(status);
+    if (!printed)
+        error("memory usage not printed");
+}
+
 int main(int argc, char **argv)
 {
     Option o = parse_opt(argc, argv);
@@ -101,5 +127,7 @@ int main(int argc, char **argv)
     }
     if (o.cputime)
         fprintf(stderr, "CPU: %.3lf ms\n", cputime_ms());
+    if (o.memory)
+        print_vmhwm();
     return 0;
 }

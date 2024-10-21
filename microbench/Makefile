@@ -11,7 +11,7 @@ benchmark: $(TARGET)
 	@for t in $^; do \
 	    echo $$t:; \
 	    for i in `seq ${NLOOP}`; do \
-	        $(BIN) -T $(TARGET); \
+	        $(BIN) -TM $(TARGET); \
 	    done \
 	done
 
