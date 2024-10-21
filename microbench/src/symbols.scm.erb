@@ -1,0 +1,16 @@
+<%
+l = ('vaa'..'vzz')
+l.each do |s|
+-%>
+(define <%= s %> '<%= s %>)
+<% end -%>
+
+(define (syms)
+<% l.to_a.shuffle.each do |s| -%>
+  <%= s %>
+<% end -%>
+)
+
+(do ((i 0 (+ i 1)))
+    ((> i 2000) i)
+  (syms))
