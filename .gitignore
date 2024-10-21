@@ -2,3 +2,4 @@
 lisp
 basic-test
 *-san
+/microbench/*.scm
