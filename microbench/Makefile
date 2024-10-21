@@ -1,7 +1,6 @@
 BIN=../lisp
 SRC!=ls src/*.erb
 TARGET=$(SRC:src/%.erb=%)
-TIMEBIN=/bin/time -f '%U' $(BIN) 2>&1
 NLOOP=5
 
 all: benchmark
@@ -12,7 +11,7 @@ benchmark: $(TARGET)
 	@for t in $^; do \
 	    echo $$t:; \
 	    for i in `seq ${NLOOP}`; do \
-	        $(TIMEBIN) $(TARGET); \
+	        $(BIN) -T $(TARGET); \
 	    done \
 	done
 

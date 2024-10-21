@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "lisp.h"
@@ -10,11 +11,12 @@
 ATTR(noreturn)
 static void usage(FILE *out)
 {
-    fprintf(out, "Usage: lisp [-hepP] <file>\n");
-    fprintf(out, "  -h\t\tprint this help\n");
+    fprintf(out, "Usage: lisp [-e <source>] [-pPTh] <file>\n");
     fprintf(out, "  -e <source>\tevaluate <source> directly instead of <file>\n");
     fprintf(out, "  -p\t\tprint last expression in the input\n");
     fprintf(out, "  -P\t\tonly parse then exit before evaluation. implies -p\n");
+    fprintf(out, "  -T\t\tprint consumed CPU time at exit\n");
+    fprintf(out, "  -h\t\tprint this help\n");
     exit(out == stdout ? 0 : 2);
 }
 
@@ -35,6 +37,7 @@ typedef struct {
     const char *script;
     bool print;
     bool parse_only;
+    bool cputime;
 } Option;
 
 static Option parse_opt(int argc, char *const *argv)
@@ -44,9 +47,10 @@ static Option parse_opt(int argc, char *const *argv)
         .script = NULL,
         .print = false,
         .parse_only = false,
+        .cputime = false,
     };
     int opt;
-    while ((opt = getopt(argc, argv, "e:hPp")) != -1) {
+    while ((opt = getopt(argc, argv, "e:hPpT")) != -1) {
         switch (opt) {
         case 'e':
             o.script = optarg;
@@ -59,6 +63,9 @@ static Option parse_opt(int argc, char *const *argv)
         case 'p':
             o.print = true;
             break;
+        case 'T':
+            o.cputime = true;
+            break;
         case '?':
             usage(stderr);
         }
@@ -69,6 +76,13 @@ static Option parse_opt(int argc, char *const *argv)
     if (o.path != NULL && o.script != NULL)
         opt_error("filename %s given while option '-e' passed", o.path);
     return o;
+}
+
+static double cputime_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / (1000.0*1000.0);
 }
 
 int main(int argc, char **argv)
@@ -85,5 +99,7 @@ int main(int argc, char **argv)
         display(v);
         printf("\n");
     }
+    if (o.cputime)
+        fprintf(stderr, "CPU: %.3lf ms\n", cputime_ms());
     return 0;
 }
