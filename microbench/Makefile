@@ -2,6 +2,7 @@ BIN=../lisp
 SRC!=ls src/*.erb
 TARGET=$(SRC:src/%.erb=%)
 NLOOP=5
+BENCHFLAGS=-TM
 
 all: benchmark
 
@@ -11,7 +12,7 @@ benchmark: $(TARGET)
 	@for t in $^; do \
 	    echo $$t:; \
 	    for i in `seq ${NLOOP}`; do \
-	        $(BIN) -TM $(TARGET); \
+	        $(BIN) $(BENCHFLAGS) $(TARGET); \
 	    done \
 	done
 
