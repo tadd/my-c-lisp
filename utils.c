@@ -52,7 +52,6 @@ char *xstrdup(const char *s)
 enum {
     TABLE_INIT_SIZE = 1,
     TABLE_TOO_MANY_FACTOR = 3,
-    TABLE_RESIZE_FACTOR = 2,
 };
 
 typedef struct List {
@@ -216,6 +215,7 @@ static inline bool table_too_many_elements(const Table *t)
         t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
 }
 
+// "next" is twice or more larger than `curr`
 static size_t next_prime(size_t curr)
 {
     static const size_t prime_max = 823117;
