@@ -203,7 +203,7 @@ void table_dump(const Table *t)
 }
 #endif
 
-static inline List **table_listp(const Table *t, uint64_t key)
+static inline List **table_find_listp(const Table *t, uint64_t key)
 {
     uint64_t i = (*t->hash)(key) % t->body_size;
     return &t->body[i];
@@ -244,7 +244,7 @@ static void table_resize(Table *t)
     t->body = xcalloc(sizeof(List *), t->body_size); // set NULL
     for (size_t i = 0; i < old_body_size; i++) {
         for (List *l = old_body[i], *next; l != NULL; l = next) {
-            List **p = table_listp(t, l->key);
+            List **p = table_find_listp(t, l->key);
             next = l->next;
             l->next = NULL;
             list_append(p, l);
@@ -277,11 +277,11 @@ void table_put(Table *t, uint64_t key, uint64_t value)
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
     table_ensure_size(t);
-    List **p = table_listp(t, key);
+    List **p = table_find_listp(t, key);
     table_put_raw(t, p, key, value);
 }
 
-static List *table_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
+static List *table_find_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
 {
     for (List *l = *p; l != NULL; l = l->next) {
         if ((*eq)(l->key, key))
@@ -290,15 +290,15 @@ static List *table_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
     return NULL;
 }
 
-static inline List *table_pair(const Table *t, uint64_t key)
+static inline List *table_find_pair(const Table *t, uint64_t key)
 {
-    List **p = table_listp(t, key);
-    return table_pair_raw(p, key, t->eq);
+    List **p = table_find_listp(t, key);
+    return table_find_pair_raw(p, key, t->eq);
 }
 
 uint64_t table_get(const Table *t, uint64_t key)
 {
-    const List *l = table_pair(t, key);
+    const List *l = table_find_pair(t, key);
     if (l == NULL) // not found
         return 0;
     return l->value;
@@ -308,7 +308,7 @@ bool table_set(Table *t, uint64_t key, uint64_t value)
 {
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
-    List *l = table_pair(t, key);
+    List *l = table_find_pair(t, key);
     if (l == NULL)
         return false; // did nothing
     l->value = value; // overwrite!
@@ -319,11 +319,11 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
 {
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
-    List **p = table_listp(t, key);
-    List *l = table_pair_raw(p, key, t->eq);
+    List **p = table_find_listp(t, key);
+    List *l = table_find_pair_raw(p, key, t->eq);
     if (l == NULL) { // to put
         if (table_ensure_size(t))
-            p = table_listp(t, key); // recalc
+            p = table_find_listp(t, key); // recalc
         table_put_raw(t, p, key, value);
         return false; // not overwritten
     }
