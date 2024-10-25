@@ -169,6 +169,23 @@ static List *list_orig_ptr(const uint64_t *orig_pairs, size_t i)
     return ((List **) orig_pairs)[i];
 }
 
+static List *list_dup_single(const List *l)
+{
+    if (l == NULL)
+        return NULL;
+    return list_new(l->key, l->value);
+}
+
+static List *list_dup(const List *l)
+{
+    if (l == NULL)
+        return NULL;
+    List *dup = list_dup_single(l);
+    for (List *p = dup; l != NULL; l = l->next, p = p->next)
+        p->next = list_dup_single(l->next);
+    return dup;
+}
+
 void table_free(Table *t)
 {
     if (t == NULL)
@@ -183,12 +200,23 @@ void table_free(Table *t)
 }
 
 #if 0
-static size_t list_length(List *l)
+static size_t list_length(const List *l)
 {
     size_t len = 0;
     for (; l != NULL; l = l->next)
         len++;
     return len;
+}
+
+static void list_dump(const List *l)
+{
+    fprintf(stderr, "list: [");
+    for (; l != NULL; l = l->next) {
+        fprintf(stderr, "(%zu, %zu)", l->key, l->value);
+        if (l->next != NULL)
+            fprintf(stderr, ", ");
+    }
+    fprintf(stderr, "]\n");
 }
 
 void table_dump(const Table *t)
@@ -333,4 +361,19 @@ void table_merge(Table *dst, const Table *src)
         for (List *l = src->body[i]; l != NULL; l = l->next)
             table_put(dst, l->key, l->value);
     }
+}
+
+Table *table_dup(const Table *t)
+{
+    Table *u = xmalloc(sizeof(Table));
+    *u = *t;
+    size_t s = sizeof(List *) * t->body_size;
+    u->body = xmalloc(s);
+    for (size_t i = 0; i < t->body_size; i++)
+        u->body[i] = list_dup(t->body[i]);
+    if (t->orig_pairs != NULL) {
+        u->orig_pairs = xmalloc(s);
+        memcpy(u->orig_pairs, t->orig_pairs, s);
+    }
+    return u;
 }
