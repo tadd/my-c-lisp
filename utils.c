@@ -65,7 +65,7 @@ struct Table {
     TableHashFunc hash;
     TableEqualFunc eq;
     TableFreeFunc free_key;
-    uint64_t *child_pairs;
+    uint64_t *orig_pairs;
 };
 
 static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
@@ -116,7 +116,7 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_
     t->hash = hash != NULL ? hash : direct_hash;
     t->eq = eq;
     t->free_key = free_key != NULL ? free_key : free_nop;
-    t->child_pairs = NULL;
+    t->orig_pairs = NULL;
     return t;
 }
 
@@ -124,9 +124,11 @@ Table *table_inherit(const Table *t)
 {
     Table *u = xmalloc(sizeof(Table));
     *u = *t;
-    u->body = xmalloc(sizeof(List *) * u->body_size); // set NULL
-    memcpy(u->body, t->body, sizeof(List *) * u->body_size);
-    u->child_pairs = scary_new(sizeof(uint64_t));
+    size_t s = sizeof(List *) * u->body_size;
+    u->body = xmalloc(s);
+    u->orig_pairs = xmalloc(s);
+    memcpy(u->body, t->body, s);
+    memcpy(u->orig_pairs, t->body, s);
     return u;
 }
 
@@ -139,23 +141,9 @@ static List *list_new(uint64_t key, uint64_t value)
     return l;
 }
 
-static bool is_owned(const uint64_t *owned, const List *p)
+static void list_free(List *l, const List *orig, TableFreeFunc free_key)
 {
-    if (p == NULL)
-        return false;
-    if (owned == NULL)
-        return true; // not an inherited table so frees all
-    uint64_t val = (uint64_t) p;
-    size_t len = scary_length(owned);
-    for (size_t i = 0; i < len; i++)
-        if (owned[i] == val)
-            return true;
-    return false;
-}
-
-static void list_free(List *l, uint64_t *owned, TableFreeFunc free_key)
-{
-    for (List *next; is_owned(owned, l); l = next) {
+    for (List *next; l != orig ; l = next) {
         next = l->next;
         (*free_key)((void *) l->key);
         free(l);
@@ -174,13 +162,22 @@ static void list_append(List **p, List *l)
     q->next = l;
 }
 
+static List *list_orig_ptr(const uint64_t *orig_pairs, size_t i)
+{
+    if (orig_pairs == NULL)
+        return NULL;
+    return ((List **) orig_pairs)[i];
+}
+
 void table_free(Table *t)
 {
     if (t == NULL)
         return;
-    for (size_t i = 0; i < t->body_size; i++)
-        list_free(t->body[i], t->child_pairs, t->free_key);
-    scary_free(t->child_pairs);
+    for (size_t i = 0; i < t->body_size; i++) {
+        List *orig = list_orig_ptr(t->orig_pairs, i);
+        list_free(t->body[i], orig, t->free_key);
+    }
+    free(t->orig_pairs);
     free(t->body);
     free(t);
 }
@@ -211,7 +208,7 @@ static inline List **table_find_listp(const Table *t, uint64_t key)
 
 static inline bool table_too_many_elements(const Table *t)
 {
-    return t->child_pairs == NULL &&
+    return t->orig_pairs == NULL &&
         t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
 }
 
@@ -267,8 +264,6 @@ static void table_put_raw(Table *t, List **p, uint64_t key, uint64_t value)
     l->next = *p; // prepend even if the same key exists
     *p = l;
     t->size++;
-    if (t->child_pairs != NULL)
-        scary_push(&t->child_pairs, (uint64_t) l);
 }
 
 // `value` can't be 0
