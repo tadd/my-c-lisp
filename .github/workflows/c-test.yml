@@ -34,17 +34,17 @@ jobs:
       run: make test
     - name: Test with Santizer
       run: make sanitize
-    - name: Test -O3
-      run: make clean && make -j2 test XCFLAGS=-O3
-    - name: Test -O3 with Sanitizer
-      run: make -j2 sanitize XCFLAGS=-O3
+    - name: Test optimized
+      run: make clean && make -j2 test OPTFLAGS='-O3 -flto=auto'
+    - name: Test optimized with Sanitizer
+      run: make -j2 sanitize OPTFLAGS='-O3 -flto=auto'
     - name: Clang - Make binaries
       run: make clean && make -j2 lisp basic-test CC=clang
     - name: Clang - Test
       run: make test CC=clang
     - name: Clang - Test with Santizer
       run: make sanitize CC=clang
-    - name: Clang - Test -O3
-      run: make clean && make -j2 test CC=clang XCFLAGS=-O3
-    - name: Clang - Test -O3 with Sanitizer
-      run: make -j2 sanitize CC=clang XCFLAGS=-O3
+    - name: Clang - Test optimized
+      run: make clean && make -j2 test CC=clang OPTFLAGS='-O3 -flto=auto'
+    - name: Clang - Test optimized with Sanitizer
+      run: make -j2 sanitize CC=clang OPTFLAGS='-O3 -flto=auto'
