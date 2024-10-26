@@ -4,6 +4,7 @@ CFLAGS=-std=gnu17 -Wall -Wextra $(OPTFLAGS) $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
+TIMEOUT=timeout 1
 
 OBJ_COMMON=lisp.o utils.o
 OBJ=$(OBJ_COMMON) main.o
@@ -20,14 +21,14 @@ basic-test: $(OBJ_TEST)
 test: test-c test-scheme
 
 test-c: basic-test
-	./$<
+	$(TIMEOUT) ./$<
 test-c-san: basic-test-san
-	./$<
+	$(TIMEOUT) ./$<
 
 test-scheme: lisp
-	./$< test.scm
+	$(TIMEOUT) ./$< test.scm
 test-scheme-san: lisp-san
-	./$< test.scm
+	$(TIMEOUT) ./$< test.scm
 
 clean:
 	rm -f lisp basic-test *-san *.o
