@@ -46,12 +46,25 @@ enum {
     TABLE_TOO_MANY_FACTOR = 3,
 };
 
-struct Table {
+typedef struct {
     size_t size, body_size;
     List **body;
     TableHashFunc hash;
     TableEqualFunc eq;
     TableFreeFunc free_key;
+} TableEntry;
+
+typedef struct TableChain {
+    TableEntry *e;
+    struct TableChain *next;
+} TableChain;
+
+struct Table {
+    bool chain;
+    union {
+        TableEntry e;
+        TableChain c;
+    };
 };
 
 static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
@@ -95,7 +108,9 @@ Table *table_new_str(void)
 
 Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_key)
 {
-    Table *t = xmalloc(sizeof(Table));
+    Table *p = xmalloc(sizeof(Table));
+    p->chain = false;
+    TableEntry *t = &p->e;
     t->body = xcalloc(sizeof(List *), TABLE_INIT_SIZE); // set NULL
     t->size = 0;
     t->body_size = TABLE_INIT_SIZE;
@@ -104,17 +119,18 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_
     t->hash = PTR_OR(hash, direct_hash);
     t->eq = PTR_OR(eq, direct_equal);
     t->free_key = PTR_OR(free_key, free_nop);
-    return t;
+    return p;
 }
 
-void table_free(Table *t)
+void table_free(Table *p)
 {
-    if (t == NULL)
+    if (p == NULL)
         return;
+    TableEntry *t = &p->e;
     for (size_t i = 0; i < t->body_size; i++)
         list_free(t->body[i], t->free_key);
     free(t->body);
-    free(t);
+    free(p);
 }
 
 #if 0
@@ -135,14 +151,16 @@ void table_dump(const Table *t)
 }
 #endif
 
-static inline List **table_find_listp(const Table *t, uint64_t key)
+static inline List **table_find_listp(const Table *p, uint64_t key)
 {
+    const TableEntry *t = &p->e;
     uint64_t i = (*t->hash)(key) % t->body_size;
     return &t->body[i];
 }
 
-static inline bool table_too_many_elements(const Table *t)
+static inline bool table_too_many_elements(const Table *p)
 {
+    const TableEntry *t = &p->e;
     return t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
 }
 
@@ -166,8 +184,9 @@ static size_t next_prime(size_t curr)
     return curr*2+1;
 }
 
-static void table_resize(Table *t)
+static void table_resize(Table *pt)
 {
+    TableEntry *t = &pt->e;
     const size_t old_body_size = t->body_size;
     List *old_body[old_body_size];
     memcpy(old_body, t->body, sizeof(List *) * t->body_size);
@@ -177,7 +196,7 @@ static void table_resize(Table *t)
         List *rev = list_reverse(old_body[i]);
         for (List *l = rev, *next; l != NULL; l = next) {
             next = l->next;
-            List **p = table_find_listp(t, l->key);
+            List **p = table_find_listp(pt, l->key);
             l->next = *p; // prepend
             *p = l;
         }
@@ -194,8 +213,9 @@ static inline bool table_ensure_size(Table *t)
     return false;
 }
 
-static void table_put_raw(Table *t, List **p, uint64_t key, uint64_t value)
+static void table_put_raw(Table *pt, List **p, uint64_t key, uint64_t value)
 {
+    TableEntry *t = &pt->e;
     List *l = list_new(key, value);
     l->next = *p; // prepend even if the same key exists
     *p = l;
@@ -225,14 +245,14 @@ static List *table_find_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
 static inline List *table_find_pair(const Table *t, uint64_t key)
 {
     List **p = table_find_listp(t, key);
-    return table_find_pair_raw(p, key, t->eq);
+    return table_find_pair_raw(p, key, t->e.eq);
 }
 
 static List *table_pair(const Table *t, uint64_t key)
 {
     List **body = table_find_listp(t, key);
     for (List *l = *body; l != NULL; l = l->next) {
-        if ((*t->eq)(l->key, key))
+        if ((*t->e.eq)(l->key, key))
             return l;
     }
     return NULL;
@@ -262,7 +282,7 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
     List **p = table_find_listp(t, key);
-    List *l = table_find_pair_raw(p, key, t->eq);
+    List *l = table_find_pair_raw(p, key, t->e.eq);
     if (l == NULL) { // to put
         if (table_ensure_size(t))
             p = table_find_listp(t, key); // recalc
@@ -275,9 +295,9 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
 
 Table *table_merge(Table *dst, const Table *src)
 {
-    const size_t size = src->body_size;
+    const size_t size = src->e.body_size;
     for (size_t i = 0; i < size; i++) {
-        List *rev = list_reverse(src->body[i]);
+        List *rev = list_reverse(src->e.body[i]);
         for (List *l = rev; l != NULL; l = l->next)
             table_set_or_put(dst, l->key, l->value);
         list_free(rev, free_nop);

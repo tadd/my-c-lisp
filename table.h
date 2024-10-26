@@ -1,6 +1,7 @@
 #ifndef TABLE_H
 #define TABLE_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -18,5 +19,8 @@ uint64_t table_get(const Table *t, uint64_t key);
 bool table_set_or_put(Table *t, uint64_t key, uint64_t val);
 bool table_set(Table *t, uint64_t key, uint64_t val); // set only if found
 Table *table_merge(Table *dst, const Table *src);
+
+Table *table_chained_new(Table *parent);
+Table *table_chained_new_v(Table *parent1, ...);
 
 #endif
