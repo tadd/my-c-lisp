@@ -331,6 +331,6 @@ void table_merge(Table *dst, const Table *src)
     const size_t size = src->body_size;
     for (size_t i = 0; i < size; i++) {
         for (List *l = src->body[i]; l != NULL; l = l->next)
-            table_put(dst, l->key, l->value);
+            table_set_or_put(dst, l->key, l->value);
     }
 }
