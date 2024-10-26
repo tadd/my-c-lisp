@@ -904,9 +904,9 @@ static Value apply_closure(const Table *env, Value proc, Value args)
 {
     Closure *cl = CLOSURE(proc);
     int64_t arity = cl->proc.arity;
-    Table *clenv = table_inherit(env);
+    Table *clenv = table_inherit(cl->env);
     if (env != cl->env)
-        table_merge(clenv, cl->env);
+        table_merge(clenv, clenv);
     Value params = cl->params;
     if (arity == -1)
         table_put(clenv, params, args);
