@@ -962,6 +962,7 @@ static void apply_continuation(Value f, Value args)
     jump(cont);
 }
 
+// expects proc and args are evaluated if necessary
 static Value apply(Value *env, Value proc, Value args)
 {
     expect_arity(PROCEDURE(proc)->arity, args);
@@ -1079,9 +1080,9 @@ static Value map_eval(Value *env, Value l)
 static Value eval_apply(Value *env, Value symproc, Value args)
 {
     Value proc = eval(env, symproc);
+    expect_type("eval", TYPE_PROC, proc);
     if (!value_tag_is(proc, TAG_SYNTAX))
         args = map_eval(env, args);
-    expect_type("eval", TYPE_PROC, proc);
     Value ret = apply(env, proc, args);
     call_stack_pop();
     return ret;
