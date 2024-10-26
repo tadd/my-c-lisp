@@ -49,6 +49,12 @@ char *xstrdup(const char *s)
     return dup;
 }
 
+static void *xmemdup(const void *q, size_t len)
+{
+    void *p = xmalloc(len);
+    return memcpy(p, q, len);
+}
+
 enum {
     TABLE_INIT_SIZE = 1,
     TABLE_TOO_MANY_FACTOR = 3,
@@ -104,6 +110,7 @@ Table *table_new_str(void)
 }
 
 static inline void free_nop(ATTR(unused) void *p) { }
+#define PTR_OR(x, y) (((x) != NULL) ? (x) : (y))
 
 Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_key)
 {
@@ -113,9 +120,9 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_
     t->body_size = TABLE_INIT_SIZE;
     for (size_t i = 0; i < t->body_size; i++)
         t->body[i] = NULL;
-    t->hash = hash != NULL ? hash : direct_hash;
-    t->eq = eq;
-    t->free_key = free_key != NULL ? free_key : free_nop;
+    t->hash = PTR_OR(hash, direct_hash);
+    t->eq = PTR_OR(eq, direct_equal);
+    t->free_key = PTR_OR(free_key, free_nop);
     t->orig_pairs = NULL;
     return t;
 }
@@ -125,10 +132,8 @@ Table *table_inherit(const Table *t)
     Table *u = xmalloc(sizeof(Table));
     *u = *t;
     size_t s = sizeof(List *) * u->body_size;
-    u->body = xmalloc(s);
-    u->orig_pairs = xmalloc(s);
-    memcpy(u->body, t->body, s);
-    memcpy(u->orig_pairs, t->body, s);
+    u->body = xmemdup(t->body, s);
+    u->orig_pairs = xmemdup(t->body, s);
     return u;
 }
 
@@ -162,22 +167,21 @@ static void list_append(List **p, List *l)
     q->next = l;
 }
 
-static List *list_orig_ptr(const uint64_t *orig_pairs, size_t i)
+static void table_free_child_pairs(Table *t)
 {
-    if (orig_pairs == NULL)
-        return NULL;
-    return ((List **) orig_pairs)[i];
+    List *const *orig_pairs = (List **) t->orig_pairs;
+    for (size_t i = 0; i < t->body_size; i++)
+        list_free(t->body[i], orig_pairs[i], t->free_key);
 }
 
 void table_free(Table *t)
 {
     if (t == NULL)
         return;
-    for (size_t i = 0; i < t->body_size; i++) {
-        List *orig = list_orig_ptr(t->orig_pairs, i);
-        list_free(t->body[i], orig, t->free_key);
+    if (t->orig_pairs != NULL) {
+        table_free_child_pairs(t);
+        free(t->orig_pairs);
     }
-    free(t->orig_pairs);
     free(t->body);
     free(t);
 }
