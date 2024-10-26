@@ -267,8 +267,46 @@ static void table_resize(Table *t)
     }
 }
 
-static inline bool table_ensure_size(Table *t)
+static void table_resize_child(Table *t)
 {
+    List **old_body = t->body;
+    size_t old_body_size = t->body_size;
+    List **old_parent_pairs = (List **) t->parent_pairs;
+    const Table *p = t->parent;
+    *t = *p;
+    t->parent = p;
+    size_t s = sizeof(List *) * p->body_size;
+    t->body = xmemdup(p->body, s);
+    t->parent_pairs = xmemdup(p->body, s);
+    for (size_t i = 0; i < old_body_size; i++) {
+        const List *parentp = old_parent_pairs[i];
+        if (parentp == NULL)
+            continue;
+        for (List *l = old_body[i], *next; l != NULL && l != parentp; l = next) {
+            next = l->next;
+            List **p = table_find_listp(t, l->key);
+            l->next = *p;
+            *p = l;
+            t->size++;
+        }
+    }
+    free(old_body);
+    free(old_parent_pairs);
+}
+
+static inline bool table_ensure_size_inherited(Table *t)
+{
+    if (t->parent != NULL && t->body_size != t->parent->body_size) {
+        table_resize_child(t);
+        return true;
+    }
+    return false;
+}
+
+static bool table_ensure_size(Table *t)
+{
+    if (t->parent != NULL)
+        return table_ensure_size_inherited(t);
     if (table_too_many_elements(t)) {
         table_resize(t);
         return true;
@@ -312,6 +350,7 @@ static inline List *table_find_pair(const Table *t, uint64_t key)
 
 uint64_t table_get(const Table *t, uint64_t key)
 {
+    table_ensure_size_inherited((Table *) t);
     const List *l = table_find_pair(t, key);
     if (l == NULL) // not found
         return 0;
@@ -322,6 +361,7 @@ bool table_set(Table *t, uint64_t key, uint64_t value)
 {
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
+    table_ensure_size_inherited(t);
     List *l = table_find_pair(t, key);
     if (l == NULL)
         return false; // did nothing
@@ -333,6 +373,7 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
 {
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
+    table_ensure_size_inherited(t);
     List **p = table_find_listp(t, key);
     List *l = table_find_pair_raw(p, key, t->eq);
     if (l == NULL) { // to put
@@ -347,6 +388,7 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
 
 Table *table_merge(Table *dst, const Table *src)
 {
+    table_ensure_size_inherited(dst);
     const size_t size = src->body_size;
     for (size_t i = 0; i < size; i++) {
         List *rev = list_reverse(src->body[i]);

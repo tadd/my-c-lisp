@@ -343,6 +343,44 @@ Test(table, inheritance_with_huge_child) {
     table_free(t);
 }
 
+Test(table, inheritance_before_parent_put) {
+    Table *t = table_new();
+    Table *u = table_inherit(t);
+
+    for (long i = 1; i < 100; i++)
+        table_put(t, i, i*17);
+
+    cr_assert(eq(int, 17, table_get(t, 1)));
+    cr_assert(eq(int, 17, table_get(u, 1)));
+
+    table_free(u);
+    table_free(t);
+}
+
+Test(table, inheritance_and_put) {
+    Table *t = table_new();
+    for (long i = 1; i <= 10; i++)
+        table_put(t, i, i*13); // put to parent
+
+    Table *u = table_inherit(t);
+    for (long i = 11; i <= 20; i++)
+        table_put(t, i, i*17); // put to parent after inheritance
+
+    for (long i = 21; i <= 30; i++)
+        table_put(u, i, i*10); // put to child after inheritance
+
+    cr_assert(eq(int,  13, table_get(t,  1)));
+    cr_assert(eq(int, 340, table_get(t, 20)));
+    cr_assert(eq(int,   0, table_get(t, 30)));
+
+    cr_assert(eq(int,  13, table_get(u,  1)));
+    cr_assert(eq(int, 340, table_get(u, 20)));
+    cr_assert(eq(int, 300, table_get(u, 30)));
+
+    table_free(u);
+    table_free(t);
+}
+
 Test(table, set) {
     Table *t = table_new();
     table_put(t, 1, 123);
