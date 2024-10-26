@@ -167,6 +167,17 @@ static void list_append(List **p, List *l)
     q->next = l;
 }
 
+static List *list_reverse(const List *l)
+{
+    List *ret = NULL;
+    for (const List *p = l; p != NULL; p = p->next) {
+        List *e = list_new(p->key, p->value);
+        e->next = ret;
+        ret = e;
+    }
+    return ret;
+}
+
 static void table_free_child_pairs(Table *t)
 {
     List *const *orig_pairs = (List **) t->orig_pairs;
@@ -334,7 +345,9 @@ void table_merge(Table *dst, const Table *src)
 {
     const size_t size = src->body_size;
     for (size_t i = 0; i < size; i++) {
-        for (List *l = src->body[i]; l != NULL; l = l->next)
+        List *rev = list_reverse(src->body[i]);
+        for (List *l = rev; l != NULL; l = l->next)
             table_set_or_put(dst, l->key, l->value);
+        list_free(rev, NULL, free_nop);
     }
 }
