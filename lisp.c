@@ -1221,7 +1221,7 @@ static FILE *open_loadable(const char *path)
     static char rpath[PATH_MAX];
     char joined[PATH_MAX];
     snprintf(joined, sizeof(joined), "%s/%s", load_basedir, path);
-    realpath(joined, rpath);
+    (void)!realpath(joined, rpath);
 
     FILE *in = fopen(rpath, "r");
     if (in == NULL)
