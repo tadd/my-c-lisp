@@ -138,6 +138,14 @@
                  ((lambda a (car a)) 10)
                  a) 42)))
 
+(describe "lambda and envs" (lambda ()
+  (define f #f)
+  (let ((x 42))
+    (set! f (lambda () x)))
+  (expect eqv? (f) 42)
+  (let ((x 0))
+      (expect eqv? (f) 42))))
+
 ;; 4.1.5. Conditionals
 (describe "if" (lambda ()
   (expect eqv? (if #t 1) 1)
