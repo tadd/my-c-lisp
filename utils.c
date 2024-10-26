@@ -71,7 +71,8 @@ struct Table {
     TableHashFunc hash;
     TableEqualFunc eq;
     TableFreeFunc free_key;
-    uint64_t *orig_pairs;
+    const Table *parent;
+    uint64_t *parent_pairs;
 };
 
 static inline uint64_t direct_hash(uint64_t x) // simplified xorshift
@@ -123,7 +124,8 @@ Table *table_new_full(TableHashFunc hash, TableEqualFunc eq, TableFreeFunc free_
     t->hash = PTR_OR(hash, direct_hash);
     t->eq = PTR_OR(eq, direct_equal);
     t->free_key = PTR_OR(free_key, free_nop);
-    t->orig_pairs = NULL;
+    t->parent = NULL;
+    t->parent_pairs = NULL;
     return t;
 }
 
@@ -133,7 +135,8 @@ Table *table_inherit(const Table *t)
     *u = *t;
     size_t s = sizeof(List *) * u->body_size;
     u->body = xmemdup(t->body, s);
-    u->orig_pairs = xmemdup(t->body, s);
+    u->parent = t;
+    u->parent_pairs = xmemdup(t->body, s);
     return u;
 }
 
@@ -180,18 +183,18 @@ static List *list_reverse(const List *l)
 
 static void table_free_child_pairs(Table *t)
 {
-    List *const *orig_pairs = (List **) t->orig_pairs;
+    List *const *parent_pairs = (List **) t->parent_pairs;
     for (size_t i = 0; i < t->body_size; i++)
-        list_free(t->body[i], orig_pairs[i], t->free_key);
+        list_free(t->body[i], parent_pairs[i], t->free_key);
 }
 
 void table_free(Table *t)
 {
     if (t == NULL)
         return;
-    if (t->orig_pairs != NULL) {
+    if (t->parent_pairs != NULL) {
         table_free_child_pairs(t);
-        free(t->orig_pairs);
+        free(t->parent_pairs);
     }
     free(t->body);
     free(t);
@@ -223,7 +226,7 @@ static inline List **table_find_listp(const Table *t, uint64_t key)
 
 static inline bool table_too_many_elements(const Table *t)
 {
-    return t->orig_pairs == NULL &&
+    return t->parent == NULL &&
         t->size > t->body_size * TABLE_TOO_MANY_FACTOR;
 }
 
