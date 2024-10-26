@@ -282,13 +282,14 @@ static void table_put_raw(Table *t, List **p, uint64_t key, uint64_t value)
 }
 
 // `value` can't be 0
-void table_put(Table *t, uint64_t key, uint64_t value)
+Table *table_put(Table *t, uint64_t key, uint64_t value)
 {
     if (value == 0)
         error("%s: got invalid value == 0", __func__);
     table_ensure_size(t);
     List **p = table_find_listp(t, key);
     table_put_raw(t, p, key, value);
+    return t;
 }
 
 static List *table_find_pair_raw(List **p, uint64_t key, TableEqualFunc eq)
@@ -341,7 +342,7 @@ bool table_set_or_put(Table *t, uint64_t key, uint64_t value)
     return true;
 }
 
-void table_merge(Table *dst, const Table *src)
+Table *table_merge(Table *dst, const Table *src)
 {
     const size_t size = src->body_size;
     for (size_t i = 0; i < size; i++) {
@@ -350,4 +351,5 @@ void table_merge(Table *dst, const Table *src)
             table_set_or_put(dst, l->key, l->value);
         list_free(rev, NULL, free_nop);
     }
+    return dst;
 }
