@@ -5,7 +5,7 @@ LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 
-OBJ_COMMON=lisp.o utils.o scary.o
+OBJ_COMMON=lisp.o utils.o scary.o table.o
 OBJ=$(OBJ_COMMON) main.o
 OBJ_TEST=$(OBJ_COMMON) basic-test.o
 
@@ -58,9 +58,12 @@ basic-test-san: $(OBJ_TEST:.o=.san.o)
 microbench:
 	@$(MAKE) -C $@
 
+scary.o: scary.h
 utils.o: utils.h
-lisp.o scary.o: scary.h
-lisp.o main.o basic-test.o: lisp.h utils.h
+main.o: lisp.h utils.h
+table.o: table.h utils.h
+basic-test.o: lisp.h utils.h table.h
+lisp.o: lisp.h utils.h scary.h table.h
 
 .PHONY: all clean test test-c test-scheme analyze sanitize \
 	test-san test-c-san test-scheme-san \
