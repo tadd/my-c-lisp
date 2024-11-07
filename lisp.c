@@ -1061,10 +1061,12 @@ static Value eval(Value *env, Value v);
 
 static Value eval_body(Value *env, Value body)
 {
-    Value last = Qnil;
-    for (Value p = body; p != Qnil && last != Qundef; p = cdr(p))
-        last = eval(env, car(p));
-    return last;
+    if (body == Qnil)
+        return Qnil;
+    Value p = body;
+    for (Value next; (next = cdr(p)) != Qnil; p = next)
+        eval(env, car(p));
+    return eval(env, car(p));
 }
 
 static Value map_eval(Value *env, Value l)
@@ -1372,22 +1374,27 @@ static Value syn_case(Value *env, Value args)
 //PTR
 static Value syn_and(Value *env, Value args)
 {
-    Value last = Qtrue;
-    for (Value p = args; p != Qnil; p = cdr(p)) {
-        if ((last = eval(env, car(p))) == Qfalse)
-            break;
+    if (args == Qnil)
+        return Qtrue;
+    Value p = args;
+    for (Value next; (next = cdr(p)) != Qnil; p = next) {
+        if (eval(env, car(p)) == Qfalse)
+            return Qfalse;
     }
-    return last;
+    return eval(env, car(p));
 }
 
 //PTR
 static Value syn_or(UNUSED Value *env, Value args)
 {
-    for (Value p = args, curr; p != Qnil; p = cdr(p)) {
-        if ((curr = eval(env, car(p))) != Qfalse)
-            return curr;
+    if (args == Qnil)
+        return Qfalse;
+    Value p = args;
+    for (Value next, v; (next = cdr(p)) != Qnil; p = next) {
+        if ((v = eval(env, car(p))) != Qfalse)
+            return v;
     }
-    return Qfalse;
+    return eval(env, car(p));
 }
 
 // 4.2.2. Binding constructs
