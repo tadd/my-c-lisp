@@ -906,6 +906,7 @@ static Value append2(Value l1, Value l2)
 
 static Value eval_body(Value *env, Value body);
 
+//PTR
 static Value apply_closure(Value *env, Value proc, Value args)
 {
     Closure *cl = CLOSURE(proc);
@@ -1271,12 +1272,14 @@ static Value lambda(Value *env, Value params, Value body)
     return value_of_closure(*env, params, body);
 }
 
+//PTR -- proper tail recursion needed
 static Value syn_lambda(Value *env, Value args)
 {
     return lambda(env, car(args), cdr(args));
 }
 
 // 4.1.5. Conditionals
+//PTR
 static Value syn_if(Value *env, Value args)
 {
     expect_arity_range("if", 2, 3, args);
@@ -1323,6 +1326,7 @@ static Value cond_eval_recipient(Value *env, Value test, Value recipients)
     return apply(env, recipient, list1(test));
 }
 
+//PTR
 static Value syn_cond(Value *env, Value clauses)
 {
     expect_arity_range("cond", 1, -1, clauses);
@@ -1348,6 +1352,7 @@ static Value syn_cond(Value *env, Value clauses)
 
 static Value memq(Value key, Value l);
 
+//PTR
 static Value syn_case(Value *env, Value args)
 {
     expect_arity_range("case", 2, -1, args);
@@ -1364,6 +1369,7 @@ static Value syn_case(Value *env, Value args)
     return Qnil;
 }
 
+//PTR
 static Value syn_and(Value *env, Value args)
 {
     Value last = Qtrue;
@@ -1374,6 +1380,7 @@ static Value syn_and(Value *env, Value args)
     return last;
 }
 
+//PTR
 static Value syn_or(UNUSED Value *env, Value args)
 {
     for (Value p = args, curr; p != Qnil; p = cdr(p)) {
@@ -1431,6 +1438,7 @@ static Value named_let(Value *env, Value var, Value bindings, Value body)
     return apply(&letenv, proc, args);
 }
 
+//PTR
 static Value syn_let(Value *env, Value args)
 {
     expect_arity_range("let", 2, -1, args);
@@ -1440,12 +1448,14 @@ static Value syn_let(Value *env, Value args)
     return let(env, "let", bind_or_var, body);
 }
 
+//PTR
 static Value syn_let_star(Value *env, Value args)
 {
     expect_arity_range("let*", 2, -1, args);
     return let(env, "let*", car(args), cdr(args));
 }
 
+//PTR
 static Value syn_letrec(Value *env, Value args)
 {
     expect_arity_range("letrec", 2, -1, args);
@@ -1468,12 +1478,14 @@ static Value syn_letrec(Value *env, Value args)
 }
 
 // 4.2.3. Sequencing
+//PTR
 static Value syn_begin(Value *env, Value body)
 {
     return eval_body(env, body);
 }
 
 // 4.2.4. Iteration
+//PTR
 static Value syn_do(Value *env, Value args)
 {
     expect_arity_range("do", 2, -1, args);
