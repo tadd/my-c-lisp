@@ -16,6 +16,7 @@
 
 #include "schaf.h"
 #include "utils.h"
+#include "gc.h"
 
 //
 // Types
