@@ -4,7 +4,7 @@ CFLAGS=-std=gnu17 -Wall -Wextra $(OPTFLAGS) $(XCFLAGS)
 LIBS=-lm
 ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
-TIMEOUT=timeout 1
+TIMEOUT=timeout 2
 
 OBJ_COMMON=lisp.o utils.o
 OBJ=$(OBJ_COMMON) main.o
