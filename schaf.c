@@ -2361,6 +2361,11 @@ static void initialize(void)
     SYM_UNQUOTE_SPLICING = value_of_symbol("unquote-splicing");
     SYM_RARROW = value_of_symbol("=>");
 
+    gc_add_root(&toplevel_environment);
+    gc_add_root(&symbol_names);
+    gc_add_root(&call_stack);
+    gc_add_root(&source_data);
+
     Value *e = &toplevel_environment;
 
     // 4. Expressions
