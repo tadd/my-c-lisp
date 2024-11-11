@@ -248,13 +248,20 @@ static void sweep(void)
 {
     uint8_t *p = heap, *endp = p + init_size;
     size_t offset;
-    for (Header *h; p < endp; p += offset) {
+    Header dummy = { .size = 0, .allocated = true, .living = false };
+    for (Header *h, *prev = &dummy; p < endp; p += offset) {
         h = HEADER(p);
         offset = h->size + sizeof(Header);
         if (h->living)
             h->living = false;
-        else if (h->allocated)
-            xfree(h);
+        else if (h->allocated) {
+            if (!prev->allocated)
+                prev->size += offset;
+            else {
+                xfree(h);
+                prev = h;
+            }
+        }
     }
 }
 
