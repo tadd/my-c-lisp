@@ -136,9 +136,9 @@ static void print_vmhwm(void)
 int main(int argc, char **argv)
 {
     Option o = parse_opt(argc, argv);
-    gc_print_stat(o.heap_stat);
+    gc_set_print_stat(o.heap_stat);
     if (o.init_heap_size > 0)
-        gc_init_size(o.init_heap_size);
+        gc_set_init_size(o.init_heap_size);
 
     Value v;
     if (o.parse_only)
