@@ -1151,6 +1151,7 @@ static Value iload(FILE *in, const char *filename)
     }
     INIT_STACK();
     call_stack = Qnil;
+    gc_add_root(&ast);
     Value ret = eval_body(&toplevel_environment, l);
     call_stack_check_consistency();
     return ret;
