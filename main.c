@@ -93,12 +93,13 @@ static double cputime_ms(void)
 
 static void print_vmhwm(void)
 {
-    FILE *status = fopen("/proc/self/status", "r");
+    static const char *const path = "/proc/self/status",
+        *const pat = "VmHWM";
+    FILE *status = fopen(path, "r");
     if (status == NULL)
-        error("cannot open file /proc/self/status");
+        error("cannot open file %s", path);
     char buf[BUFSIZ];
     bool printed = false;
-    static const char *const pat = "VmHWM";
     while (fgets(buf, sizeof(buf), status) != NULL) {
         if (strncmp(buf, pat, strlen(pat)) == 0) {
             fprintf(stderr, "%s", buf);
