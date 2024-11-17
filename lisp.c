@@ -949,7 +949,7 @@ static void jump(Continuation *cont)
 
 #define GET_SP(p) volatile void *p = &p
 
-ATTR(noreturn)
+ATTR(noreturn) ATTR(noinline)
 static void apply_continuation(Value f, Value args)
 {
     GET_SP(sp);
@@ -2269,6 +2269,7 @@ static Value value_of_continuation(void)
     return (Value) c;
 }
 
+ATTR(noinline)
 static bool continuation_set(Value c)
 {
     GET_SP(sp); // must be the first!
