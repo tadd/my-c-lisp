@@ -2,7 +2,7 @@ My C Lisp
 =========
 
 A study or an étude for my daily hacking exercise, a
-[Scheme engine](https://www.scheme.org/) that aims[^1] for
+[Scheme](https://www.scheme.org/) engine that aims[^1] for
 [R<sup>5</sup>RS](https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/)
 compliance.
 
