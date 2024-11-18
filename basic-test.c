@@ -4,7 +4,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 
-#include "lisp.h"
+#include "schaf.h"
 
 #define expect_stringify(exp, v) do { \
         char *s = stringify(v); \
@@ -95,7 +95,7 @@ static Value list(Value arg, ...)
     return l;
 }
 
-Test(lisp, printing) {
+Test(schaf, printing) {
     expect_stringify("#t", Qtrue);
     expect_stringify("#f", Qfalse);
     expect_stringify("<undef>", Qundef);
@@ -112,65 +112,65 @@ Test(lisp, printing) {
     expect_stringify("(1 2)", list(V(1), V(2), Qundef));
 }
 
-Test(lisp, parse_int) {
+Test(schaf, parse_int) {
     expect_vint_eq_parsed(42, "42");
     expect_vint_eq_parsed(-42, "-42");
 }
 
-Test(lisp, parse_nil) {
+Test(schaf, parse_nil) {
     cr_expect(parse_expr_string("()") == Qnil);
 }
 
-Test(lisp, parse_list) {
+Test(schaf, parse_list) {
     expect_list_eq_parsed(list(V(1), V(2), Qundef), "(1 2)");
 }
 
-Test(lisp, parse_string) {
+Test(schaf, parse_string) {
     expect_vstr_eq_parsed("abc", "\"abc\"");
     expect_vstr_eq_parsed("a\\b", "\"a\\\\b\"");
     expect_vstr_eq_parsed("a\"b", "\"a\\\"b\"");
 }
 
-Test(lisp, parse_string_list) {
+Test(schaf, parse_string_list) {
     expect_list_eq_parsed(list(V("abc"), V("def"), Qundef),
                           "(\"abc\" \"def\")");
 }
 
 #define caaaar(x) (car(car(car(car(x)))))
-Test(lisp, cxr) {
+Test(schaf, cxr) {
     expect_vint_eq(42, caaaar(parse_expr_string("((((42))))")));
 }
 
-Test(lisp, parse_ident) {
+Test(schaf, parse_ident) {
     expect_vsym_eq_parsed("a", "a");
 }
 
-Test(lisp, parse_dot) {
+Test(schaf, parse_dot) {
     expect_pair_eq_parsed(1, 2, "(1 . 2)");
 }
 
-Test(lisp, parse_peculiar) {
+Test(schaf, parse_peculiar) {
     expect_vint_eq_parsed(42, "+42");
     cr_expect(value_is_symbol(parse_expr_string("+")));
 }
 
-Test(lisp, parse_lambda) {
+Test(schaf, parse_lambda) {
     expect_list_eq_parsed(list(value_of_symbol("lambda"), Qnil, V(42), Qundef),
                           "(lambda () 42)");
 }
 
-Test(lisp, parse_broken) {
+Test(schaf, parse_broken) {
     expect_parse_error("got 'EOF'", "(");
     expect_parse_error("got 'EOF'", "'");
 }
 
-Test(lisp, parse_error_line_column) {
+Test(schaf, parse_error_line_column) {
     expect_parse_error("<inline>:1:3: ", "(1");
     expect_parse_error("<inline>:2:3: ", "\n(1");
     expect_parse_error("<inline>:2:5: ", "()\n()(1");
 }
 
-Test(lisp, runtime_error_line_column) {
+Test(schaf, runtime_error_line_column) {
     expect_runtime_error(
 "unbound variable: h\n"
 "\t<inline>:2:14 in 'g'\n"
@@ -182,39 +182,39 @@ Test(lisp, runtime_error_line_column) {
 "(f)");
 }
 
-Test(lisp, div0) {
+Test(schaf, div0) {
     expect_runtime_error("divided by zero", "(/ 42 0)");
 }
 
-Test(lisp, modulo) {
+Test(schaf, modulo) {
     expect_runtime_error("divided by zero", "(modulo 13 0)");
 }
 
-Test(lisp, unbound_variable) {
+Test(schaf, unbound_variable) {
     expect_runtime_error("unbound variable: x", "x");
     expect_runtime_error("unbound variable: x", "(+ x 2)");
 }
 
-Test(lisp, if) {
+Test(schaf, if) {
     expect_runtime_error("2..3 but got 1", "(if #f)");
     expect_runtime_error("2..3 but got 4", "(if #f 1 2 3)");
 }
 
-Test(lisp, set) {
+Test(schaf, set) {
     expect_runtime_error("unbound variable: x", "(begin (set! x 42) x)");
 }
 
-Test(lisp, let) {
+Test(schaf, let) {
     expect_runtime_error("but got 1", "(let ((x 42)))");
     expect_runtime_error("but got 1", "(let ((x 42) (y 100)))");
 }
 
-Test(lisp, applicable) {
+Test(schaf, applicable) {
     expect_runtime_error("expected procedure", "(1 1)");
     expect_runtime_error("expected procedure", "(() 1)");
 }
 
-Test(lisp, map) {
+Test(schaf, map) {
     expect_runtime_error("expected pair but got integer", "(map + 1)");
     expect_runtime_error("expected pair but got integer", "(for-each + 1)");
 }

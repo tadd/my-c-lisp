@@ -1,5 +1,5 @@
-#ifndef LISP_H
-#define LISP_H
+#ifndef SCHAF_H
+#define SCHAF_H
 
 #include <stdbool.h>
 #include <stdint.h>

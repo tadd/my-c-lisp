@@ -5,13 +5,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "lisp.h"
+#include "schaf.h"
 #include "utils.h"
 
 ATTR(noreturn)
 static void usage(FILE *out)
 {
-    fprintf(out, "Usage: lisp [-e <source>] [-pPTMh] <file>\n");
+    fprintf(out, "Usage: schaf [-e <source>] [-pPTMh] <file>\n");
     fprintf(out, "  -e <source>\tevaluate <source> directly instead of <file>\n");
     fprintf(out, "  -p\t\tprint last expression in the input\n");
     fprintf(out, "  -P\t\tonly parse then exit before evaluation. implies -p\n");
