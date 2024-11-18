@@ -16,16 +16,16 @@ class PP (gdb.Command):
         super(type(self), self).__init__('pp', gdb.COMMAND_DATA)
     def invoke(self, arg, from_tty):
         val = gdb.parse_and_eval(arg)
-        pp = my_c_lisp_pp(val)
+        pp = schaf_pp(val)
         if pp:
             print(pp.to_string())
         else:
             print(str(val))
 PP()
 
-def my_c_lisp_pp(val):
+def schaf_pp(val):
     if val.type == ValuePrinter.TYPE:
         return ValuePrinter(val)
     return None
 
-#gdb.pretty_printers.append(my_c_lisp_pp)
+#gdb.pretty_printers.append(schaf_pp)
