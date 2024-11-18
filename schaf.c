@@ -55,6 +55,7 @@ typedef struct {
     int64_t arity;
 } Procedure;
 
+typedef Value (*cfunc_t)(/*ANYARGS*/);
 typedef struct {
     Procedure proc;
     cfunc_t cfunc;

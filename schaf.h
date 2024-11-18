@@ -19,10 +19,8 @@ typedef enum {
     TYPE_PROC,
 } Type;
 
-typedef struct Pair Pair;
 typedef uintptr_t Value;
 typedef uintptr_t Symbol;
-typedef Value (*cfunc_t)(/*ANYARGS*/);
 
 extern const Value Qnil, Qundef, Qfalse, Qtrue;
 
