@@ -1,4 +1,4 @@
-BIN=../lisp
+BIN=../schaf
 SRC!=ls src/*.erb
 TARGET=$(SRC:src/%.erb=%)
 NLOOP=5

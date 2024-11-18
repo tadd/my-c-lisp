@@ -6,13 +6,13 @@ ANALYZER=-fanalyzer
 SANITIZER=-fsanitize=undefined #,address
 TIMEOUT=timeout 2
 
-OBJ_COMMON=lisp.o utils.o
+OBJ_COMMON=schaf.o utils.o
 OBJ=$(OBJ_COMMON) main.o
 OBJ_TEST=$(OBJ_COMMON) basic-test.o
 
-all: lisp test
+all: schaf test
 
-lisp: $(OBJ)
+schaf: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 basic-test: $(OBJ_TEST)
@@ -25,20 +25,20 @@ test-c: basic-test
 test-c-san: basic-test-san
 	$(TIMEOUT) ./$<
 
-test-scheme: lisp
+test-scheme: schaf
 	$(TIMEOUT) ./$< test.scm
-test-scheme-san: lisp-san
+test-scheme-san: schaf-san
 	$(TIMEOUT) ./$< test.scm
 
 clean:
-	rm -f lisp basic-test *-san *.o
+	rm -f schaf basic-test *-san *.o
 
 analyze: $(OBJ:.o=.analyzer)
 
-sanitize: lisp-san test-san
+sanitize: schaf-san test-san
 test-san: test-c-san test-scheme-san
 
-lisp-san: $(OBJ:.o=.san.o)
+schaf-san: $(OBJ:.o=.san.o)
 	$(CC) $(CFLAGS) $(SANITIZER) -o $@ $^ $(LIBS)
 
 basic-test-san: $(OBJ_TEST:.o=.san.o)
@@ -60,8 +60,8 @@ microbench:
 	@$(MAKE) -C $@
 
 utils.o: utils.h
-lisp.o main.o: lisp.h utils.h
-basic-test.o: lisp.h
+schaf.o main.o: schaf.h utils.h
+basic-test.o: schaf.h
 
 .PHONY: all clean test test-c test-scheme analyze sanitize \
 	test-san test-c-san test-scheme-san \
