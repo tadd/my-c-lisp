@@ -2280,14 +2280,14 @@ static bool continuation_set(Value c)
     cont->shelter = xmalloc(cont->shelter_len);
     memcpy(cont->shelter, (void *) sp, cont->shelter_len);
     cont->call_stack = call_stack;
-    return setjmp(cont->state);
+    return setjmp(cont->state) != 0;
 }
 
 static Value proc_callcc(Value *env, Value proc)
 {
     expect_type("call/cc", TYPE_PROC, proc);
     Value c = value_of_continuation();
-    if (continuation_set(c) != 0)
+    if (continuation_set(c))
         return CONTINUATION(c)->retval;
     return apply(env, proc, list1(c));
 }
