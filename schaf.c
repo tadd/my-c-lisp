@@ -988,7 +988,7 @@ static Value iparse(FILE *in, const char *filename)
 
 Value parse(const char *path)
 {
-    initialize();
+    sch_initialize();
     FILE *in = fopen(path, "r");
     if (in == NULL)
         error("parse: can't open file: %s", path);
@@ -999,7 +999,7 @@ Value parse(const char *path)
 
 Value parse_string(const char *in)
 {
-    initialize();
+    sch_initialize();
     FILE *f = fmemopen((char *) in, strlen(in), "r");
     Value ast = iparse(f, "<inline>");
     fclose(f);
@@ -1165,7 +1165,7 @@ static Value iload_inner(FILE *in, const char *path)
 
 Value eval_string(const char *in)
 {
-    initialize();
+    sch_initialize();
     FILE *f = fmemopen((char *) in, strlen(in), "r");
     Value v = iload(f, "<inline>");
     fclose(f);
@@ -1188,7 +1188,7 @@ static FILE *open_loadable(const char *path)
 
 Value load(const char *path)
 {
-    initialize();
+    sch_initialize();
     FILE *in = open_loadable(path);
     Value retval = iload(in, path);
     fclose(in);
@@ -2355,7 +2355,7 @@ static Value proc_cputime(void) // in micro sec
     }
 CXRS(DEF_CXR_BUILTIN)
 
-void initialize(void)
+void sch_initialize(void)
 {
     if (initialized)
         return;
